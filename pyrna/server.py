@@ -113,13 +113,13 @@ def teaching():
     logs_db['websites'].insert(log)
     return render_template('teaching.html')
 
+################# WEBSERVICES #########################
+
 @app.route("/webservices")
 @app.route('/api/')
 
 def webservices():
     return render_template('webservices.html')
-
-################# WEBSERVICES #########################
 
 @app.route('/api/compute/2d', methods=['GET', 'POST'])
 

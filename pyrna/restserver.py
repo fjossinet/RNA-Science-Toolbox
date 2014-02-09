@@ -20,6 +20,12 @@ logs_db = None
 
 ################# WEBSERVICES #########################
 
+@app.route("/webservices")
+@app.route('/api/')
+
+def webservices():
+    return render_template('webservices.html')
+
 @app.route('/api/compute/2d', methods=['GET', 'POST'])
 
 def compute_2d():
@@ -357,46 +363,6 @@ def ark():
         if count:
             result = '{"count":%i}'%len(result)
     return Response(ujson.dumps(result), mimetype='application/json')
-
-@app.route('/api/mathematica', methods=['GET', 'POST'])
-
-def mathematica():
-    result = None
-    db_name = None
-    collection = None
-    query = None
-    id = None
-    if request.method == 'POST':
-        if 'db' in request.form:
-            db_name = request.form['db']
-        if 'coll' in request.form:
-            collection = request.form['coll']
-        if 'query' in request.form:
-            query = request.form['query']
-        if 'id' in request.form:
-            id = request.form['id']
-    else:
-        if 'db' in request.args:
-            db_name = request.args.get('db', None)
-        if 'coll' in request.args:
-            collection = request.args.get('coll', None)
-        if 'query' in request.args:
-            query = request.args.get('query', None)
-        if 'id' in request.args:
-            id = request.args.get('id', None)
-
-    db = mongodb[db_name]
-
-    if collection and query:
-        import simplejson
-        result = list(db[collection].find(simplejson.loads(str(query))))
-    elif collection and id:
-        result = db[collection].find_one({'_id':id})
-    elif collection:
-        print "OK"
-        result = list(db[collection].find())
-        print len(result)
-    return Response('\n'.join(map(ujson.dumps,result)), mimetype='application/text')
 
 if __name__ == '__main__':
     webserver_host = "localhost"
