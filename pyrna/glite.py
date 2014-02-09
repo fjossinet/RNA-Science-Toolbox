@@ -56,7 +56,7 @@ def write_pyrna_job(directory, bash_script_content, uid, input_files = [], endpo
     f.write("#!/bin/bash\n")
     f.write("source %s/setmyenv\n"%algorithms) #this will add to the PATH all the binaries installed on the grid with the script files/scripts/shell/install_algorithms.sh
     f.write("export PATH=%s/bin:$PATH:${VO_VO_GRAND_EST_FR_SW_DIR}/public/bin\n"%python)
-    f.write("hg clone https://fjossinet@bitbucket.org/fjossinet/pyrna\n")
+    f.write("git clone https://github.com/fjossinet/PyRNA.git\n")
     f.write("export PYTHONPATH=$PWD/pyrna:$PYTHONPATH\n")
     f.write("cd pyrna\n")
     f.write(bash_script_content)

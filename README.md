@@ -61,7 +61,7 @@ You don't need to install all of them. It will depend on the classes you will im
     * sudo easy_install pysam
 * in a UNIX shell, type:
 
-        $ hg clone https://bitbucket.org/fjossinet/pyrna
+        $ git clone https://github.com/fjossinet/PyRNA.git
 
 * in the configuration file of your shell (.bashrc for example), add the following lines:
 
