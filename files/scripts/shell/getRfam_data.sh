@@ -1,0 +1,12 @@
+#!/bin/bash
+
+DOWNLOAD_DIR=$1
+
+DOWNLOAD_LINK=$2
+
+FILE_NAME=$3
+
+cd $DOWNLOAD_DIR
+wget -qO $FILE_NAME  $DOWNLOAD_LINK/$3
+
+gzip -d $FILE_NAME

@@ -1,0 +1,297 @@
+#!/usr/bin/env python
+
+"""
+Task to annotate and import solved 3D structures into MongoDB
+"""
+
+import sys, os, math, datetime
+from pyrna.task import Task
+from pyrna.db import RNA3DHub, PDB, PDBQuery
+from pyrna import parsers
+from pyrna.computations import Rnaview
+from bson.objectid import ObjectId
+
+class Import3Ds(Task):
+
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None, rna3dhub = False, canonical_only = False, annotate = False):
+        Task.__init__(self, db_name, db_host, db_port, endPoint)
+        if rna3dhub:
+            self.rna3dHub = RNA3DHub()
+        else:
+            self.rna3dHub = None
+        self.structuresPerJob = 100
+        self.canonical_only = canonical_only
+        self.annotate = annotate
+
+    def getTotalJobsToSubmit(self, data):
+        total_jobs  = 0
+        if self.rna3dHub:
+            total_jobs  =int(math.floor(len(self.rna3dHub.get_clusters())/self.structuresPerJob)+1)
+        else:
+            total_jobs  =int(math.floor(len(PDB().query(PDBQuery()))/self.structuresPerJob)+1)
+
+        print "# of jobs to submit: %i"%total_jobs
+
+        return total_jobs
+
+    def getScriptContent(self, job_id):
+        scriptContent = "./files/grid_tasks/import_3Ds.task -db \""+self.db_name+"\ -rna3dhub "+ 'Y' if self.rna3dHub else 'N' +" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)
+        
+        print scriptContent
+        
+        return scriptContent
+
+    def storeData(self):
+        print "No data to store..."         
+
+    def doTheJob(self, job_id = 1):
+        pdb = PDB()
+        rnaview = Rnaview()
+
+        start = (job_id-1)*self.structuresPerJob+1
+        end = (job_id-1)*self.structuresPerJob+1+self.structuresPerJob-1
+
+        if self.rna3dHub: 
+
+            clusters = self.rna3dHub.get_clusters()
+
+            if end > len(clusters):
+                end = len(clusters)
+            
+            for cluster in clusters['pdb-ids'][start:end]:
+                if self.db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%cluster[0]}):
+                    continue
+                print "Recover %s"%cluster[0] #we use the first pdb_id in the list of ids making a cluster
+                for ts in parsers.parse_pdb(pdb.get_entry(cluster[0])):
+                    try:
+                        ss = None
+                        if self.annotate:
+                            ss, ts = rnaview.annotate(ts, canonical_only = self.canonical_only)
+                        self.save(ss, ts, cluster[0])
+
+                    except Exception, e:
+                        print "No annotation for %s"%cluster[0]
+
+        else:
+            pdb_ids = PDB().query(PDBQuery())
+            for pdb_id in pdb_ids[start:end]:
+                if self.db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%pdb_id}):
+                    continue
+                print "Recover %s"%pdb_id
+                for ts in parsers.parse_pdb(pdb.get_entry(pdb_id)):
+                    try:
+                        ss = None
+                        if self.annotate:
+                            ss, ts = rnaview.annotate(ts, canonical_only = self.canonical_only)
+                        self.save(ss, ts, pdb_id)
+
+                    except Exception, e:
+                        print e
+                        print "No annotation for %s"%pdb_id
+
+    def save(self, secondary_structure, tertiary_structure, pdbId):
+
+        tertiary_structure.source="db:pdb:%s"%pdbId
+
+        if secondary_structure:
+
+            computation = {
+                'inputs': [tertiary_structure._id+"@tertiaryStructures"],
+                'outputs': [secondary_structure._id+"@secondaryStructures"],
+                'tool': "tool:rnaview:N.A.",
+                'date': str(datetime.datetime.now())
+            }
+
+            if secondary_structure.rna == tertiary_structure.rna:
+                ncRNA = {
+                    '_id': secondary_structure.rna._id,
+                    'source': secondary_structure.rna.source,
+                    'name': secondary_structure.rna.name,
+                    'sequence': secondary_structure.rna.sequence, 
+                }
+                if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
+                    self.db['ncRNAs'].insert(ncRNA)
+            else:
+                ncRNA = {
+                    '_id': secondary_structure.rna._id,
+                    'source': secondary_structure.rna.source,
+                    'name': secondary_structure.rna.name,
+                    'sequence': secondary_structure.rna.sequence, 
+                }
+                if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
+                    self.db['ncRNAs'].insert(ncRNA)
+                ncRNA = {
+                    '_id': tertiary_structure.rna._id,
+                    'source': tertiary_structure.rna.source,
+                    'name': tertiary_structure.rna.name,
+                    'sequence': tertiary_structure.rna.sequence, 
+                }
+                if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
+                    self.db['ncRNAs'].insert(ncRNA)
+
+            secondary_structure.find_junctions()
+
+            ss_descr = {
+                '_id': secondary_structure._id,
+                'source': secondary_structure.source,
+                'name': secondary_structure.name,
+                'rna': secondary_structure.rna._id+"@ncRNAs"    
+            }
+
+            helices_descr = []
+            for helix in secondary_structure.helices:
+                helix_desc = {
+                    'name': helix['name'],
+                    'location': helix['location']
+                }
+                if helix.has_key('interactions'):
+                    interactions_descr = []
+                    for interaction in helix['interactions']:
+                        interactions_descr.append({
+                            'orientation': interaction['orientation'],
+                            'edge1': interaction['edge1'],
+                            'edge2': interaction['edge2'],
+                            'location': interaction['location']
+                        })
+                    helix_desc['interactions'] = interactions_descr   
+                
+                helices_descr.append(helix_desc)
+
+            ss_descr['helices'] = helices_descr
+
+            single_strands_descr = []
+            for single_strand in secondary_structure.single_strands:
+                single_strands_descr.append({
+                    'name': single_strand['name'],
+                    'location': single_strand['location']
+                })
+
+            ss_descr['singleStrands'] = single_strands_descr 
+
+            tertiary_interactions_descr = []
+            for tertiary_interaction in secondary_structure.tertiary_interactions:
+                tertiary_interactions_descr.append({
+                    'orientation': tertiary_interaction['orientation'],
+                    'edge1': tertiary_interaction['edge1'],
+                    'edge2': tertiary_interaction['edge2'],
+                    'location': tertiary_interaction['location']
+                })
+
+            ss_descr['tertiaryInteractions'] = tertiary_interactions_descr   
+
+            self.db['secondaryStructures'].insert(ss_descr)
+
+        ncRNA = {
+            '_id': tertiary_structure.rna._id,
+            'source': tertiary_structure.rna.source,
+            'name': tertiary_structure.rna.name,
+            'sequence': tertiary_structure.rna.sequence, 
+        }
+        if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
+            self.db['ncRNAs'].insert(ncRNA)
+
+        ts_descr = {
+            '_id': tertiary_structure._id,
+            'source': tertiary_structure.source,
+            'name': tertiary_structure.name,
+            'rna': tertiary_structure.rna._id+"@ncRNAs",
+            'numbering-system': tertiary_structure.numbering_system    
+        }
+
+        residues_descr = {}
+        keys=[]
+        for k in tertiary_structure.residues.keys():
+            keys.append(k)
+
+        keys.sort() #the absolute position are sorted
+
+        for key in keys:
+            atoms = tertiary_structure.residues[key]['atoms']
+            
+            atoms_descr = []
+
+            for atom in atoms:
+                atoms_descr.append({
+                    'name': atom['name'],
+                    'coords': atom['coords']
+                })
+            residues_descr[str(key)] = {
+                'atoms': atoms_descr
+            }
+
+        ts_descr['residues'] = residues_descr
+
+        if not self.db['tertiaryStructures'].find_one({'_id':ts_descr['_id']}):
+            self.db['tertiaryStructures'].insert(ts_descr)
+
+            if secondary_structure:
+
+                for junction in secondary_structure.junctions:
+                    junction_descr = {
+                        '_id': str(ObjectId()), 
+                        'molecule': secondary_structure.rna._id+"@ncRNAs", 
+                        'tertiary-structure': {
+                            'id':tertiary_structure._id+'@tertiaryStructures', 
+                            'source': tertiary_structure.source
+                        },
+                        'description': junction['description'],
+                        'crown': junction['crown']
+                    }
+                    computation['outputs'].append(junction_descr['_id']+"@junctions")
+                    
+                    self.db['junctions'].insert(junction_descr)
+
+                self.db['computations'].insert(computation)    
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    db_host = "localhost"
+    endpoint = None
+    rna3dhub = False
+    canonical_only = False
+    check = False
+    annotate = False
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-rna3dhub" in sys.argv:
+        rna3dhub = sys.argv[sys.argv.index("-rna3dhub")+1] == "Y"
+    if "-canonical_only" in sys.argv:
+        canonical_only = sys.argv[sys.argv.index("-canonical_only")+1] == "Y"
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+    check = "-check" in sys.argv
+    annotate = "-annotate" in sys.argv
+
+    db_name = ""
+
+    if rna3dhub:
+        db_name = "RNA3DHub"
+        if canonical_only:
+            db_name += "_canonical_only"
+    else:
+        db_name = "PDB"
+        if canonical_only:
+            db_name += "_canonical_only"       
+
+    task = Import3Ds(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, rna3dhub = rna3dhub, canonical_only = canonical_only, annotate = annotate)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(os.path.basename(__file__), db_name)
+        if os.path.exists(outputDir):
+            print "%s already exists"%outputDir
+            sys.exit()
+        task.submitJobs(os.path.basename(__file__)) 

@@ -1,0 +1,784 @@
+#!/usr/bin/env python
+
+import os, sys, math, datetime, re
+
+from pyrna.task import Task
+from pyrna.db import Rfam
+from pyrna.features import DNA, RNA
+from pyrna.computations import Gotohscan, Blastr, Cmsearch, Cmalign, Cmbuild, Cmcalibrate
+from pyrna.parsers import to_clustalw, parse_stockholm, to_stockholm
+
+from pandas import DataFrame
+from bson.objectid import ObjectId
+
+class RfamTask(Task):
+
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None, rfam_ids = None, org_ids = None, tool = 'cmsearch',  familiesPerJob = 10, organismsPerJob = 5, genomicSequencesPerJob = None, seq_ids = None, calibrate = False, iterate = False, spread_jobs_over_organisms = None, spread_jobs_over_seqs = None, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
+        Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endPoint, algorithms = algorithms_abs_path, python = python_abs_path)
+        self.familiesPerJob = familiesPerJob
+        self.organismsPerJob = organismsPerJob
+        if rfam_version:
+            self.rfam = Rfam(version = rfam_version)
+        else:
+            self.rfam = Rfam()
+        self.rfam_ids = rfam_ids
+        self.org_ids = org_ids
+        self.tool = tool
+        self.calibrate = calibrate
+        self.iterate = iterate
+        self.genomicSequencesPerJob = genomicSequencesPerJob
+        self.seq_ids = seq_ids
+        self.spread_jobs_over_organisms = spread_jobs_over_organisms
+        self.spread_jobs_over_seqs = spread_jobs_over_seqs
+        self.gathering_threshold = gathering_threshold
+
+    def getTotalJobsToSubmit(self, data):
+        if self.spread_jobs_over_organisms:
+            import itertools
+            count = 0
+            h = open(self.spread_jobs_over_organisms,'r')
+            for line in h.readlines():
+                tokens = line.split(" ")
+                endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+                if tokens[1].strip().startswith("https://sbgwms2"):
+                    endpoint="https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+                script_id = tokens[0].split('job_')[1].split('.jdl')[0]
+                h2 = open("%s/script_%s.sh"%(os.path.dirname(os.path.realpath(self.spread_jobs_over_organisms)), script_id),'r')
+                rfam_families = None
+                organisms = None
+                for line2 in h2.readlines():
+                    if line2.startswith('#RFAM families processed'):
+                        rfam_families = map(int, line2.split('#RFAM families processed:')[1].strip().split(','))
+                    elif line2.startswith('#Organisms processed:'):
+                        organisms = line2.split('#Organisms processed:')[1].strip().split(',')
+                h2.close()
+                result = list(itertools.product(rfam_families, organisms))
+                count += len(result)
+            h.close()
+            print "# of jobs to submit: %i"%count
+            return count
+
+        if self.spread_jobs_over_seqs:
+            import itertools
+            count = 0
+            h = open(self.spread_jobs_over_seqs,'r')
+            for line in h.readlines():
+                tokens = line.split(" ")
+                endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+                if tokens[1].strip().startswith("https://sbgwms2"):
+                    endpoint="https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+                script_id = tokens[0].split('job_')[1].split('.jdl')[0]
+                h2 = open("%s/script_%s.sh"%(os.path.dirname(os.path.realpath(self.spread_jobs_over_seqs)), script_id),'r')
+                rfam_families = None
+                seqs = None
+                for line2 in h2.readlines():
+                    if line2.startswith('#RFAM families processed'):
+                        rfam_families = map(int, line2.split('#RFAM families processed:')[1].strip().split(','))
+                    elif line2.startswith('#Genomic sequences processed:'):
+                        seqs = line2.split('#Genomic sequences processed:')[1].strip().split(',')
+                h2.close()
+                from pyrna.utils import chunks
+                result = list(itertools.product(rfam_families, chunks(seqs,self.genomicSequencesPerJob)))
+                count += len(result)
+            h.close()
+            print "# of jobs to submit: %i"%count
+            return count
+
+        if self.calibrate or self.iterate:
+            count = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.getFamiliesDetails())/self.familiesPerJob)+1)
+            print "# of jobs to submit: %i"%count
+            return count
+            
+        f = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.getFamiliesDetails())/self.familiesPerJob)+1)
+        
+        g = None
+
+        if self.genomicSequencesPerJob:
+
+            if self.seq_ids:
+                genomic_sequences = self.seq_ids
+            else:
+                genomicSequences = set()
+                for genome in self.db['genomes'].find():
+                    genomicSequences.add(genome['name'])
+            
+            g = int(math.floor(len(genomicSequences)/self.genomicSequencesPerJob)+1)    
+        else:
+            if self.org_ids:
+                organisms = self.org_ids
+            else:
+                organisms = set()
+                for genome in self.db['genomes'].find():
+                    organisms.add(genome['organism'])
+            g = int(math.floor(len(organisms)/self.organismsPerJob)+1)
+
+        print "# of jobs to submit: %i"%(f*g)
+
+        return f*g
+
+    def getScriptContent(self, job_id):
+
+        if self.spread_jobs_over_organisms:
+            import itertools
+            result = []
+            h = open(self.spread_jobs_over_organisms,'r')
+            for line in h.readlines():
+                tokens = line.split(" ")
+                endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+                if tokens[1].strip().startswith("https://sbgwms2"):
+                    endpoint="https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+                script_id = tokens[0].split('job_')[1].split('.jdl')[0]
+                h2 = open("%s/script_%s.sh"%(os.path.dirname(os.path.realpath(self.spread_jobs_over_organisms)), script_id),'r')
+                rfam_families = None
+                organisms = None
+                for line2 in h2.readlines():
+                    if line2.startswith('#RFAM families processed'):
+                        rfam_families = map(int, line2.split('#RFAM families processed:')[1].strip().split(','))
+                    elif line2.startswith('#Organisms processed:'):
+                        organisms = line2.split('#Organisms processed:')[1].strip().split(',')
+                h2.close()
+                result += list(itertools.product(rfam_families, organisms))
+            h.close()
+
+            scriptContent = "#RFAM families processed: %s\n"%result[job_id-1][0]
+            scriptContent += "#Organisms processed: %s\n"%result[job_id-1][1]
+
+            genomic_sequences = []
+                    
+            for genome in self.db['genomes'].find({"organism":result[job_id-1][1]}):
+                genomic_sequences.append(genome['name'])
+
+            scriptContent += "#Genomic sequences processed: "+','.join(genomic_sequences)+"\n"
+
+            scriptContent += "./files/grid_tasks/annotate_with_rfam.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id 1 -tool "+self.tool+" -families 1 -orgs 1 -org_ids \"%s\" -rfam_ids %i -rfam_version %s -ga %s"%(result[job_id-1][1], result[job_id-1][0], self.rfam.version, 'Y' if self.gathering_threshold else 'N') #the id is always 1 since each job annotates only one family and one organism
+                
+            print scriptContent
+
+            return scriptContent
+
+        elif self.spread_jobs_over_seqs:
+            import itertools
+            result = []
+            h = open(self.spread_jobs_over_seqs,'r')
+            for line in h.readlines():
+                tokens = line.split(" ")
+                endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+                if tokens[1].strip().startswith("https://sbgwms2"):
+                    endpoint="https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+                script_id = tokens[0].split('job_')[1].split('.jdl')[0]
+                h2 = open("%s/script_%s.sh"%(os.path.dirname(os.path.realpath(self.spread_jobs_over_seqs)), script_id),'r')
+                rfam_families = None
+                seqs = None
+                for line2 in h2.readlines():
+                    if line2.startswith('#RFAM families processed'):
+                        rfam_families = map(int, line2.split('#RFAM families processed:')[1].strip().split(','))
+                    elif line2.startswith('#Genomic sequences processed:'):
+                        seqs = line2.split('#Genomic sequences processed:')[1].strip().split(',')
+                h2.close()
+                from pyrna.utils import chunks
+                result += list(itertools.product(rfam_families, chunks(seqs, self.genomicSequencesPerJob)))
+            h.close()
+
+            scriptContent = "#RFAM families processed: %s\n"%result[job_id-1][0]
+
+            organisms = set()
+            
+            for seq_id in result[job_id-1][1]:
+                for genome in self.db['genomes'].find({"name": seq_id}):
+                    organisms.add(genome['organism'])
+
+            scriptContent += "#Organisms processed: "+','.join(organisms)+"\n"
+
+            scriptContent += "#Genomic sequences processed: "+','.join(result[job_id-1][1])+"\n"
+
+            scriptContent += "./files/grid_tasks/annotate_with_rfam.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id 1 -tool "+self.tool+" -families 1 -seqs %i -seq_ids %s -rfam_ids %i -rfam_version %s -ga %s"%(len(result[job_id-1][1]), ','.join(result[job_id-1][1]), result[job_id-1][0], self.rfam.version, 'Y' if self.gathering_threshold else 'N') #the id is always 1 since each job annotates only one family and one organism
+                
+            print scriptContent
+
+            return scriptContent
+
+        else:
+
+            familiesDetails = self.rfam.getFamiliesDetails()
+            total_families = len(self.rfam_ids) if self.rfam_ids else len(familiesDetails)
+            f = int(math.floor(total_families/self.familiesPerJob)+1)
+
+            family_rank = (job_id-1)%f 
+        
+            first_family = family_rank*self.familiesPerJob
+            last_family = family_rank*self.familiesPerJob+self.familiesPerJob
+
+            if last_family > total_families:
+                last_family = total_families
+            
+            rfam_ids_range = self.rfam_ids[first_family:last_family] if self.rfam_ids else range(first_family+1, last_family+1)
+            
+            scriptContent = "#RFAM families processed: "+','.join(map(str, rfam_ids_range))+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
+
+            genomic_sequences = None
+            organisms = set()
+
+            if self.genomicSequencesPerJob:
+
+                if self.seq_ids:
+                    genomic_sequences = self.seq_ids
+                    for seq_id in self.seq_ids:
+                        genome = self.db['genomes'].find_one({'name': seq_id})
+                        organisms.add(genome['organism'])
+
+                    organisms = list(organisms)
+                else:   
+                    genomic_sequences = set()
+
+                    for genome in self.db['genomes'].find():
+                        genomic_sequences.add(genome['name'])
+                        organisms.add(genome['organism'])
+
+                    organisms = list(organisms)
+
+                    genomic_sequences = list(genomic_sequences)
+
+                total_genomic_sequences = len(genomic_sequences)
+        
+                genomic_sequence_rank = int(math.floor((job_id-1)/f))
+
+                first_genomic_sequence = genomic_sequence_rank*self.genomicSequencesPerJob
+                last_genomic_sequence = genomic_sequence_rank*self.genomicSequencesPerJob+self.genomicSequencesPerJob
+
+                if last_genomic_sequence > total_genomic_sequences:
+                    last_genomic_sequence = total_genomic_sequences
+
+                genomic_sequences = genomic_sequences[first_genomic_sequence:last_genomic_sequence]
+
+            else:
+
+                if self.org_ids:
+                    organisms = self.org_ids
+                else:
+                    for genome in self.db['genomes'].find():
+                        organisms.add(genome['organism'])
+
+                    organisms = list(organisms)
+
+                total_organisms = len(organisms)
+        
+                organism_rank = int(math.floor((job_id-1)/f))
+
+                first_organism = organism_rank*self.organismsPerJob
+                last_organism = organism_rank*self.organismsPerJob+self.organismsPerJob
+
+                if last_organism > total_organisms:
+                    last_organism = total_organisms
+
+                organisms = organisms[first_organism:last_organism]
+
+                genomic_sequences = []
+
+                for organism in organisms:
+                    
+                    for genome in self.db['genomes'].find({"organism":organism}):
+                        genomic_sequences.append(genome['name'])
+
+                scriptContent += "#Organisms processed: "+','.join(organisms)+"\n"
+
+                scriptContent += "#Genomic sequences processed: "+','.join(genomic_sequences)+"\n"
+
+                scriptContent += "./files/grid_tasks/annotate_with_rfam.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -tool "+self.tool+" -families "+str(self.familiesPerJob)+" -orgs "+str(self.organismsPerJob)+(" -iterate " if self.iterate else "")+(" -calibrate " if self.calibrate else "")+(" -seqs %i"%self.genomicSequencesPerJob if self.genomicSequencesPerJob else "")+(" -seq_ids \"%s\""%','.join(self.seq_ids) if self.seq_ids else "")+(" -org_ids \"%s\""%','.join(self.org_ids) if self.org_ids else "")+(" -rfam_ids %s"%','.join(map(str, self.rfam_ids)) if self.rfam_ids else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+                
+                print scriptContent
+
+                return scriptContent
+
+    def storeData(self):
+        print "No data to store..."            
+
+    def doTheJob(self, job_id = 1):
+
+        genomic_sequences = None
+
+        familiesDetails = self.rfam.getFamiliesDetails()
+        total_families = len(self.rfam_ids) if self.rfam_ids else len(familiesDetails)
+        f = int(math.floor(total_families/self.familiesPerJob)+1)
+        family_rank = (job_id-1)%f 
+        
+        first_family = family_rank*self.familiesPerJob
+        last_family = family_rank*self.familiesPerJob+self.familiesPerJob
+
+        rfam_ids_range = self.rfam_ids[first_family:last_family] if self.rfam_ids else range(first_family+1, last_family+1)
+        
+        if last_family > total_families:
+            last_family = total_families 
+
+        if self.genomicSequencesPerJob:
+
+            genomic_sequences = set()
+
+            if self.seq_ids:
+                for seq_id in self.seq_ids:
+                    genome = self.db['genomes'].find_one({'name': seq_id})
+                    dna = DNA(name = genome['name'], sequence = genome['sequence'])
+                    dna._id = genome['_id']
+                    dna.organism = genome['organism']
+                    genomic_sequences.add(dna)
+
+            else:
+
+                for genome in self.db['genomes'].find():
+                    dna = DNA(name = genome['name'], sequence = genome['sequence'])
+                    dna._id = genome['_id']
+                    dna.organism = genome['organism']
+                    genomic_sequences.add(dna)
+
+            genomic_sequences = list(genomic_sequences)
+
+            total_genomic_sequences = len(genomic_sequences)
+    
+            genomic_sequence_rank = int(math.floor((job_id-1)/f))
+
+            first_genomic_sequence = genomic_sequence_rank*self.genomicSequencesPerJob
+            last_genomic_sequence = genomic_sequence_rank*self.genomicSequencesPerJob+self.genomicSequencesPerJob
+
+            if last_genomic_sequence > total_genomic_sequences:
+                last_genomic_sequence = total_genomic_sequences
+
+            genomic_sequences = genomic_sequences[first_genomic_sequence:last_genomic_sequence]
+
+        else:
+
+            genomic_sequences = []
+
+            if self.org_ids:
+                organisms = self.org_ids
+            else:
+
+                organisms = set()
+
+                for genome in self.db['genomes'].find():
+                    organisms.add(genome['organism'])
+
+                organisms = list(organisms)
+
+            total_organisms = len(organisms)
+    
+            organism_rank = int(math.floor((job_id-1)/f))
+
+            first_organism = organism_rank*self.organismsPerJob
+            last_organism = organism_rank*self.organismsPerJob+self.organismsPerJob
+
+            if last_organism > total_organisms:
+                last_organism = total_organisms
+
+            organisms = organisms[first_organism:last_organism]
+
+            for organism in organisms:
+
+                for genome in self.db['genomes'].find({"organism":organism}):
+                    dna = DNA(name = genome['name'], sequence = genome['sequence'])
+                    dna._id = genome['_id']
+                    dna.organism = organism
+                    genomic_sequences.append(dna)
+        
+        self.rfam.generateCMs()
+        self.rfam.generateSeedAlignments()
+
+        for id in rfam_ids_range: #TODO when let_it_snow.task will be ready, we will need to bypass all the RFAM families related to snoRNAs.
+            
+            cmalign = Cmalign()
+            cm_content = None
+            stockholm_content = None
+            rnas = None
+            
+            if len(familiesDetails[familiesDetails['accession'] == "RF%05u" % id]): #some RFAM families are not available 
+                rfam_family_name = familiesDetails[familiesDetails['accession'] == "RF%05u" % id].iloc[0,4]
+
+                charndb_seed_alignment = self.db['seed_alignments'].find_one({'source':'db:rfam:%s'%"RF%05u" % id})
+
+                if charndb_seed_alignment:   
+                    stockholm_content = charndb_seed_alignment['alignment']
+                    if self.calibrate:
+                        cm_content = Cmbuild().build(stockholm_content = stockholm_content)
+                        cm_content = Cmcalibrate().calibrate(cm_content)
+                        charndb_seed_alignment['cm'] = cm_content
+                        self.db['seed_alignments'].save(charndb_seed_alignment)
+                        continue
+                    else:
+                        cm_content = charndb_seed_alignment['cm']
+
+                    if self.iterate: #we need to realign the new sequences
+                        #any validated ncRNA produced from tools?
+                        ncRNAs_to_realign = []
+                        for ncRNA in self.db['ncRNAs'].find({'validated':True, 'source': {'$regex':'tool:.+'}}):
+                            family_name = ncRNA['name'].split('(charnDB)')[0].strip()
+                            rfam_accession_number = familiesDetails[familiesDetails['id'] == family_name].iloc[0,0]
+                            if rfam_accession_number == "RF%05u" % id and not ncRNA.has_key('seed_alignment'):
+                                ncRNAs_to_realign.append(RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']))
+                        
+                        if len(ncRNAs_to_realign) > 0:
+                            (rnas, organisms, consensus2D) = cmalign.align(ncRNAs_to_realign, rfam_id = "RF%05u" % id, stockholm_content = stockholm_content, cm_content = cm_content)
+                            stockholm_content = to_stockholm(consensus2D, rnas, rfam_accession_number = "RF%05u" % id, family_id = rfam_family_name) #this is the new seed alignment
+                            charndb_seed_alignment['alignment'] = stockholm_content
+                            for ncRNA in ncRNAs_to_realign:
+                                entry = self.db['ncRNAs'].find_one({'_id':ncRNA.name})
+                                entry['seed_alignment'] = "%s@seed_alignments"%charndb_seed_alignment['_id']
+                                self.db['ncRNAs'].save(entry)
+                            self.db['seed_alignments'].save(charndb_seed_alignment)
+
+                        continue
+
+                else: #This is a new Rfam family for our organisms. We need to align the new sequences to the Rfam seed, keep only the aligned sequences for our organisms, and store the seed alignment
+                    if self.iterate:
+                        ncRNAs_to_realign = []
+                        for ncRNA in self.db['ncRNAs'].find({'validated':True, 'source': {'$regex':'tool:.+'}}):
+                            family_name = ncRNA['name'].split('(charnDB)')[0].strip()
+                            rfam_accession_number = familiesDetails[familiesDetails['id'] == family_name].iloc[0,0]
+                            if rfam_accession_number == "RF%05u" % id and not ncRNA.has_key('seed_alignment'):
+                                ncRNAs_to_realign.append(RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']))
+                            
+                        if len(ncRNAs_to_realign) > 0: 
+                            (rnas, organisms, consensus2D) = cmalign.align(ncRNAs_to_realign, rfam_id = "RF%05u" % id, rfam = self.rfam)
+                            #we keep only the fungal sequences to produce the new alignment
+                            fungal_rnas = []
+                            for ncRNA_to_realign in ncRNAs_to_realign:
+                                for rna in rnas:
+                                    if rna.name == ncRNA_to_realign.name:
+                                        fungal_rnas.append(rna)
+                                        break;
+
+                            stockholm_content = to_stockholm(consensus2D, fungal_rnas, rfam_accession_number = "RF%05u" % id, family_id = rfam_family_name) #this is the new seed alignment
+
+                            (rnas, organisms, consensus2D) = parse_stockholm(stockholm_content)
+
+                            charndb_seed_alignment = {
+                                '_id': str(ObjectId()),
+                                'source': 'db:rfam:%s'%"RF%05u" % id,
+                                'alignment': stockholm_content
+                            }
+
+                            for ncRNA in ncRNAs_to_realign:
+                                entry = self.db['ncRNAs'].find_one({'_id':ncRNA.name})
+                                entry['seed_alignment'] = "%s@seed_alignments"%charndb_seed_alignment['_id']
+                                self.db['ncRNAs'].save(entry)
+
+                            self.client['charndb']['seed_alignments'].save(charndb_seed_alignment)
+
+                        continue
+
+                self.annotate_genomic_sequences(genomic_sequences, id, charndb_seed_alignment, cm_content, stockholm_content, familiesDetails)
+
+            else: #we still record a computation, even if the family is not available
+
+                outputs = []
+                inputs = []
+
+                for genomic_sequence in genomic_sequences:
+                    inputs.append(str(genomic_sequence._id)+"@genomes")
+
+                inputs.append("db:rfam:RF%05u" % id)
+
+                computation = {
+                    '_id': str(ObjectId()),
+                    'date': str(datetime.datetime.now()),
+                    'job_id': job_id,
+                    'inputs': inputs,
+                    'outputs': outputs,
+                    'executable': "script_%i.sh"%job_id
+                }
+
+        self.client.disconnect()
+
+    def annotate_genomic_sequences(self, genomic_sequences, id, charndb_seed_alignment, cm_content, stockholm_content, familiesDetails):
+        outputs = []
+        inputs = []
+
+        for genomic_sequence in genomic_sequences:
+            inputs.append(str(genomic_sequence._id)+"@genomes")
+
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id
+        }
+
+        if 'cmsearch' == self.tool:
+            cmsearch = Cmsearch()
+            computation['tool'] = 'Infernal, cmsearch'
+
+            hits = []
+            
+            if charndb_seed_alignment:
+                inputs.append("db:charndb:RF%05u" % id)
+                try:       
+                    hits = cmsearch.search(genomic_sequences, cm_content = cm_content, gathering_threshold = False)
+                except Exception, e:
+                    print e
+                    sys.exit(1)    
+            else:
+                inputs.append("db:rfam:RF%05u" % id)
+                try:       
+                    hits = cmsearch.search(genomic_sequences, "RF%05u" % id, self.rfam, gathering_threshold = self.gathering_threshold)
+                except Exception, e:
+                    print e
+                    sys.exit(1)
+
+            for row in hits.iterrows():
+                hit = row[1]
+                ncRNA = {
+                    '_id': str(ObjectId()),
+                    'name': "%s%s"%(familiesDetails[familiesDetails['accession'] == "RF%05u" % id].iloc[0,4], " (charnDB)" if charndb_seed_alignment else ""),#id
+                    'sequence': hit['sequence'],
+                    'class': "%s%s"%(familiesDetails[familiesDetails['accession'] == "RF%05u" % id].iloc[0,2], " (charnDB)" if charndb_seed_alignment else ""),#family
+                    'source': "tool:cmsearch:%s"%hit['source'],
+                    'organism': hit['organism'],
+                    'genomeName': hit['target_name'],
+                    'genomicStrand': hit['target_strand'],
+                    'genomicPositions': [hit['target_positions'][0][0], hit['target_positions'][-1][1]],
+                    'score': hit['e_value']
+                }
+
+                for genome in genomic_sequences:
+                    if genome.name == hit['target_name']:
+                        ncRNA['genome'] = genome._id+"@genomes"
+                        break
+
+                already_stored = False #already stored??
+
+                for stored_ncRNA in self.db['ncRNAs'].find({'genome': ncRNA['genome']}):
+                    if stored_ncRNA['genomicStrand'] == ncRNA['genomicStrand'] and stored_ncRNA['genomicPositions'] == ncRNA['genomicPositions'] and stored_ncRNA['source'] == ncRNA['source'] and stored_ncRNA['name'] == ncRNA['name']:
+                        already_stored = True
+                        break
+
+                if already_stored:
+                    continue
+
+                #we launch and store a structural alignment for this hit
+                alignment = {
+                    '_id': str(ObjectId())
+                }
+
+                cmalign = Cmalign()
+
+                if charndb_seed_alignment:
+                    (aligned_molecules, organisms, consensus2D) = cmalign.align([ RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']) ], rfam_id = "RF%05u" % id, stockholm_content = stockholm_content, cm_content = cm_content)
+                    alignment['source'] = "db:charndb:RF%05u" % id
+                else:
+                    (aligned_molecules, organisms, consensus2D) = cmalign.align([ RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']) ], rfam_id = "RF%05u" % id, rfam = self.rfam)
+                    alignment['source'] = "db:rfam:RF%05u" % id 
+                
+
+                ncRNA['alignment'] = alignment['_id']+"@alignments"
+
+                alignment['alignment'] = to_clustalw(consensus2D, aligned_molecules)
+
+                self.db["ncRNAs"].insert(ncRNA)
+                self.db['alignments'].insert(alignment)
+                
+                outputs.append(ncRNA['_id']+"@ncRNAs")
+                outputs.append(alignment['_id']+"@alignments")
+
+        elif 'gotohscan' == self.tool or 'blastr' == self.tool:
+
+            self.rfam.generateFullAlignments()
+
+            if 'blastr' == self.tool:
+                blastr = Blastr(target_molecules = genomic_sequences)
+                blastr.format_db()
+
+            try:
+
+                if not rnas:
+                    (rnas, organisms, consensus2D) = self.rfam.getEntry(rfamId = "RF%05u" % id, alnType = 'full')
+
+                if False: #we search for the most relevant (less redundant) sequences.
+                    
+                    all_distances = []
+
+                    from pyrna.utils import get_levenshtein_distance
+                    from scipy.stats import percentileofscore
+
+                    #first we compute all-vs-all levenshtein distances
+                    for i in range(0,len(rnas)):
+                        for j in range(i+1,len(rnas)):
+                            all_distances.append(get_levenshtein_distance(rnas[i].sequence.replace('-',''), rnas[j].sequence.replace('-','')))
+
+                    #then we keep only rna whose levenshtein distance is in the 25% lowest distances 
+                    relevant_rnas = [rnas[0]] #we start with the first rna sequence recovered for this RFAM family. This is the first default relevant rna
+                    
+                    for i in range(0, len(rnas)):
+                        is_relevant = True
+                        for relevant_rna in relevant_rnas:
+                            if percentileofscore(all_distances, get_levenshtein_distance(relevant_rna.sequence.replace('-',''), rnas[i].sequence.replace('-',''))) > 50: #if the rna tested as a distance with a relevant_rna that is not in the 50% lowest distances, it is not enough relevant
+                                is_relevant = False
+                        if is_relevant:
+                            relevant_rnas.append(rnas[i])    
+
+                    rnas = relevant_rnas
+                        
+                for rna in rnas:
+                    query_molecule = RNA(name = rna.name, sequence = rna.sequence.replace('-',''))
+                    
+                    hits = DataFrame()
+
+                    if 'gotohscan' == self.tool :
+                        computation['tool'] = 'Gotohscan'
+                        gotohscan = Gotohscan()
+                        hits = gotohscan.scan(query_molecule, genomic_sequences)
+                    elif 'blastr' == self.tool :
+                        computation['tool'] = 'blastr'
+                        hits = blastr.blastallr(query_molecule)
+
+                    for row in hits.iterrows():
+                        hit = row[1]
+                        ncRNA = {
+                                '_id': str(ObjectId()),
+                                'name': "%s%s"%(familiesDetails[familiesDetails['accession'] == "RF%05u" % id].iloc[0,4], " (charnDB)" if charndb_seed_alignment else ""),#id
+                                'sequence': hit['sequence'],
+                                'class': "%s%s"%(familiesDetails[familiesDetails['accession'] == "RF%05u" % id].iloc[0,2], " (charnDB)" if charndb_seed_alignment else ""),#family
+                                'source': "tool:%s:N.A."%computation['tool'],
+                                'organism': hit['organism'],
+                                'genomeName': hit['target_name'],
+                                'genomicStrand': hit['target_strand'],
+                                'genomicPositions': hit['target_positions'],
+                                'score': hit['e_value']
+                        }
+
+                        if 'blastr' == self.tool: 
+                            ncRNA['genomicPositions'] = [hit['target_positions'][0][0], hit['target_positions'][-1][-1]] 
+
+                        for genome in genomic_sequences:
+                            if genome.name == hit['target_name']:
+                                ncRNA['genome'] = genome._id+"@genomes"
+                                break
+
+                        already_stored = False #already stored??
+
+                        for stored_ncRNA in self.db['ncRNAs'].find({'genome': ncRNA['genome']}):
+                            if stored_ncRNA['genomicStrand'] == ncRNA['genomicStrand'] and stored_ncRNA['genomicPositions'] == ncRNA['genomicPositions'] and stored_ncRNA['source'] == ncRNA['source'] and stored_ncRNA['name'] == ncRNA['name']:
+                                already_stored = True
+                                break
+
+                        if already_stored:
+                            continue
+
+                        #we launch and store a structural alignment for this hit
+                        cmalign = Cmalign()
+
+                        (aligned_molecules, organisms, consensus2D) = cmalign.align([ RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']) ], "RF%05u" % id, self.rfam)
+                        
+                        alignment = {
+                            '_id': str(ObjectId()),
+                            'source': "db:rfam:RF%05u" % id
+                        }
+
+                        if len(aligned_molecules):
+
+                            ncRNA['alignment'] = alignment['_id']+"@alignments"
+
+                            alignment['alignment'] = to_clustalw(consensus2D, aligned_molecules)
+
+                            self.db["ncRNAs"].insert(ncRNA)
+                            self.db['alignments'].insert(alignment)
+                            
+                            outputs.append(ncRNA['_id']+"@ncRNAs")
+                            outputs.append(alignment['_id']+"@alignments")
+
+            except Exception, e:
+                import traceback
+                traceback.print_exc()
+
+        #one computation per rfam_id and per organism
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    db_host = "localhost"
+    db_port = 27017
+    endpoint = None
+    rfam_ids = None
+    seq_ids = None
+    org_ids = None
+    tool = "cmsearch"
+    check = False
+    calibrate = False
+    iterate = False
+    spread_jobs_over_organisms = False
+    spread_jobs_over_seqs = False
+    organismsPerJob = 5
+    familiesPerJob = 10
+    genomicSequencesPerJob = None
+    rfam_version = None
+    gathering_threshold = True
+    python_abs_path = None
+    algorithms_abs_path = None
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-db" in sys.argv:
+        db_name = sys.argv[sys.argv.index("-db")+1]
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+    if "-rfam_ids" in sys.argv:
+        rfam_ids = map(lambda x: range(int(x.split('-')[0]), int(x.split('-')[1])+1)  if re.findall('-',x) else [int(x)], sys.argv[sys.argv.index("-rfam_ids")+1].split(','))
+        rfam_ids = list(set(sorted(sum(rfam_ids, [])))) #we want the ids sorted, uniq and in a list
+    if "-seq_ids" in sys.argv:
+        seq_ids = sys.argv[sys.argv.index("-seq_ids")+1].split(',')
+        seq_ids = list(set(sorted(seq_ids))) #we want the ids sorted, uniq and in a list
+    if "-org_ids" in sys.argv:
+        org_ids = sys.argv[sys.argv.index("-org_ids")+1].split(',')
+        org_ids = list(set(sorted(org_ids))) #we want the ids sorted, uniq and in a list
+    if "-families" in sys.argv:
+        familiesPerJob = int(sys.argv[sys.argv.index("-families")+1])
+    if "-orgs" in sys.argv:
+        organismsPerJob = int(sys.argv[sys.argv.index("-orgs")+1])
+    if "-seqs" in sys.argv:
+        genomicSequencesPerJob = int(sys.argv[sys.argv.index("-seqs")+1])
+    if "-spread_jobs_over_organisms" in sys.argv:
+        spread_jobs_over_organisms = sys.argv[sys.argv.index("-spread_jobs_over_organisms")+1]
+    if "-spread_jobs_over_seqs" in sys.argv:
+        spread_jobs_over_seqs = sys.argv[sys.argv.index("-spread_jobs_over_seqs")+1]
+    if "-tool" in sys.argv:
+        tool = sys.argv[sys.argv.index("-tool")+1]
+    if "-rfam_version" in sys.argv:
+        rfam_version = sys.argv[sys.argv.index("-rfam_version")+1]
+    if "-ga" in sys.argv:
+        gathering_threshold = sys.argv[sys.argv.index("-ga")+1].strip() == 'Y'
+    if "-ga" in sys.argv:
+        gathering_threshold = sys.argv[sys.argv.index("-ga")+1].strip() == 'Y'
+    if "-algorithms" in sys.argv:
+        algorithms_abs_path = sys.argv[sys.argv.index("-algorithms")+1].strip()
+    if "-python" in sys.argv:
+        python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
+
+    check = "-check" in sys.argv
+
+    calibrate = "-calibrate" in sys.argv
+
+    iterate = "-iterate" in sys.argv
+
+    if not db_name or not python_abs_path or not algorithms_abs_path:
+        print "Usage: annotate_with_rfam.task -db db_name_to_annotate -algorithms algorithms_abs_path -python python_abs_path [-families families_per_job (default: 10)] [-orgs organisms_per_job (default: 5)] [-seqs genomic_sequences_per_job (default: None)] [-h database_host] [-p database_port] [-e glite_end_point] [-tool tool_name] [-calibrate calibrate] [-iterate iterate] [-seq_ids NC_018199,NC_018203,NC_018209] [-org_ids 'Encephalitozoon cuniculi GB-M1 ,Fusarium verticillioides 7600'] [-rfam_ids 1,23-27] [-spread_jobs_over_organisms jobs_list] [-spread_jobs_over_seqs jobs_list] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
+        sys.exit(1)
+
+    task = RfamTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, rfam_ids = rfam_ids, org_ids = org_ids, tool = tool, familiesPerJob = familiesPerJob, organismsPerJob = organismsPerJob, genomicSequencesPerJob = genomicSequencesPerJob, seq_ids = seq_ids, calibrate = calibrate, iterate = iterate, spread_jobs_over_organisms = spread_jobs_over_organisms, spread_jobs_over_seqs = spread_jobs_over_seqs, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(os.path.basename(__file__), db_name)
+        if os.path.exists(outputDir):
+            print "%s already exists"%outputDir
+            sys.exit()
+        task.submitJobs(os.path.basename(__file__))

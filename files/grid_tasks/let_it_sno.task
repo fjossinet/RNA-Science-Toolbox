@@ -1,0 +1,448 @@
+#!/usr/bin/env python
+
+"""
+Search for snoRNAs in yeasts genomic sequences.
+
+Once done, don't forget to refine clusters using the script refine_snoclusters.py in scripts/python
+"""
+
+import sys, os, datetime, math
+from pyrna.task import Task
+from pyrna.computations import Snoscan, SnoGPS, Snoreport, RNAMotif, Cmsearch
+from pyrna.features import DNA
+from pyrna.utils import cluster_genomic_annotations
+from bson.objectid import ObjectId
+from pyrna.db import Rfam
+from pandas import Series, notnull
+
+class My_Task(Task):
+
+    def __init__(self, db_name, scores, targets, desc_file, meth_sites, r_rna, cd_descr, haca_descr, db_host = "localhost", db_port = 27017, endPoint = None, seqlengthPerJob = 10000, python_abs_path = None, algorithms_abs_path = None):
+        Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, algorithms = algorithms_abs_path, python = python_abs_path)
+        self.seqlengthPerJob = seqlengthPerJob
+        self.scores = scores
+        self.targets = targets
+        self.desc_file = desc_file
+        self.meth_sites = meth_sites 
+        self.r_rna = r_rna
+        self.cd_descr = cd_descr
+        self.haca_descr = haca_descr
+        self.rfam = Rfam()
+        self.total_hits = []
+    
+    def getTotalJobsToSubmit(self, data):
+        total_jobs = 0
+        sliding_window = 150
+        for genome in self.db['genomes'].find():
+            total_jobs += int(math.ceil((len(genome['sequence'])-self.seqlengthPerJob)/float(self.seqlengthPerJob-sliding_window)))+1
+
+        print "# of jobs to submit: %i"%total_jobs
+        return total_jobs
+
+    def getScriptContent(self, job_id):
+        scriptContent = "./files/grid_tasks/let_it_sno.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -ln "+str(self.seqlengthPerJob)+" -L "+self.scores+" -T "+self.targets+" -de "+self.desc_file+" -m "+self.meth_sites+" -R "+self.r_rna+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)
+        print scriptContent
+        return scriptContent
+
+    def storeData(self):
+        print "No data to store..."
+
+    def storeNcRNAsHits(self, hits, genomic_sequence, computation, outputs, i, rfam = None):
+                
+        for row in hits.iterrows():
+            hit = row[1] #hit is a pandas Series object
+            ncRNA = {
+                '_id': str(ObjectId()),
+                'genome': genomic_sequence._id+"@genomes",
+                'organism': genomic_sequence.organism,
+                'sequence': hit['sequence'], #DNA sequence of RNA molecule (if strand '-' => reverse complement)
+                'genomicStrand': hit['target_strand'],
+                'source': hit['source'] if rfam == None else 'tool:cmsearch:NA',
+                'class': hit['class'] if rfam == None else rfam[1],
+                'genomicPositions': [hit['target_positions'][0]+i, hit['target_positions'][1]+i] if rfam == None else [hit['target_positions'][0][0]+i, hit['target_positions'][-1][1]+i] #positions within the window recalculated for the genomic sequence
+                }
+            if rfam == None and notnull(hit['score']):
+                ncRNA['score'] = hit['score']
+            elif rfam != None :
+                ncRNA['score'] = hit['e_value']
+            if ncRNA['source'] != 'tool:cmsearch:NA':
+                if ncRNA['source'] != 'tool:rnamotif:NA':
+                    if ncRNA['class'] == 'Gene, snRNA, snoRNA, CD-box':
+                        ncRNA['C-box'] = {'genomicPositions': [hit['C-box']['genomicPositions'][0]+i, hit['C-box']['genomicPositions'][1]+i], 'sequence': hit['C-box']['sequence']}
+                        ncRNA['D-box'] = {'genomicPositions': [hit['D-box']['genomicPositions'][0]+i, hit['D-box']['genomicPositions'][1]+i], 'sequence': hit['D-box']['sequence']}
+                    else:
+                        if notnull(hit['H-box']): #the test is due to the fact for some SnoGPS hits, we could have a problem with the structural definition (sequence and structure annotation have different lengths).
+                            ncRNA['H-box'] = {'genomicPositions': [hit['H-box']['genomicPositions'][0]+i, hit['H-box']['genomicPositions'][1]+i], 'sequence': hit['H-box']['sequence']}
+                        if notnull(hit['ACA-box']): #the test is due to the fact for some SnoGPS hits, we could have a problem with the structural definition (sequence and structure annotation have different lengths).
+                            ncRNA['ACA-box'] = {'genomicPositions': [hit['ACA-box']['genomicPositions'][0]+i, hit['ACA-box']['genomicPositions'][1]+i], 'sequence': hit['ACA-box']['sequence']}
+
+                    if ncRNA['source'] != 'tool:snoreport:NA':
+                        ncRNA['target_rRNA'] = hit['target_rRNA'] #snoscan & snogps
+                        if ncRNA['source'] == 'tool:snoscan:NA':
+                            ncRNA['guide_sequence'] = {'genomicPositions': [hit['guide_sequence']['genomicPositions'][0]+i, hit['guide_sequence']['genomicPositions'][1]+i], 'sequence': hit['guide_sequence']['sequence']}
+                            if hit['name'].__class__ is str: #if 'name' is not specified, it is nan (= float type)
+                                ncRNA['name'] = hit['name']
+                        else: #snogps
+                            ncRNA['name'] = hit['name']
+                            #the tests are due to the fact for some SnoGPS hits, we could have a problem with the structural definition (sequence and structure annotation have different lengths). Then some "structural" informations could not be available for the hit definition.
+                            if notnull(hit['L-guide']):
+                                ncRNA['L-guide'] = {'genomicPositions': [hit['L-guide']['genomicPositions'][0]+i, hit['L-guide']['genomicPositions'][1]+i], 'sequence': hit['L-guide']['sequence']}
+                            if notnull(hit['R-guide']):
+                                ncRNA['R-guide'] = {'genomicPositions': [hit['R-guide']['genomicPositions'][0]+i, hit['R-guide']['genomicPositions'][1]+i], 'sequence': hit['R-guide']['sequence']}
+                            if notnull('bracket_notation'):
+                                ncRNA['bracket_notation'] = hit['bracket_notation']
+                    else: #snoreport
+                        ncRNA['bracket_notation'] = hit['bracket_notation']
+                else: #rnamotif
+                    ncRNA['bracket_notation'] = hit['bracket_notation']
+            else: #cmsearch
+                ncRNA['name'] = hit['RFAM_family'] #Rfam name of the snoRNA = Rfam ID
+                ncRNA['RFam'] = rfam[0] #Rfam accession
+
+            #to remove duplicates and conserve the best hit (with the highest score or the lowest e_value) ; for cmsearch, score = e_value
+            found = False
+            hits_to_remove = []
+
+            for stored_hit in self.total_hits:
+                if stored_hit['source'] == ncRNA['source'] and stored_hit['class'] == ncRNA['class'] and stored_hit['genomicStrand'] == ncRNA['genomicStrand'] and stored_hit['genomicPositions'] == ncRNA['genomicPositions']: #1 organism and 1 genome per job_id 
+                    if not stored_hit.has_key('score') or not ncRNA.has_key('score'):
+                        self.total_hits.append(ncRNA) #twice the same hits, but just one without score => both are kept (the new ncRNA hit is stored), because we don't know "the best" hit score
+                        outputs.append(ncRNA['_id']+"@ncRNAs")
+                    elif ncRNA['source'] != 'tool:cmsearch:NA' and stored_hit['score'] < ncRNA['score'] or ncRNA['source'] == 'tool:cmsearch:NA' and stored_hit['score'] > ncRNA['score']: #if a ncRNA has no score (meaning that we cannot really know if it's good or not, we keep it)
+                        self.total_hits.append(ncRNA)
+                        outputs.append(ncRNA['_id']+"@ncRNAs")
+                        hits_to_remove.append(stored_hit)
+                    found = True
+                    break
+
+            if not found:
+                self.total_hits.append(ncRNA)
+                outputs.append(ncRNA['_id']+"@ncRNAs")
+
+            for hit_to_remove in hits_to_remove:
+                self.total_hits.pop(self.total_hits.index(hit_to_remove))    
+
+    def doTheJob(self, job_id = 1):
+        window_size = 300
+        sliding_window = 150
+        
+        genomic_sequences = []
+        job_list = []
+        i1 = 1
+        genome_names = []
+        for genome in self.db['genomes'].find():
+            dna = DNA(name = genome['name'], sequence = genome['sequence'])
+            dna._id = genome['_id']
+            dna.organism = genome['organism']
+            genomic_sequences.append(dna)
+            jobsPerGenome = int(math.ceil((len(genome['sequence'])-self.seqlengthPerJob)/float(self.seqlengthPerJob-sliding_window)))+1
+            job_list.append(range(i1, i1+jobsPerGenome))
+            i1 += jobsPerGenome
+            genome_names.append(dna._id+"@genomes")
+
+        for genome in job_list:
+            if job_id in genome:
+                genome_index = job_list.index(genome)
+                job_index = genome.index(job_id)
+                break
+        
+        genomic_sequence = genomic_sequences[genome_index]
+
+        start = job_index*(self.seqlengthPerJob-sliding_window)+1
+        end = job_index*(self.seqlengthPerJob-sliding_window)+1+self.seqlengthPerJob-1
+        if end > len(genomic_sequence):
+            end = len(genomic_sequence)
+
+        genomic_slice = genomic_sequence[start-1:end]
+
+        print "Fifth version of let_it_sno"
+        print "Processing %s, from %i to %i, job id %i" %(genomic_sequence.name, start, end, job_id)
+
+        inputs = [str(genomic_sequence._id)+"@genomes[%i:%i]"%(start, end)]
+        
+        #### SNOSCAN #########
+        snoscan = Snoscan()
+
+        outputs = []
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id,
+            'source': "tool:snoscan:NA"
+        }
+        
+        try:       
+            hits = snoscan.search([DNA(name = genomic_sequence.name, sequence = genomic_slice)], meth_sites_file = meth_sites, r_rna_file = r_rna)
+        except Exception, e:
+            print e
+            sys.exit(1)
+        self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, start-1)
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+        #### SNOGPS #########
+        snogps = SnoGPS()
+
+        outputs = []
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id,
+            'source': "tool:snogps:NA"
+        }
+        hits = snogps.search([DNA(name = genomic_sequence.name, sequence = genomic_slice)], scores_table_file = scores, targets_file = targets, descriptor_file = desc_file)
+        self.storeNcRNAsHits(hits,  genomic_sequence, computation, outputs, start-1)
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+        #### SNOREPORT #########
+        snoreport = Snoreport()
+
+        outputs = []
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id,
+            'source': "tool:snoreport:NA"
+        }
+
+        windows_per_genomicSlice = int(math.ceil(len(genomic_slice)/float(sliding_window)))
+        window = 0
+        i2 = 0
+        while i2 <= len(genomic_slice)-window_size:
+            window += 1
+            print "window %s, from %i to %i" %(window, i2+start, i2+window_size+start-1)
+            try:
+                hits = snoreport.search(DNA(name = genomic_sequence.name, sequence = genomic_slice[i2:i2+window_size]), reverse_complement = False)
+            except Exception, e:
+                print e
+                sys.exit(1)
+            self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, i2+start-1)
+            try:
+                hits = snoreport.search(DNA(name = genomic_sequence.name, sequence = genomic_slice[i2:i2+window_size]), reverse_complement = True)
+            except Exception, e:
+                print e
+                sys.exit(1)
+            self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, i2+start-1)
+            if window%3 == 0:
+                print "Sliding windows processed: %.3f %%" %(window*100/float(windows_per_genomicSlice))
+            i2 += sliding_window
+        #last window
+        if i2 < len(genomic_slice):
+            print "window %s, from %i to %i" %(window+1, i2+start, len(genomic_slice)+start-1)
+            try:
+                hits = snoreport.search(DNA(name = genomic_sequence.name, sequence = genomic_slice[i2:len(genomic_slice)]), reverse_complement = False)
+            except Exception, e:
+                print e
+                sys.exit(1)
+            self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, i2+start-1)
+            try:
+                hits = snoreport.search(DNA(name = genomic_sequence.name, sequence = genomic_slice[i2:len(genomic_slice)]), reverse_complement = True)
+            except Exception, e:
+                print e
+                sys.exit(1)
+            self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, i2+start-1)
+            print "Sliding windows processed: 100 %"
+
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+        #### RNAMOTIF #########
+        rnamotif = RNAMotif()
+
+        outputs = []
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id,
+            'source': "tool:rnamotif:NA"
+        }
+        try:
+            hits = rnamotif.search([DNA(name = genomic_sequence.name, sequence = genomic_slice)], descriptor_file = cd_descr, rna_class = "Gene, snRNA, snoRNA, CD-box")
+        except Exception, e:
+            print e
+            sys.exit(1)
+        self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, start-1)
+        try:
+            hits = rnamotif.search([DNA(name = genomic_sequence.name, sequence = genomic_slice)], descriptor_file = haca_descr, rna_class = "Gene, snRNA, snoRNA, HACA-box")
+        except Exception, e:
+            print e
+            sys.exit(1)
+        self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, start-1)
+
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+        #### INFERNAL:CMSEARCH #########
+        cmsearch = Cmsearch()
+        self.rfam.generateCMs()
+
+        familiesDetails = self.rfam.getFamiliesDetails()
+        selected_rfam_ids = []
+        i3 = 0
+        while i3 != len(familiesDetails.index):
+            family = familiesDetails['family'][i3]
+            if family == "Gene, snRNA, snoRNA, CD-box" or family == "Gene, snRNA, snoRNA, HACA-box":
+                selected_rfam_ids.append((familiesDetails['accession'][i3], family))
+            i3 += 1
+
+        outputs = []
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id,
+            'source': "tool:cmsearch:NA"
+        }
+        
+        for selected_rfam_id in selected_rfam_ids:
+            print "Rfam Family: %s" %selected_rfam_id[0]
+            try:
+                hits = cmsearch.search([DNA(name = genomic_sequence.name, sequence = genomic_slice)], selected_rfam_id[0], self.rfam)
+            except Exception, e:
+                print e
+                sys.exit(1)
+            self.storeNcRNAsHits(hits, genomic_sequence, computation, outputs, start-1, selected_rfam_id)
+
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+        #### WE CONSTRUCT THE CLUSTERS FOR HITS AND STORE HITS AND CLUSTERS IN THE DATABASE#########
+        """
+        Clusters are constructed on the basis of the overlap between the genomic positions of hits.
+        The organism, the genome, the genomic strand and the snoRNA class must be identical between hits belonging to the same cluster.
+        All hits generated by the same job id correspond to the same organism and the same genome.
+        Therefore, the list of all hits is sorted firstly by snoRNA class and genomic strand, and secondly (when clustering the hits) by growing genomic positions.
+
+        Advantage of hit storage in the database at the final step of the task: if the same job is resubmitted, because an error occurred in a previous step, there will be no ncRNA double in the database.
+        """
+        if len(self.total_hits):
+            #sort list of all hits per snoRNA class (2 different classes) and per strand (2 different strands). Only 1 organism and 1 genome per job_id.
+            sorted_hits = []
+            for i in range(0, 4): # 2*2 sub-lists of hits 
+                sorted_hits.append([])
+            for ncRNA_hit in self.total_hits:
+                #storage of ncRNA hit in database
+                self.db["ncRNAs"].insert(ncRNA_hit)
+
+                index = 0 if ncRNA_hit['class'] == 'Gene, snRNA, snoRNA, CD-box' else 1
+                index += 0 if ncRNA_hit['genomicStrand'] == '+' else 2
+                ncRNA_hit['genomicStart'] = ncRNA_hit['genomicPositions'][0]
+                ncRNA_hit['genomicEnd'] = ncRNA_hit['genomicPositions'][1]
+                sorted_hits[index].append(ncRNA_hit)
+
+            cluster_counter = 0
+            for ncRNA_annotations in sorted_hits:
+                if len(ncRNA_annotations):
+                    #hit clustering
+                    clusters = cluster_genomic_annotations(ncRNA_annotations, threshold = 2, fill_cluster_with_genomic_annotations = True)                    
+                    
+                    #storage of snoRNA clusters in database
+                    if len(clusters):
+                        for snocluster in clusters:
+                            cluster_counter += 1
+                            snocluster['_id'] = str(ObjectId())
+                            snocluster['name'] = "cluster_%i_%i"%(job_id, cluster_counter)
+                            snocluster['source'] = "tool:letitsno:NA"
+                            snocluster['class'] = snocluster['genomic_annotations'][0]['class']
+                            snocluster['genomicStrand'] = snocluster['genomic_annotations'][0]['genomicStrand']
+                            snocluster['organism'] = genomic_sequence.organism
+                            snocluster['genome'] = genomic_sequence._id+"@genomes"
+                            snocluster['genomicPositions'] = [snocluster['genomicStart'], snocluster['genomicEnd']]
+                            snocluster['ids'] = []
+
+                            for ncRNA_hit in snocluster['genomic_annotations']:
+                                snocluster['ids'].append(ncRNA_hit['_id']+'@ncRNAs')
+
+                            del snocluster['genomicEnd']
+                            del snocluster['genomicStart']
+                            del snocluster['genomic_annotations']
+                            del snocluster['annotations_count']
+
+                            self.db["ncRNAs"].insert(snocluster)
+
+            print "Number of snoRNA clusters: %i"%cluster_counter
+
+        else:
+            print "No snoRNAs hits for the job ID %i"%job_id
+
+        self.client.disconnect()
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    seqlengthPerJob = 10000
+    baseURL = "https://dl.dropboxusercontent.com/u/3753967/data/"
+    scores = baseURL+"SnoGPS/haca2stemv7.tables"
+    targets = baseURL+"SnoGPS/allsites.targ"
+    desc_file = baseURL+"SnoGPS/haca2stemv4a.desc"
+    meth_sites = baseURL+"Snoscan/Sc-meth.sites"
+    r_rna = baseURL+"Snoscan/Sc-rRNA.fa"
+    cd_descr = baseURL+"RNAMotif/cd.descr"
+    haca_descr = baseURL+"RNAMotif/haca.descr"
+    db_host = "localhost"
+    db_port = 27017
+    endpoint = None
+    check = False
+    
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-db" in sys.argv:
+        db_name = sys.argv[sys.argv.index("-db")+1]
+    if "-ln" in sys.argv:
+        seqlengthPerJob = int(sys.argv[sys.argv.index("-ln")+1])
+    if "-L" in sys.argv:
+        scores = sys.argv[sys.argv.index("-L")+1]
+    if "-T" in sys.argv:
+        targets = sys.argv[sys.argv.index("-T")+1]
+    if "-de" in sys.argv:
+        desc_file = sys.argv[sys.argv.index("-de")+1]
+    if "-m" in sys.argv:
+        meth_sites = sys.argv[sys.argv.index("-m")+1]
+    if "-R" in sys.argv:
+        r_rna = sys.argv[sys.argv.index("-R")+1]
+    if "-Cd" in sys.argv:
+        cd_descr = sys.argv[sys.argv.index("-Cd")+1]
+    if "-Hd" in sys.argv:
+        haca_descr = sys.argv[sys.argv.index("-Hd")+1]
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+
+    if "-algorithms" in sys.argv:
+        algorithms_abs_path = sys.argv[sys.argv.index("-algorithms")+1].strip()
+    if "-python" in sys.argv:
+        python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
+
+    check = "-check" in sys.argv
+
+    if not db_name or not python_abs_path or not algorithms_abs_path:
+        print "Usage: let_it_sno.task -db db_name_to_annotate -algorithms algorithms_abs_path -python python_abs_path [-ln sequence_length_per_job] [-L scores_table_file] [-T targets_file] [-de descriptor_file] [-m meth_sites_file] [-R rRNA_file] [-Cd CD_box_descriptor] [-Hd HACA_box_descriptor] [-h database_host] [-p database_port] [-e glite_end_point]"
+        sys.exit()
+
+    task = My_Task(db_name = db_name, seqlengthPerJob = seqlengthPerJob, scores = scores, targets = targets, desc_file = desc_file, meth_sites = meth_sites, r_rna = r_rna, cd_descr = cd_descr, haca_descr = haca_descr, db_host = db_host, db_port = db_port, endPoint = endpoint, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        task.submitJobs(os.path.basename(__file__))
+

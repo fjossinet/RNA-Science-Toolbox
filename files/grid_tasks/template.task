@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+"""
+Template to design your own tasks
+"""
+
+import sys, os
+from pyrna.task import Task
+
+class My_Task(Task):
+
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None):
+        Task.__init__(self, db_name, db_host, db_port, endPoint)
+
+    def getTotalJobsToSubmit(self, data):
+        pass
+
+    def getScriptContent(self, job_id):
+        pass
+
+    def storeData(self):
+        pass
+
+    def doTheJob(self, job_id = 1):
+        pass
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    db_host = "localhost"
+    db_port = 27017
+    endpoint = None
+    check = False
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-db" in sys.argv:
+        db_name = sys.argv[sys.argv.index("-db")+1]
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+    if "-check" in sys.argv:
+        check = True
+
+    if not db_name:
+        print "Usage: template.task -db db_name_to_annotate [-h database_host] [-p database_port] [-e 1|2]"
+        sys.exit()
+
+    task = My_Task(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        if not endpoint:
+            print "Usage: template.task -db db_name_to_annotate [-h database_host] [-p database_port] [-e 1|2]"
+            sys.exit()    
+        else:
+            outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(os.path.basename(__file__), db_name)
+            if os.path.exists(outputDir):
+                print "%s already exists"%outputDir
+                sys.exit()
+            task.submitJobs(os.path.basename(__file__)) 
