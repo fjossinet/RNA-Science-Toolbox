@@ -3,20 +3,20 @@ PyRNA -- Produce and Analyse RNA Data with Python
 
 PyRNA allows you to:
 
-* parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures (like [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html) and PyRNA objects),
-* compute RNA data from RNA algorithms ([Vienna RNA package](http://www.tbi.univie.ac.at/RNA/), [RNAVIEW](http://ndbserver.rutgers.edu/services/download/), [Contrafold](http://contra.stanford.edu/contrafold/),...),
-* extract RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...)
-* export RNA data to the [JSON](http://www.json.org) format,
-* submit and manage grid jobs using the [glite middleware](http://glite.cern.ch), 
-* deploy some PyRNA functionalities as REST Web services.
+* parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
+    * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
+    * "PyRNA objects": defined in the module pyrna.features.
+* compute RNA data from RNA algorithms (see list below) and convert them into Pandas data structures and PyRNA objects, 
+* recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
+* consume some functionalities as REST Web services.
 
-To consume the REST Web Services, you can have a look on the code source of [very simple  REST clients](https://bitbucket.org/fjossinet/pyrna-rest-clients) or you can use a Java GUI like [Assemble2](http://www.bioinformatics.org/assemble/).
+[Assemble2](http://www.bioinformatics.org/assemble/) is an example of Java graphical client consuming PyRNA webservices.
 
-PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and has been tested on MacOSX 10.8 and Scientific Linux 5.8 with python 2.7 and gcc 4.1 and 4.2.
+PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and has been tested on MacOSX 10.8 and Scientific Linux 5.8 with python 2.7 and gcc 4.1 or 4.2.
 
 #Dependencies
 
-To be able to use 99% of all PyRNA functionalities, you will only need one Python dependency:
+To be able to use 99% of all PyRNA functionalities, you will only need a single Python dependency:
 
 * [Pandas](http://pandas.pydata.org/): the data structures from pandas are used to describe RNA data,
 
@@ -32,7 +32,7 @@ A second option is to install the dependencies yourself for your Python distribu
 You will also need a bunch of RNA algorithms installed and available in your PATH. You have two options:
 
 * to install them yourself,
-* to run the script "install_algorithms.sh" located in files/scripts/shell. To be able to run this script efficiently, you will need to have compilation tools installed (gcc and make).
+* to run the script "install_algorithms.sh" located in files/scripts/shell. This script should simplify the installation process, but this is without any guarantee. To be able to run this script efficiently, you will need to have compilation tools installed (gcc and make).
 
 PyRNA needs to find the following algorithms in your PATH:
 
@@ -101,13 +101,13 @@ You should get an output like:
 
 #The PyRNA modules
 
-* features.py: classes to model the RNA concepts used by PyRNA,
+* features.py: classes to model the RNA concepts used by PyRNA (a.k.a. "PyRNA objects"),
 * parsers.py: functions to parse and convert RNA data,
 * computations.py: classes to wrap RNA algorithms,
 * db.py: classes to connect public databases,
-* restserver.py: executable script to launch the embedded REST server, 
-* task.py: a class allowing to design grid tasks,
-* glite.py: executable file and functions to manage glite jobs.
+* restserver.py: executable script to launch the embedded REST server
+
+The modules task.py and glite.py allow to design, submit and manage grid jobs with the [gLite](http://glite.web.cern.ch/glite/) middleware. As a "basic user", you should not care about them.
 
 #The PyRNA scripts
 
@@ -115,19 +115,18 @@ PyRNA provides several scripts in the files directory:
 
 * scripts/python: examples of Python scripts using PyRNA
 * scripts/shell: shell scripts  
-* grid_tasks: these are Python scripts specializing the Task class (see the task.py module). These scripts parallelize some tasks and have been designed to be executed on a grid. 
+* grid_tasks: Python scripts that parallelize some "large" tasks (genomic annotation for example). As a "basic user", you should not care about them.
 
 #The PyRNA REST Server
 
-PyRNA provides the ability to deploy some of its functionalities as REST webservices. You will need to install: 
+PyRNA provides you the ability to deploy some functionalities as REST webservices. You will need to install: 
 
 * [MongoDB](http://www.mongodb.org/): a NoSQL database,
 * [PyMongo](http://api.mongodb.org/python/current/): a Python dependency providing an easy way to connect MongoDB databases,
 * [Flask](http://flask.pocoo.org/): a Python microframework,
 * [ujson](https://pypi.python.org/pypi/ujson): a Python dependency to load/dump JSON data,
-* [Scipy](http://www.scipy.org/): a Python-based ecosystem of open-source software for mathematics, science, and engineering
 
-Once evrything installed, launch MongoDB, then type: 
+Once everything installed, launch your MongoDB and type: 
 
     $ ./restserver.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)]
 
