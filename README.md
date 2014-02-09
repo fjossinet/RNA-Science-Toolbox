@@ -8,11 +8,11 @@ PyRNA allows you to:
     * "PyRNA objects": defined in the module pyrna.features.
 * compute RNA data from RNA algorithms (see list below) and convert them into Pandas data structures and PyRNA objects, 
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
-* consume some functionalities as REST Web services.
+* deploy some functionalities as REST Web services.
 
 [Assemble2](http://www.bioinformatics.org/assemble/) is an example of Java graphical client consuming PyRNA webservices.
 
-PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and has been tested on MacOSX 10.8 and Scientific Linux 5.8 with python 2.7 and gcc 4.1 or 4.2.
+PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and tested on MacOSX 10.8 and Scientific Linux 5.8 (python 2.7, gcc 4.1 or 4.2).
 
 #Dependencies
 
@@ -22,9 +22,9 @@ To be able to use 99% of all PyRNA functionalities, you will only need a single 
 
 If you want to handle NGS data, you will also need to install [pysam](https://code.google.com/p/pysam/), a Python interface for the SAM/BAM sequence alignment and mapping format.
 
-A first option is to install and use a "scientific" Python distribution like [Canopy](https://www.enthought.com/products/canopy/) or [Anaconda](https://store.continuum.io/cshop/anaconda/). They provide access to numerous scientific packages that are already installed. 
+A first option is to install and use a "scientific" Python distribution like [Canopy](https://www.enthought.com/products/canopy/) or [Anaconda](https://store.continuum.io/cshop/anaconda/). They provide access to numerous pre-installed scientific packages. 
 
-A second option is to install the dependencies yourself for your Python distribution. We suggest you to install first the command [easy_install](http://pythonhosted.org/distribute/easy_install.html) for your Python distribution. Then everything will be easier to install:
+A second option is to install the dependencies yourself for your Python distribution. We suggest you to install first the command [easy_install](http://pythonhosted.org/distribute/easy_install.html). Then you can type:
 
 * sudo easy_install pandas
 * sudo easy_install pysam
@@ -56,7 +56,7 @@ You don't need to install all of them. It will depend on the classes you will im
 #Quick Start
 
 * if you don't have it, install the command [easy_install](http://pythonhosted.org/distribute/easy_install.html)
-* install the Python dependencies Pandas and pysam:
+* install the Python dependencies Pandas and pysam (if you plan to handle NGS data):
     * sudo easy_install pandas
     * sudo easy_install pysam
 * in a UNIX shell, type:
@@ -74,7 +74,7 @@ You don't need to install all of them. It will depend on the classes you will im
 
         $ install_algorithms.sh your_RNA_algorithms_location
 
-* in the configuration file of your shell (.bashrc for example), add the following lines:
+* once done, in the configuration file of your shell (.bashrc for example), add the following line:
 
     * source your_RNA_algorithms_location/setmyenv
 
