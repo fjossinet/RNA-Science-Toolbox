@@ -16,12 +16,10 @@ app = Flask(__name__)
 mongodb = None
 logs_db = None
 
-@app.route("/")
 
 ################# WEBSERVICES #########################
 
-@app.route("/webservices")
-@app.route('/api/')
+@app.route("/")
 
 def webservices():
     return render_template('webservices.html')
