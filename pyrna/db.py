@@ -6,23 +6,22 @@ import parsers, utils
 
 class PDBQuery:
     """
-    A utility class to be able to use the method query from the PDB class
-    (see below)
+    A utility class to use the method query from the PDB class (see PDB class in module pyrna.db).
     """
-    def __init__(self, minRes = '0.1', maxRes = '3.0', minDate = None, maxDate = None, keywords = [], authors = [], pdbIds = [], titleContains = [], containsRNA = 'Y', containsProtein = 'Y', containsDNA = 'N', containsHybrid = 'N', experimentalMethod = 'X-RAY'):
-        self.minRes = minRes
-        self.maxRes = maxRes
-        self.minDate = minDate
-        self.maxDate = maxDate
+    def __init__(self, min_res = '0.1', max_res = '3.0', min_date = None, max_date = None, keywords = [], authors = [], pdb_ids = [], title_contains = [], contains_rna = 'Y', contains_protein = 'Y', contains_dna = 'N', contains_hybrid = 'N', experimental_method = 'X-RAY'):
+        self.min_res = min_res
+        self.max_res = max_res
+        self.min_date = min_date
+        self.max_date = max_date
         self.keywords = keywords
         self.authors = authors
-        self.pdbIds = pdbIds
-        self.titleContains = titleContains
-        self.containsRNA = containsRNA
-        self.containsProtein = containsProtein
-        self.containsDNA = containsDNA
-        self.containsHybrid = containsHybrid
-        self.experimentalMethod = experimentalMethod
+        self.pdb_ids = pdb_ids
+        self.title_contains = title_contains
+        self.contains_rna = contains_rna
+        self.contains_protein = contains_protein
+        self.contains_dna = contains_dna
+        self.contains_hybrid = contains_hybrid
+        self.experimental_method = experimental_method
         
 
 class PDB:
@@ -45,30 +44,30 @@ class PDB:
         """
         Returns a list of PDB ids in answer to the query
 
-        Args:
+        Parameters:
         - query: the query as a PDBQuery object
 
         Returns:
         - a list of pdb ids
         """
-        minRes = query.minRes or '0.1'
-        maxRes = query.maxRes or '3.0'
-        minDate = query.minDate or None
-        maxDate = query.maxDate or None
+        min_res = query.min_res or '0.1'
+        max_res = query.max_res or '3.0'
+        min_date = query.min_date or None
+        max_date = query.max_date or None
         keywords = query.keywords or []
         authors = query.authors or []
-        pdbIds = query.pdbIds or []
-        titleContains = query.titleContains or []
-        containsRNA = query.containsRNA or 'Y'
-        containsProtein = query.containsProtein or 'Y'
-        containsDNA = query.containsDNA or 'N'
-        containsHybrid = query.containsHybrid or 'N'
-        experimentalMethod = query.experimentalMethod or 'X-RAY'
+        pdb_ids = query.pdb_ids or []
+        title_contains = query.title_contains or []
+        contains_rna = query.contains_rna or 'Y'
+        contains_protein = query.contains_protein or 'Y'
+        contains_dna = query.contains_dna or 'N'
+        contains_hybrid = query.contains_hybrid or 'N'
+        experimental_method = query.experimental_method or 'X-RAY'
         post_data = '<?xml version="1.0" encoding="UTF-8"?><orgPdbCompositeQuery version="1.0">'
         ids = []
         refinementLevel = 0
 
-        if experimentalMethod == 'X-RAY' and (maxRes or minRes):
+        if experimental_method == 'X-RAY' and (max_res or min_res):
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
@@ -80,18 +79,18 @@ class PDB:
 <description>Resolution query</description>\
 <refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
 
-            if minRes:
+            if min_res:
                 post_data += '\
-<refine.ls_d_res_high.min>'+minRes+'</refine.ls_d_res_high.min>'                   
+<refine.ls_d_res_high.min>'+min_res+'</refine.ls_d_res_high.min>'                   
             
-            if maxRes:
+            if max_res:
                 post_data += '\
-<refine.ls_d_res_high.max>'+maxRes+'</refine.ls_d_res_high.max>'
+<refine.ls_d_res_high.max>'+max_res+'</refine.ls_d_res_high.max>'
 
             post_data += '</orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
-        if maxDate or minDate:
+        if max_date or min_date:
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
@@ -104,19 +103,19 @@ class PDB:
 <description>Release Date query</description>\
 <refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
             
-            if minDate:
+            if min_date:
                 post_data += '\
-<database_PDB_rev.date.min>'+minDate+'</database_PDB_rev.date.min>'                   
+<database_PDB_rev.date.min>'+min_date+'</database_PDB_rev.date.min>'                   
             
-            if maxDate:
+            if max_date:
                 post_data += '\
-<database_PDB_rev.date.max>'+maxDate+'</database_PDB_rev.date.max>'
+<database_PDB_rev.date.max>'+max_date+'</database_PDB_rev.date.max>'
             
             post_data += '</orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
-        for i in range(0, len(titleContains)):
-            titleContain = titleContains[i]
+        for i in range(0, len(title_contains)):
+            titleContain = title_contains[i]
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
@@ -145,7 +144,7 @@ class PDB:
 </orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
-        if pdbIds:
+        if pdb_ids:
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
@@ -155,12 +154,12 @@ class PDB:
 <orgPdbQuery>\
 <version>head</version>\
 <queryType>org.pdb.query.simple.StructureIdQuery</queryType>\
-<description>Simple query for a list of PDB IDs ('+pdbIds.length+' IDs) :'+", ".join(pdbIds)+'</description>\
-<structureIdList>'+", ".join(pdbIds)+'</structureIdList>\
+<description>Simple query for a list of PDB IDs ('+str(len(pdb_ids))+' IDs) :'+", ".join(pdb_ids)+'</description>\
+<structureIdList>'+", ".join(pdb_ids)+'</structureIdList>\
 </orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
-        if experimentalMethod:
+        if experimental_method:
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
@@ -170,8 +169,8 @@ class PDB:
 <orgPdbQuery>\
 <version>head</version>\
 <queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\
-<description>Experimental Method is '+experimentalMethod+'</description>\
-<mvStructure.expMethod.value>'+experimentalMethod+'</mvStructure.expMethod.value>\
+<description>Experimental Method is '+experimental_method+'</description>\
+<mvStructure.expMethod.value>'+experimental_method+'</mvStructure.expMethod.value>\
 </orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
@@ -203,10 +202,10 @@ class PDB:
 <version>head</version>\
 <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\
 <description>Chain Type</description>\
-<containsProtein>'+containsProtein+'</containsProtein>\
-<containsDna>'+containsDNA+'</containsDna>\
-<containsRna>'+containsRNA+'</containsRna>\
-<containsHybrid>'+containsHybrid+'</containsHybrid>\
+<contains_protein>'+contains_protein+'</contains_protein>\
+<contains_dna>'+contains_dna+'</contains_dna>\
+<contains_rna>'+contains_rna+'</contains_rna>\
+<contains_hybrid>'+contains_hybrid+'</contains_hybrid>\
 </orgPdbQuery></queryRefinement>'
         refinementLevel += 1
 
@@ -230,17 +229,17 @@ class NCBI:
     Wrapper for the NCBI database
     """
 
-    def __init__(self, rootDir="/tmp/NCBI"):
-        self.rootDir = rootDir
-        if not os.path.exists(self.rootDir):
-            shutil.os.mkdir(self.rootDir)
+    def __init__(self, cache_dir="/tmp/NCBI"):
+        self.cache_dir = cache_dir
+        if not os.path.exists(self.cache_dir):
+            shutil.os.mkdir(self.cache_dir)
         self._eutils_base_url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 
     def get_CDD_data(self):
-        if os.path.exists(self.rootDir+'/CDD/'):
-            shutil.rmtree(self.rootDir+'/CDD/')
-        shutil.os.mkdir(self.rootDir+'/CDD/')
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getCDD.sh %s ftp://ftp.ncbi.nih.gov/pub/mmdb/cdd/cdd.tar.gz"%self.rootDir+'/CDD/'], shell=True)
+        if os.path.exists(self.cache_dir+'/CDD/'):
+            shutil.rmtree(self.cache_dir+'/CDD/')
+        shutil.os.mkdir(self.cache_dir+'/CDD/')
+        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getCDD.sh %s ftp://ftp.ncbi.nih.gov/pub/mmdb/cdd/cdd.tar.gz"%self.cache_dir+'/CDD/'], shell=True)
 
     def get_assembled_fungi_species(self):
         import ftplib
@@ -320,7 +319,7 @@ class RNA3DHub:
         """
         Returns the clusters of solved 3Ds from the non-redundant list provided by http://rna.bgsu.edu/rna3dhub/nrlist
 
-        Args:
+        Parameters:
         -resolution: Default value is 2.5
 
         A pandas DataFrame whose columns are:
@@ -343,37 +342,59 @@ class Rfam:
     Wrapper for the Rfam database (http://rfam.sanger.ac.uk/)
     """
 
-    def __init__(self, rootDir="/tmp/RFAM", version = 'CURRENT'):
-        self.rootDir = rootDir+"_"+utils.generate_random_name(7)
+    """
+    Parameters:
+    -----------
+    - use_website : if False, data will be downloaded from the FTP of Rfam. If True, data will be downloaded from the website using URLs (default: False).
+    - cache_dir: the directory used to cache data if download from the FTP(default: /tmp/RFAM)
+    - version: the version of Rfam to be used. If data are downloaded from the website, this parameter is not used and only the CURRENT version will be used.
+    """
+    def __init__(self, use_website = False, cache_dir="/tmp/RFAM", version = 'CURRENT'):
+        self.base_url = "http://rfam.sanger.ac.uk/"
+        self.use_website = use_website
+        self.cache_dir = cache_dir+"_"+utils.generate_random_name(7)
         self.version = version
-        if not os.path.exists(self.rootDir):
-            shutil.os.mkdir(self.rootDir)
+        if not os.path.exists(self.cache_dir):
+            shutil.os.mkdir(self.cache_dir)
 
     """
     This method returns the contents for an Rfam Entry
 
-    Args:
-    - rfamId: the id of the Rfam family
-    - alnType: the type of alignment (seed (default) or full)
-    - nseLabels: 0 (default) to have organism names and 1 to have accession numbers/start-end. If equal to 1, the dict returned as second position in the tuple will be empty. 
-    - format: the format of the data returned.
+    Parameters:
+    -----------
+    - rfam_id: the id of the Rfam family
+    - aln_type (default: 'seed'): the type of alignment. Can be equal to 'seed' or 'full'.
+    - nse_labels (default: 0): 0 to have organism names and 1 to have accession numbers/start-end. If equal to 1, the dict returned  in the tuple will be empty.
+    - format (default: None): the format of the data returned. Can beequal to 'stockholm', 'fasta' or None. 
 
     Returns:
-    With the default value for the format parameter, it returns a tuple (list of aligned sequences, dict of organism names (keys) and accession numbers/start-end  values), Dataframe of base-pairs).
-    If the value is "stockholm", it returns the raw data with the stockholm format.
-    If the value is "fasta", it returns the raw data with the fasta format.
+    --------
+    Depends on the value of the parameter format. If equal to: 
+    - None: returns a tuple like (list of aligned sequences, dict of organism names (keys) and accession numbers/start-end (values), pandas Dataframe listing base-pairs).
+    - "stockholm": returns the raw data with the stockholm format (as a String).
+    - "fasta": returns the raw data with the fasta format (as a String).
     """
-    def getEntry(self, rfamId, alnType = 'seed', nseLabels = 0, format = None):
-        path = os.path.join(self.rootDir, alnType, "%s.sto"%rfamId)
+    def get_entry(self, rfam_id, aln_type = 'seed', nse_labels = 0, format = None):
 
-        if not os.path.exists(path):
-            raise Exception("file %s not found!!"%path)        
+        content = None
+
+        if self.use_website:
+            response = urllib.urlopen("%s/family/%s/alignment?acc=%s&alnType=%s&nseLabels=%i&format=stockholm&download=1"%(self.base_url, rfam_id, rfam_id, aln_type, nse_labels))
+            content = str(response.read())
+            response.close()
+            if not content.startswith("# STOCKHOLM"):
+                raise Exception("Rfam family %s not found!!"%rfam_id)            
         else:
-            h = open(path, 'r')
-            content = h.read()
-            h.close()
-            if not content.strip().split('\n')[-1].strip() == '//': #incomplete file
-                raise Exception("file %s is incomplete!!"%path)    
+            path = os.path.join(self.cache_dir, aln_type, "%s.sto"%rfam_id)
+
+            if not os.path.exists(path):
+                raise Exception("file %s not found!!"%path)        
+            else:
+                h = open(path, 'r')
+                content = h.read()
+                h.close()
+                if not content.strip().split('\n')[-1].strip() == '//': #incomplete file
+                    raise Exception("file %s is incomplete!!"%path)    
 
         if not format:
             return parsers.parse_stockholm(content)
@@ -386,28 +407,31 @@ class Rfam:
     """
     This method returns the consensus sequence for an Rfam Entry
 
-    Args:
-    - rfamId: the id of the Rfam family
+    Parameters:
+    ---------
+    - rfam_id: the id of the Rfam family
 
     Returns:
-    The consensus sequence as an RNA object. Returns None is no consensus sequence found.
-
+    --------
+    The consensus sequence as an RNA object (see pyrna.features). 
+    Returns None if no consensus sequence found.
     """
-    def get_consensus_sequence(self, rfamId):
+    def get_consensus_sequence(self, rfam_id):
         consensus_seq = []
-        for line in self.getEntry(rfamId, format='stockholm').split('\n'):
+        for line in self.get_entry(rfam_id, format='stockholm').split('\n'):
             if line.startswith("#=GC RF"):
                 consensus_seq.append(line.split("#=GC RF")[1].strip().replace('.','').replace('-','').replace('~','').upper())
         if len(consensus_seq):
-            return RNA(name = 'consensus sequence for %s'%rfamId, sequence  = ''.join(consensus_seq))
+            return RNA(name = 'consensus sequence for %s'%rfam_id, sequence  = ''.join(consensus_seq))
         else:
             return None
 
-    def getFamiliesDetails(self):
+    def get_families_details(self):
         """
         This method returns details for each RFAM family.
 
         Returns:
+        ------
         A pandas DataFrame whose columns are:
         - id
         - accession (RFXXXXX)
@@ -416,11 +440,11 @@ class Rfam:
         - number of sequences in the seed alignment
         - number of sequences in the full alignment
         """
-        if os.path.exists(self.rootDir+'/rfam.txt'):
-            shutil.os.remove(self.rootDir+'/rfam.txt')
+        if os.path.exists(self.cache_dir+'/rfam.txt'):
+            shutil.os.remove(self.cache_dir+'/rfam.txt')
         familiesDetails = []
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.rootDir+" "+self.version], shell=True)
-        f = open(self.rootDir+'/rfam.txt')
+        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+        f = open(self.cache_dir+'/rfam.txt')
         lines = f.readlines()
         for line in lines:
             rfam_family = {}
@@ -435,11 +459,12 @@ class Rfam:
         f.close()
         return DataFrame(familiesDetails)
 
-    def getFamiliesWithStructures(self):
+    def get_families_with_structures(self):
         """
         This method returns details for each RFAM family linked to at least one PDB structure
 
         Returns:
+        ------
         A pandas DataFrame whose columns are:
         - rfam_id (RFXXXXX)
         - pdb_id
@@ -452,17 +477,17 @@ class Rfam:
         """
         rfam_families_with_3Ds = {}
         #first we're using the file rfam.txt from the RFAM FTP to get the correspondance between the RFAM ID and the database ID (the file pdb_rfam_reg.txt is using the database ID instead of the RFAM ID)
-        if os.path.exists(self.rootDir+'/rfam.txt'):
-            shutil.os.remove(self.rootDir+'/rfam.txt')
+        if os.path.exists(self.cache_dir+'/rfam.txt'):
+            shutil.os.remove(self.cache_dir+'/rfam.txt')
         database_ids_2_rfam_ids = {}
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.rootDir+" "+self.version], shell=True)
-        f = open(self.rootDir+'/rfam.txt')
+        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+        f = open(self.cache_dir+'/rfam.txt')
         lines = f.readlines()
         for line in lines:
             tokens = line.split('\t')
             database_ids_2_rfam_ids[tokens[0]] = tokens[2]
         f.close()
-        f = open(self.rootDir+'/pdb_rfam_reg.txt')
+        f = open(self.cache_dir+'/pdb_rfam_reg.txt')
         lines = f.readlines()
         for line in lines:
             rfam_family = {}
@@ -481,21 +506,22 @@ class Rfam:
         f.close()
         return rfam_families_with_3Ds
 
-    def getGenomeEntries(self):
+    def get_genomic_entries(self):
         """
         Return all the details of the genomes handled by RFAM.
 
         Returns :
+        -------
         A pandas Dataframe whose columns are:
         - accession number
         - name of the organism
         - lineage of the organism
         """
         organisms = []
-        if os.path.exists(self.rootDir+'/genome_entry.txt'):
-            shutil.os.remove(self.rootDir+'/genome_entry.txt')
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.rootDir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
-        f = open(self.rootDir+'/genome_entry.txt')
+        if os.path.exists(self.cache_dir+'/genome_entry.txt'):
+            shutil.os.remove(self.cache_dir+'/genome_entry.txt')
+        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.cache_dir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
+        f = open(self.cache_dir+'/genome_entry.txt')
         lines = f.readlines()
         for line in lines:
             tokens = line.split('\t')
@@ -506,13 +532,16 @@ class Rfam:
             organisms.append(organism)
         return DataFrame(organisms)
 
-    def generateSeedAlignments(self):
-        if not os.path.exists(self.rootDir+'/seed/Rfam.seed'):
-            if os.path.exists(self.rootDir+'/seed/'):
-                shutil.rmtree(self.rootDir+'/seed/')
-            shutil.os.mkdir(self.rootDir+'/seed/')
-            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.rootDir+"/seed/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.seed.gz"], shell=True)
-        f = open(self.rootDir+'/seed/Rfam.seed')
+    def generate_seed_alignments(self):
+        """
+        This method has to be called if the Rfam wrapper uses data from the FTP. Seed alignments will be downloaded and stored locally.
+        """
+        if not os.path.exists(self.cache_dir+'/seed/Rfam.seed'):
+            if os.path.exists(self.cache_dir+'/seed/'):
+                shutil.rmtree(self.cache_dir+'/seed/')
+            shutil.os.mkdir(self.cache_dir+'/seed/')
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/seed/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.seed.gz"], shell=True)
+        f = open(self.cache_dir+'/seed/Rfam.seed')
         lines = f.readlines()
         currentAccession = None
         currentContent = None
@@ -520,7 +549,7 @@ class Rfam:
         for line in lines:
             if re.match('^#=GF AC', line):
                 if currentContent and currentAccession:
-                    output = open(self.rootDir+'/seed/'+currentAccession+'.sto', 'w')
+                    output = open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w')
                     output.write(currentContent)
                     output.close()    
                 currentContent = "# STOCKHOLM 1.0\n"
@@ -530,19 +559,22 @@ class Rfam:
                 currentContent += line
 
         if currentContent and currentAccession:
-            output = open(self.rootDir+'/seed/'+currentAccession+'.sto', 'w')
+            output = open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w')
             output.write(currentContent)
             output.close()
                             
         f.close()    
                
-    def generateFullAlignments(self):
-        if not os.path.exists(self.rootDir+'/full/Rfam.full'):
-            if os.path.exists(self.rootDir+'/full/'):
-                shutil.rmtree(self.rootDir+'/fulls')
-            shutil.os.mkdir(self.rootDir+'/full/')
-            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.rootDir+"/full/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.full.gz"], shell=True)
-        f = open(self.rootDir+'/full/Rfam.full')
+    def generate_full_alignments(self):
+        """
+        This method has to be called if the Rfam wrapper uses data from the FTP. Full alignments will be downloaded and stored locally.
+        """
+        if not os.path.exists(self.cache_dir+'/full/Rfam.full'):
+            if os.path.exists(self.cache_dir+'/full/'):
+                shutil.rmtree(self.cache_dir+'/fulls')
+            shutil.os.mkdir(self.cache_dir+'/full/')
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/full/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.full.gz"], shell=True)
+        f = open(self.cache_dir+'/full/Rfam.full')
         lines = f.readlines()
         currentAccession = None
         currentContent = None
@@ -550,7 +582,7 @@ class Rfam:
         for line in lines:
             if re.match('^#=GF AC', line):
                 if currentContent and currentAccession:
-                    output = open(self.rootDir+'/full/'+currentAccession+'.sto', 'w')
+                    output = open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w')
                     output.write(currentContent)
                     output.close()    
                 currentContent = "# STOCKHOLM 1.0\n"
@@ -560,19 +592,22 @@ class Rfam:
                 currentContent += line
 
         if currentContent and currentAccession:
-            output = open(self.rootDir+'/full/'+currentAccession+'.sto', 'w')
+            output = open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w')
             output.write(currentContent)
             output.close()
                             
         f.close()
 
-    def generateCMs(self):
-        if not os.path.exists(self.rootDir+'/CMs/Rfam.cm'):
-            if os.path.exists(self.rootDir+'/CMs/'):
-                shutil.rmtree(self.rootDir+'/CMs/')
-            shutil.os.mkdir(self.rootDir+'/CMs/')
-            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.rootDir+"/CMs/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.cm.gz"], shell=True)
-        f = open(self.rootDir+'/CMs/Rfam.cm')
+    def generate_CMs(self):
+        """
+        This method has to be called if you plan to use cmsearch (see pyrna.computations). The covariance models will be downloaded and stored locally.
+        """
+        if not os.path.exists(self.cache_dir+'/CMs/Rfam.cm'):
+            if os.path.exists(self.cache_dir+'/CMs/'):
+                shutil.rmtree(self.cache_dir+'/CMs/')
+            shutil.os.mkdir(self.cache_dir+'/CMs/')
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/CMs/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.cm.gz"], shell=True)
+        f = open(self.cache_dir+'/CMs/Rfam.cm')
         lines = f.readlines()
 
         familyName = None
@@ -608,6 +643,6 @@ class Rfam:
             families[currentAccession] = currentContent;
         
         for key in families.keys():
-            f = open(self.rootDir+'/CMs/'+key+'.cm', 'w')
+            f = open(self.cache_dir+'/CMs/'+key+'.cm', 'w')
             f.write(families[key])
             f.close()

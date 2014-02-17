@@ -283,9 +283,9 @@ class My_Task(Task):
 
         #### INFERNAL:CMSEARCH #########
         cmsearch = Cmsearch()
-        self.rfam.generateCMs()
+        self.rfam.generate_CMs()
 
-        familiesDetails = self.rfam.getFamiliesDetails()
+        familiesDetails = self.rfam.get_families_details()
         selected_rfam_ids = []
         i3 = 0
         while i3 != len(familiesDetails.index):

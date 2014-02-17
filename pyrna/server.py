@@ -1,23 +1,27 @@
 #!/usr/bin/env python
 
-from flask import Flask, request, Response, render_template, redirect, url_for, jsonify
+from flask import Flask, request, Response, render_template, redirect, url_for, jsonify, abort
 from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt, RnaAlifold
 from pyrna.db import PDB
+from pyrna import parsers
 from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw
-import ujson, sys, datetime, shutil, re
+from pyrna.features import RNA
+import ujson, sys, datetime, shutil, re, os, random, string, shlex
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from pandas import DataFrame
+from pandas import DataFrame, isnull
+from werkzeug import secure_filename
+from subprocess import Popen
 
 app = Flask(__name__)
 
 mongodb = None
 logs_db = None
+enabled_algorithms = []
 
 ################# TEAM WEBSITE #########################
 
 @app.route("/")
-
 def index():
     log = {
         'path': request.path,
@@ -30,7 +34,6 @@ def index():
     return render_template('index.html')
 
 @app.route("/team")
-
 def team():
     log = {
         'path': request.path,
@@ -42,7 +45,6 @@ def team():
     return render_template('team.html')
 
 @app.route("/methods")
-
 def methods():
     log = {
         'path': request.path,
@@ -54,7 +56,6 @@ def methods():
     return render_template('methods.html')
 
 @app.route("/publications")
-
 def publications():
     log = {
         'path': request.path,
@@ -66,7 +67,6 @@ def publications():
     return render_template('publications.html')
 
 @app.route("/projects")
-
 def projects():
     log = {
         'path': request.path,
@@ -78,7 +78,6 @@ def projects():
     return render_template('projects.html')
 
 @app.route("/tools")
-
 def tools():
     log = {
         'path': request.path,
@@ -90,7 +89,6 @@ def tools():
     return render_template('tools.html')
 
 @app.route("/contacts")
-
 def contacts():
     log = {
         'path': request.path,
@@ -102,7 +100,6 @@ def contacts():
     return render_template('contacts.html')
 
 @app.route("/teaching")
-
 def teaching():
     log = {
         'path': request.path,
@@ -117,12 +114,149 @@ def teaching():
 
 @app.route("/webservices")
 @app.route('/api/')
-
 def webservices():
     return render_template('webservices.html')
 
-@app.route('/api/compute/2d', methods=['GET', 'POST'])
+#here starts the low-level webservices: webservices to avoid to install RNA algorithms on the client computer to be able to use PyRNA
 
+@app.route('/api/get_key', methods=['GET'])
+def get_key():
+    secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
+    ip = request.remote_addr
+    record = logs_db['user_keys'].find_one({'ip': ip})
+    if record:
+        record['key'] = secret_key
+        logs_db['user_keys'].save(record)
+    else:
+        logs_db['user_keys'].insert({
+            'ip': ip,
+            'date': str(datetime.datetime.now()),
+            'key': secret_key
+            })
+    return secret_key
+
+def is_registered_user(secret_key):
+    return logs_db['user_keys'].find_one({'key': secret_key}) != None
+
+@app.route('/api/computations/rnafold', methods=['POST'])
+def rnafold():
+    log = {
+        '_id': str(ObjectId()),
+        'path': request.path,
+        'tool': 'rnafold',
+        'ip': request.remote_addr,
+        'method': request.method,
+        'date': str(datetime.datetime.now())
+    }
+
+    logs_db['webservices'].insert(log)
+
+    name = None
+    sequence = None
+    constraints = None
+    api_key = None
+    if 'name' in request.form: 
+        name = request.form['name']
+    if 'sequence' in request.form:
+        sequence = request.form['sequence']
+    if 'constraints' in request.form:
+        constraints = request.form['constraints']
+    if 'api_key' in request.form:
+        api_key = request.form['api_key']
+
+    if not is_registered_user(api_key) or not 'rnafold' in enabled_algorithms:
+        return abort(401)
+
+    return Rnafold().fold(RNA(name=name, sequence=sequence), constraints, raw_output = True)
+
+@app.route('/api/computations/rnaplot', methods=['POST'])
+def rnaplot():
+    log = {
+        '_id': str(ObjectId()),
+        'path': request.path,
+        'tool': 'rnaplot',
+        'ip': request.remote_addr,
+        'method': request.method,
+        'date': str(datetime.datetime.now())
+    }
+
+    logs_db['webservices'].insert(log)
+
+    secondary_structure = None
+    api_key = None
+    if 'secondary_structure' in request.form: 
+        secondary_structure = request.form['secondary_structure']
+    if 'api_key' in request.form:
+        api_key = request.form['api_key']
+
+    if not is_registered_user(api_key) or not 'rnaplot' in enabled_algorithms:
+        return abort(401)
+
+    rnas, secondary_structures = parse_vienna(secondary_structure)
+
+    return Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True)
+
+@app.route('/api/computations/contrafold', methods=['POST'])
+def contrafold():
+    log = {
+        '_id': str(ObjectId()),
+        'path': request.path,
+        'tool': 'contrafold',
+        'ip': request.remote_addr,
+        'method': request.method,
+        'date': str(datetime.datetime.now())
+    }
+
+    logs_db['webservices'].insert(log)
+
+    name = None
+    sequence = None
+    constraints = None
+    api_key = None
+    if 'name' in request.form: 
+        name = request.form['name']
+    if 'sequence' in request.form:
+        sequence = request.form['sequence']
+    if 'api_key' in request.form:
+        api_key = request.form['api_key']
+
+    if not is_registered_user(api_key) or not 'contrafold' in enabled_algorithms:
+        return abort(401)
+
+    return Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True)
+
+@app.route('/api/computations/rnaview', methods=['POST'])
+def rnaview():
+    log = {
+        '_id': str(ObjectId()),
+        'path': request.path,
+        'tool': 'rnaview',
+        'ip': request.remote_addr,
+        'method': request.method,
+        'date': str(datetime.datetime.now())
+    }
+
+    logs_db['webservices'].insert(log)
+
+    tertiary_structure = None
+    canonical_only = False
+    api_key = None
+    
+    if '3d' in request.form:
+        tertiary_structure = request.form['3d']
+    if 'canonical_only' in request.form:
+        canonical_only = request.form['canonical_only'] == 'true'
+    if 'api_key' in request.form:
+        api_key = request.form['api_key']
+
+    if not is_registered_user(api_key) or not 'rnaview' in enabled_algorithms:
+        return abort(401)
+
+    return Rnaview().annotate(pdb_content = tertiary_structure, canonical_only = canonical_only, raw_output = True)
+
+#here starts the high-level webservices
+
+@app.route('/api/compute/2d', methods=['GET', 'POST'])
 def compute_2d():
     data = None
     tool = None
@@ -251,9 +385,9 @@ def compute_2d():
 
         if output == 'rnaml':
             if pdbid:
-                return Response(rnaview.annotate(PDB().get_entry(pdbid), raw_output = True), mimetype='application/txt')
+                return Response(rnaview.annotate(pdb_content = PDB().get_entry(pdbid), raw_output = True), mimetype='application/txt')
             elif data:
-                return Response(rnaview.annotate(data, raw_output = True), mimetype='application/txt')
+                return Response(rnaview.annotate(pdb_content = data, raw_output = True), mimetype='application/txt')
             
         else:
             if pdbid:
@@ -392,9 +526,9 @@ def plot_2d():
 
     logs_db['webservices'].insert(log)
 
-    (rna, base_pairs) = parse_vienna(vienna_data)[0]
+    rnas, base_pairs = parse_vienna(vienna_data)
     rnaplot = Rnaplot()
-    plot =  rnaplot.plot(base_pairs, rna)
+    plot =  rnaplot.plot(base_pairs[0], rnas[0])
     coords = []
     for (index, row) in plot.iterrows():
         coords.append([row['x'], row['y']])
@@ -403,7 +537,6 @@ def plot_2d():
 @app.route('/api/pdb', methods=['GET', 'POST'])
 @app.route('/api/ark', methods=['GET', 'POST'])
 @app.route('/api/charn', methods=['GET', 'POST'])
-
 def ark():
     result = None
     collection = None
@@ -460,7 +593,6 @@ def ark():
 ################# CHARNDB #########################
 
 @app.route("/charndb")
-
 def charndb():
     log = {
         'path': request.path,
@@ -472,7 +604,6 @@ def charndb():
     return render_template('charndb.html')
 
 @app.route("/charndb/ncRNAs", methods=['GET', 'POST'])
-
 def ncRNAs():
     log = {
         'path': request.path,
@@ -490,7 +621,6 @@ def ncRNAs():
     return render_template('/charndb/ncRNAs.html', species_names = species_names)
 
 @app.route("/charndb/species")
-
 def species():
     log = {
         'path': request.path,
@@ -502,7 +632,6 @@ def species():
     return render_template('/charndb/species.html')
 
 @app.route("/charndb/orthoparalogs")
-
 def orthoparalogs():
     log = {
         'path': request.path,
@@ -515,7 +644,6 @@ def orthoparalogs():
     return render_template('/charndb/orthoparalogs.html', ncRNA_name = ncRNA_name)
 
 @app.route("/charndb/downloads")
-
 def downloads():
     log = {
         'path': request.path,
@@ -528,16 +656,9 @@ def downloads():
 
 ################# LETITSNO #########################
 
-from werkzeug import secure_filename
-import os, random, string, shlex
-from subprocess import Popen
-from pyrna import parsers
-from pandas import isnull
-
 ALLOWED_EXTENSIONS = set(['txt', 'fasta', 'fna', 'embl', 'gb'])
 
 @app.route("/letitsno")
-
 def letitsno():
     log = {
         'path': request.path,
@@ -553,7 +674,6 @@ def allowed_file(filename):
         filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 @app.route('/letitsno/upload', methods=['POST'])
-
 def upload():
     log = {
         'path': request.path,
@@ -632,7 +752,6 @@ def import_genomic_sequences(genomic_data, organism, suffix, db_name):
         db['genomes'].insert(description)
 
 @app.route('/letitsno/results')
-
 def results():
     log = {
         'path': request.path,
@@ -870,7 +989,6 @@ def results():
         })        
 
 @app.route('/letitsno/check')
-
 def check():
     log = {
         'path': request.path,
@@ -933,7 +1051,6 @@ def check():
         })
 
 @app.route('/letitsno/documentation')
-
 def documentation():
     log = {
         'path': request.path,
@@ -945,7 +1062,6 @@ def documentation():
     return render_template('letitsno/documentation.html')
 
 @app.route('/letitsno/stats')
-
 def stats():
     log = {
         'path': request.path,
@@ -957,7 +1073,6 @@ def stats():
     return render_template('letitsno/stats.html')
 
 @app.route('/letitsno/example')
-
 def example():
     log = {
         'path': request.path,
@@ -982,15 +1097,27 @@ if __name__ == '__main__':
         mongodb_host = sys.argv[sys.argv.index("-mh")+1]
     if "-mp" in sys.argv:
         mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
+    if "-conf" in sys.argv:
+        h = open(sys.argv[sys.argv.index("-conf")+1], 'r')
+        json_data = h.read()
+        h.close()
+        enabled_algorithms = ujson.loads(json_data)["rest_server"]["enable-algorithms"]
 
     try :
         mongodb = MongoClient(mongodb_host, mongodb_port)
         logs_db = mongodb['logs']
     except Exception, e:
         print 'Cannot connect any Mongodb instance hosted at %s:%i'%(mongodb_host, mongodb_port)
-        print 'Usage: ./server.py [-wh webserver_host (default: %s)] [-wp webserver_port (default: %i)] [-mh mongodb_host (default: %s)] [-mp mongodb_port (default: %i)]'%(webserver_host, webserver_port, mongodb_host, mongodb_port)
+        print 'Usage: ./server.py [-wh webserver_host (default: %s)] [-wp webserver_port (default: %i)] [-mh mongodb_host (default: %s)] [-mp mongodb_port (default: %i)] [-conf configuration_file] '%(webserver_host, webserver_port, mongodb_host, mongodb_port)
         sys.exit(-1)
 
     app.debug = True
 
-    app.run(host = webserver_host, port = webserver_port)
+    #app.run(host = webserver_host, port = webserver_port)
+    from tornado.wsgi import WSGIContainer
+    from tornado.httpserver import HTTPServer
+    from tornado.ioloop import IOLoop
+
+    http_server = HTTPServer(WSGIContainer(app))
+    http_server.listen(webserver_port)
+    IOLoop.instance().start()

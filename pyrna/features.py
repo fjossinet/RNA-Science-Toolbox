@@ -30,6 +30,9 @@ class Block:
 
 
 class Location:
+    """
+    A Location is composed of Block objects.
+    """
     def __init__(self, start = None, end = None, single_positions = None):
         """
         A location can be constructed either with a start and end positions or as a list of single positions. 
@@ -92,6 +95,11 @@ class Location:
 
 
     def get_single_positions(self):
+        """
+        Returns:
+        ------
+        all the single positions making this Location as a list.
+        """
         single_positions = []
         for block in self.blocks:
             single_positions += xrange(block.start, block.end+1)
@@ -132,10 +140,12 @@ class Molecule:
         return '\n'.join(lines)
 
     def __add__(self, seq):
-        """extend the sequence of the molecule with with seq
-        seq has to be a string"""
         if seq.__class__ == str:
             self.sequence = ''.join([self.sequence, seq])
+
+    def __sub__(self, length):
+        if length.__class__ == int and length <= len(self.sequence):
+            self.sequence = self.sequence[0: len(self.sequence)-length]
 
     def __len__(self):
         return len(self.sequence)
@@ -146,6 +156,9 @@ class Molecule:
     def __getslice__(self, i, j):
         return self.sequence.__getslice__(i, j)
 
+    def __getitem__(self, i):
+        return self.sequence.__getitem__(i)
+
 
 class DNA(Molecule):
     def __init__(self, sequence, name = 'dna'):
@@ -155,6 +168,7 @@ class DNA(Molecule):
     def get_complement(self):
         """
         Returns:
+        ------
         the complement sequence as a string.
         """
         basecomplement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
@@ -243,7 +257,8 @@ class SecondaryStructure:
         helix = {
             'name': name,
             'location': [[start,start+length-1],[end-length+1,end]],
-            'length': length
+            'length': length,
+            'interactions': []
             }
         self.helices.append(helix)
         self.helices = sorted(self.helices, key=lambda helix: helix['location'][0][0]) #the helices are sorted according to the start position
@@ -284,8 +299,6 @@ class SecondaryStructure:
                             self.rna.sequence[pos1-1] == 'G' and self.rna.sequence[pos2-1] == 'U' or \
                             self.rna.sequence[pos1-1] == 'U' and self.rna.sequence[pos2-1] == 'G') or \
                           orientation != 'C' or edge1 != '(' or edge2 != ')': #we have a non-canonical secondary-interaction
-                        if not helix.has_key('interactions'):
-                            helix['interactions'] = []
                         helix['interactions'].append({
                             'orientation': orientation, 
                             'edge1': edge1, 
@@ -338,7 +351,9 @@ class TertiaryStructure:
 
     def get_atoms(self):
         """
-        Returns the details for atoms in a panda dataframe. Columns are:
+        Returns:
+        ------
+        the description of atoms in a panda dataframe. Columns are:
         - atom name
         - residue absolute position
         - residue position label (according to the numbering system)

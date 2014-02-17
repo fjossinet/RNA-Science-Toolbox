@@ -24,7 +24,7 @@ def write_pyrna_job(directory, bash_script_content, uid, input_files = [], endpo
     - input_files: the files to be used as inputs for the python script
     - proxy_server: the name of the proxy server to be used for jobs taking time
     - submit: if True (default), the job is submitted. If False, the job file is just created.
-    This function produces a file named submission_result in the directory precised in the first argument.
+    This function produces a file named submission_result in the directory stated in the first argument.
     """
     if not python:
         print("You have to define the absolute path of the python interpreter to be used")
@@ -78,7 +78,7 @@ def submit_glite_job(directory, jdl_file_name, endpoint="https://sbgwms1.in2p3.f
     - jdl_file_name: the name of the jdl file to submit
     - endpoint: the endpoint for submission
     - use_proxy_server: to use a proxy server for jobs taking time
-    This function produces a file in the directory containing the jdl file and storing the list of the jobs ids submitted. The name of this file is precised with the argument "submission_result_file_name". 
+    This function produces a file in the directory containing the jdl file and storing the list of the jobs ids submitted. The name of this file is stated with the argument "submission_result_file_name". 
     If the file already exists, the new jobs ids are appended at the end of this file.
     """
     if not os.path.exists(directory):

@@ -173,7 +173,7 @@ def migrate(db_name, db_host = "localhost", db_port = 27017):
     from pyrna.db import Rfam
 
     rfam = Rfam()
-    rfamFamiliesDetails = rfam.getFamiliesDetails()
+    rfamFamiliesDetails = rfam.get_families_details()
     haca_box_names = []
     cd_box_names = []
     snrna_splicing_names= []
@@ -473,9 +473,9 @@ def generate_random_name(n):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(n))
 
 def is_canonical(residue_1, residue_2, orientation, edge_1, edge_2):
-    return (residue_1 == 'A' and residue_2 == 'U' or residue_1 == 'U' and residue_2 == 'A' or\
-            residue_1 == 'G' and residue_2 == 'C' or residue_1 == 'C' and residue_2 == 'G' or\
-            residue_1 == 'G' and residue_2 == 'U' or residue_1 == 'U' and residue_2 == 'G') and\
+    return (residue_1.upper() == 'A' and residue_2.upper() == 'U' or residue_1.upper() == 'U' and residue_2.upper() == 'A' or\
+            residue_1.upper() == 'G' and residue_2.upper() == 'C' or residue_1.upper() == 'C' and residue_2.upper() == 'G' or\
+            residue_1.upper() == 'G' and residue_2.upper() == 'U' or residue_1.upper() == 'U' and residue_2.upper() == 'G') and\
             orientation.lower() == 'c' and edge_1.upper() == '(' and edge_2.upper() == ')'
 
 def get_atoms_distance(a1,a2):

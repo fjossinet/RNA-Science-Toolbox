@@ -85,11 +85,11 @@ class RfamTask(Task):
             return count
 
         if self.calibrate or self.iterate:
-            count = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.getFamiliesDetails())/self.familiesPerJob)+1)
+            count = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.get_families_details())/self.familiesPerJob)+1)
             print "# of jobs to submit: %i"%count
             return count
             
-        f = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.getFamiliesDetails())/self.familiesPerJob)+1)
+        f = int(math.floor(len(self.rfam_ids)/self.familiesPerJob)+1) if self.rfam_ids else int(math.floor(len(self.rfam.get_families_details())/self.familiesPerJob)+1)
         
         g = None
 
@@ -199,7 +199,7 @@ class RfamTask(Task):
 
         else:
 
-            familiesDetails = self.rfam.getFamiliesDetails()
+            familiesDetails = self.rfam.get_families_details()
             total_families = len(self.rfam_ids) if self.rfam_ids else len(familiesDetails)
             f = int(math.floor(total_families/self.familiesPerJob)+1)
 
@@ -296,7 +296,7 @@ class RfamTask(Task):
 
         genomic_sequences = None
 
-        familiesDetails = self.rfam.getFamiliesDetails()
+        familiesDetails = self.rfam.get_families_details()
         total_families = len(self.rfam_ids) if self.rfam_ids else len(familiesDetails)
         f = int(math.floor(total_families/self.familiesPerJob)+1)
         family_rank = (job_id-1)%f 
@@ -378,8 +378,8 @@ class RfamTask(Task):
                     dna.organism = organism
                     genomic_sequences.append(dna)
         
-        self.rfam.generateCMs()
-        self.rfam.generateSeedAlignments()
+        self.rfam.generate_CMs()
+        self.rfam.generate_seed_alignments()
 
         for id in rfam_ids_range: #TODO when let_it_snow.task will be ready, we will need to bypass all the RFAM families related to snoRNAs.
             
@@ -579,7 +579,7 @@ class RfamTask(Task):
 
         elif 'gotohscan' == self.tool or 'blastr' == self.tool:
 
-            self.rfam.generateFullAlignments()
+            self.rfam.generate_full_alignments()
 
             if 'blastr' == self.tool:
                 blastr = Blastr(target_molecules = genomic_sequences)
@@ -588,7 +588,7 @@ class RfamTask(Task):
             try:
 
                 if not rnas:
-                    (rnas, organisms, consensus2D) = self.rfam.getEntry(rfamId = "RF%05u" % id, alnType = 'full')
+                    (rnas, organisms, consensus2D) = self.rfam.get_entry(rfam_id = "RF%05u" % id, aln_type = 'full')
 
                 if False: #we search for the most relevant (less redundant) sequences.
                     

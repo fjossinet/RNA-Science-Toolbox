@@ -4,21 +4,23 @@ from pyrna.features import RNA, DNA, TertiaryStructure, SecondaryStructure
 from pyrna import utils
 from pysam import Samfile
 
-def consensus2D_to_secondary_structure(aligned_rna, base_pairs):
+def consensus2d_to_base_pairs(aligned_rna, consensus_2d):
     """
-    Args:
-        - aligned_rna: a RNA object whose sequence can contain gap symbols ('-') (see pyrna.features)
-        - base_pairs: the base pairs of a consensus secondary structure and described as a Pandas Dataframe
+    Parameters:
+    ---------
+    - aligned_rna: an RNA object (see pyrna.features) whose sequence can contain gap symbols ('-')
+    - consensus_2d: the consensus secondary structure and described as a list of base_pairs in a pandas Dataframe
 
     Returns:
-    the secondary structure as a list of base-pairs in a Pandas DataFrame
+    ------
+    the secondary structure as a list of base-pairs in a pandas DataFrame
     """
 
     aligned_sequence = aligned_rna.sequence
     rna = RNA(name = aligned_rna.name, sequence = aligned_sequence.replace('-',''))
     new_base_pairs = []
 
-    for index, bp in base_pairs.iterrows():
+    for index, bp in consensus_2d.iterrows():
         if aligned_sequence[bp['pos1']-1] != '-' and aligned_sequence[bp['pos2']-1] != '-':
             new_pos1 = bp['pos1']-aligned_sequence[0:bp['pos1']].count('-')
             new_pos2 = bp['pos2']-aligned_sequence[0:bp['pos2']].count('-')
@@ -34,12 +36,14 @@ def consensus2D_to_secondary_structure(aligned_rna, base_pairs):
 
 def secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = False):
     """
-    Args:
-        - secondary_structure: a Secondary Structure object (see pyrna.features)
-        - keep_tertiaries : if True, the tertiary interactions will be exported. Default value is False.
+    Parameters:
+    ---------
+    - secondary_structure: a SecondaryStructure object (see pyrna.features)
+    - keep_tertiaries (default: False) : if True, the tertiary interactions will be exported.
 
     Returns:
-    the secondary structure as a list of base-pairs in a Pandas DataFrame
+    ------
+    the secondary structure as a list of base-pairs in a pandas DataFrame
     """
     base_pairs = []
     for helix in secondary_structure.helices:
@@ -49,18 +53,17 @@ def secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = Fal
 
         for i in range(0,length):
             found_non_canonical = False
-            if helix.has_key('interactions'):
-                for interaction in helix['interactions']:
-                    if interaction['location'][0][0] == helix_start+i and interaction['location'][-1][-1] == helix_end-i:
-                        base_pairs.append({
-                            'pos1': interaction['location'][0][0],
-                            'pos2': interaction['location'][-1][-1],
-                            'orientation': interaction['orientation'],
-                            'edge1': interaction['edge1'],
-                            'edge2': interaction['edge2']
-                        })
-                        found_non_canonical = True
-                        break
+            for interaction in helix['interactions']:
+                if interaction['location'][0][0] == helix_start+i and interaction['location'][-1][-1] == helix_end-i:
+                    base_pairs.append({
+                        'pos1': interaction['location'][0][0],
+                        'pos2': interaction['location'][-1][-1],
+                        'orientation': interaction['orientation'],
+                        'edge1': interaction['edge1'],
+                        'edge2': interaction['edge2']
+                    })
+                    found_non_canonical = True
+                    break
 
             if not found_non_canonical:
                 base_pairs.append({
@@ -84,13 +87,15 @@ def secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = Fal
 
     return DataFrame(base_pairs)
 
-def base_pairs_to_secondary_structure(rna, base_pairs): #at now, the non-canonical secondary interactions are not handled
+def base_pairs_to_secondary_structure(rna, base_pairs):
     """
-    Args:
-        - rna: a RNA object (see pyrna.features)
-        - base_pairs: the base pairs as a pandas dataframe
+    Parameters:
+    ---------
+    - rna: an RNA object (see pyrna.features)
+    - base_pairs: the base pairs listed in a pandas Dataframe
 
     Returns:
+    ------
     a SecondaryStructure object (see pyrna.features)
     """
 
@@ -114,6 +119,8 @@ def base_pairs_to_secondary_structure(rna, base_pairs): #at now, the non-canonic
     next_edge2 = None
     next_orientation = None
 
+    non_canonical_secondary_interactions = []
+
     for i in range(0, len(base_pairs)-1):
         bp = base_pairs[i]
         pos1 = bp[3]
@@ -132,11 +139,18 @@ def base_pairs_to_secondary_structure(rna, base_pairs): #at now, the non-canonic
         if pos1+1 == next_pos1 and pos2-1 == next_pos2:
             if new_helix:
                 helix_length += 1
+                if not utils.is_canonical(rna[next_pos1-1], rna[next_pos2-1], next_orientation, next_edge1, next_edge2):
+                    non_canonical_secondary_interactions.append((next_orientation, next_edge1, next_edge2, next_pos1, next_pos2))
             else:
                 new_helix = True
                 helix_length = 2
                 helix_start = pos1
                 helix_end = pos2
+                if not utils.is_canonical(rna[pos1-1], rna[pos2-1], orientation, edge1, edge2):
+                    non_canonical_secondary_interactions.append((orientation, edge1, edge2, pos1, pos2))
+                if not utils.is_canonical(rna[next_pos1-1], rna[next_pos2-1], next_orientation, next_edge1, next_edge2):
+                    non_canonical_secondary_interactions.append((next_orientation, next_edge1, next_edge2, next_pos1, next_pos2))
+                        
         else:
             if new_helix:
                 ss.add_helix("H"+str(helix_count), helix_start, helix_end, helix_length)
@@ -151,6 +165,10 @@ def base_pairs_to_secondary_structure(rna, base_pairs): #at now, the non-canonic
         helix_count+=1
     else:
         ss.add_tertiary_interaction(next_orientation, next_edge1, next_edge2, next_pos1, next_pos2)
+
+    #now we add the non-canonical interactions to their helices
+    for non_canonical_secondary_interaction in non_canonical_secondary_interactions:
+        ss.add_base_pair( non_canonical_secondary_interaction[0], non_canonical_secondary_interaction[1], non_canonical_secondary_interaction[2], non_canonical_secondary_interaction[3], non_canonical_secondary_interaction[4] )
 
     #we construct the single-strands
     ss_count = 1
@@ -175,11 +193,15 @@ def base_pairs_to_secondary_structure(rna, base_pairs): #at now, the non-canonic
 
 def to_pdb(tertiary_structure, export_numbering_system = False):
     """
-    Args:
-        - tertiary_structure: a TertiaryStructure object (see pyrna.features)
-        - export_numbering_system: export the numbering system (default is False)
+    Convert a TertiaryStructure object into PDB data
+
+    Parameters:
+    ---------
+    - tertiary_structure: a TertiaryStructure object (see pyrna.features)
+    - export_numbering_system (default: False): export the numbering system. If False, the residues are numbered from 1 to the length of the molecular chain
 
     Returns:
+    ------
     the PDB data as a String
     """
     lines= []
@@ -206,11 +228,15 @@ def to_pdb(tertiary_structure, export_numbering_system = False):
 
 def to_ct(base_pairs, rna):
     """
-    Args:
-        - base_pairs: the base pairs as a Pandas Dataframe
-        - rna : an RNA object
+    Convert a list of base pairs into CT data
+
+    Parameters:
+    ---------
+    - base_pairs: the base pairs listed in a pandas Dataframe
+    - rna : an RNA object (see pyrna.features)
 
     Returns:
+    ------
     the CT data as a String
     """
     lines=["ENERGY"]
@@ -229,11 +255,15 @@ def to_ct(base_pairs, rna):
 
 def to_fasta(molecules, single_line=False):
     """
-    Args:
-        - molecules: an array of Molecule objects (see pyrna.features)
-        - single_line: the sequence for each molecule will we exported in a single line (default is False)
+    Convert a list of Molecule objects into FASTA data
+
+    Parameters:
+    ---------
+    - molecules: a list of Molecule objects (see pyrna.features)
+    - single_line (default: False): if True, each molecular sequence will we exported into a single line
 
     Returns:
+    ------
     the FASTA data as a String
     """
     outputs = []
@@ -241,42 +271,89 @@ def to_fasta(molecules, single_line=False):
         outputs.append(molecule.to_fasta(single_line))
     return '\n'.join(outputs)
 
-def to_vienna(secondary_structure, molecules, single_line=False):
+def to_vienna(base_pairs, molecules, single_line=False):
     """
-    Args:
-        - secondary_structure: a Pandas Dataframe listing the base-pairs. This can be a consensus 2D.
-        - molecules: an array of Molecule objects (aligned or not) (see pyrna.features)
+    Convert lists of base pairs and Molecule objects into Vienna data.
+
+    Parameters:
+    ---------
+    - base_pairs: a list of pandas Dataframes, each one listing base pairs. This list should contain either a single Dataframe or as many Dataframes as Molecule objects provided in the second parameter.
+    - molecules: a list of Molecule objects (gapped or ungapped) (see pyrna.features)
+    - single_line (default: False): if True, each molecular sequence will we exported into a single line
 
     Returns:
+    ------
     the Vienna data as a String
     """
+    if len(base_pairs) != 1 and len(molecules) != len(base_pairs):
+        raise Exception("You need to provide either a single Dataframe or as many Dataframes as Molecule objects")
+    
     if single_line:
         lines =[]
-        for molecule in molecules:
-            lines.append(">"+molecule.name)
-            lines.append(molecule.sequence)
-        lines.append(to_bn(secondary_structure, len(molecules[0])))
+        if len(base_pairs) == 1:
+            for molecule in molecules:
+                lines.append(">"+molecule.name)
+                lines.append(molecule.sequence)
+            lines.append(to_bn(base_pairs[0], len(molecules[0])))
+        else:
+            for i in range(0, len(molecules)):
+                lines.append(">"+molecules[i].name)
+                lines.append(molecules[i].sequence)
+                lines.append(to_bn(base_pairs[i], len(molecules[i])))       
         return '\n'.join(lines)
     else:
-        sequence_lines = []
-        bn_lines = []
-        bn = to_bn(secondary_structure, len(molecules[0]))
-        for molecule in molecules:
+        if len(base_pairs) == 1:
+            sequence_lines = []
+            bn_lines = []
+            bn = to_bn(base_pairs[0], len(molecules[0]))
+            for molecule in molecules:
+                c = 0
+                sequence_lines.append(">"+molecule.name)
+                while c < len(molecule):
+                    d = min(len(molecule), c + 79)
+                    sequence_lines.append(molecule[c:d])
+                    c += 79
             c = 0
-            sequence_lines.append(">"+molecule.name)
-            while c < len(molecule):
-                d = min(len(molecule), c + 79)
-                sequence_lines.append(molecule[c:d])
+            while c < len(molecules[0]):
+                d = min(len(molecules[0]), c + 79)
+                bn_lines.append(bn[c:d])
                 c += 79
-        c = 0
-        while c < len(molecules[0]):
-            d = min(len(molecules[0]), c + 79)
-            bn_lines.append(bn[c:d])
-            c += 79
-        return '\n'.join(sequence_lines)+'\n'+'\n'.join(bn_lines)
+            return '\n'.join(sequence_lines)+'\n'+'\n'.join(bn_lines)
+        else:
+            lines = []
+            for i in range(0, len(molecules)):
+                bn = to_bn(base_pairs[i], len(molecules[i]))
 
-def to_stockholm(secondary_structure, molecules, rfam_accession_number = None, family_id = None):
-    bn = to_bn(secondary_structure, len(molecules[0]))
+                c = 0
+                lines.append(">"+molecules[i].name)
+                while c < len(molecules[i]):
+                    d = min(len(molecules[i]), c + 79)
+                    lines.append(molecules[i][c:d])
+                    c += 79
+
+                c = 0
+                while c < len(bn):
+                    d = min(len(bn), c + 79)
+                    lines.append(bn[c:d])
+                    c += 79
+            return '\n'.join(lines)
+
+def to_stockholm(base_pairs, molecules, rfam_accession_number = None, family_id = None):
+    """
+    Convert a list of base pairs and a list of Molecule objects into Stockholm data. 
+
+    Parameters:
+    ---------
+    - base_pairs: a pandas Dataframe listing the base pairs.
+    - molecules: a list of Molecule objects (gapped or ungapped) (see pyrna.features)
+    - rfam_accession_number (default: None): the RFAM ID to export (corresponding to the line starting with #=GF AC)
+    - family_id (default: None): the family ID to export (corresponding to the line starting with #=GF ID)
+
+    Returns:
+    ------
+    the Stockholm data as a String
+    """
+    bn = to_bn(base_pairs, len(molecules[0]))
     lines = []
     lines.append("# STOCKHOLM 1.0")
     if rfam_accession_number:
@@ -297,18 +374,22 @@ def to_stockholm(secondary_structure, molecules, rfam_accession_number = None, f
     lines.append("//")
     return '\n'.join(lines)
 
-def to_clustalw(secondary_structure, molecules, curate = False):
+def to_clustalw(base_pairs, molecules, curate = False):
     """
-    Args:
-        - secondary_structure: a Pandas Dataframe listing the base-pairs. This can be a consensus 2D.
-        - molecules: an array of Molecule objects (aligned or not) (see pyrna.features)
-        - curate: remove the columns filled with gaps (default: False)
+    Convert a list of base pairs and a list of Molecule objects into Clustalw data. 
+    Parameters:
+    ---------
+    - base_pairs: a pandas Dataframe listing the base-pairs. This can be a consensus 2D.
+    - molecules: an list of Molecule objects (gapped or ungapped) (see pyrna.features)
+    - curate (default: False): remove the columns filled with gaps
+    
     Returns:
+    ------
     the clustalw data as a String. The name of the molecules will be non-redundant and will not contain any spaces characters.
     """
 
     sequence_lines = []
-    bn = to_bn(secondary_structure, len(molecules[0]))
+    bn = to_bn(base_pairs, len(molecules[0]))
     c = 0
     gaps_positions = None
     while c < len(molecules[0]):
@@ -377,24 +458,29 @@ def to_clustalw(secondary_structure, molecules, curate = False):
 
     return ''.join(sequence_lines)+"2D\t"+bn
 
-def to_bn(secondary_structure, length):
+def to_bn(base_pairs, length):
     """
-    Args:
-        - secondary_structure: a Pandas Dataframe listing the base-pairs.
-        - length: the length of a molecule (aligned or not) that was linked to this secondary structure. This is mandatory, since the secondary structure parameter describes only paired positions
+    Convert a list of base pairs into a bracket notation
+
+    Parameters:
+    ---------
+    - base_pairs: a pandas Dataframe listing the base pairs.
+    - length: the length of the molecule linked to the secondary structure. This is mandatory, since the base_pairs parameter describes only paired positions in the sequence.
+    
     Returns:
+    ------
     the bracket notation as a String
     """
     bn = []
-    if not len(secondary_structure): #its a pure single_strand fold
+    if not len(base_pairs): #its a pure single_strand fold
         for pos in range(1, length+1):
             bn.append('.')
     else:
         for pos in range(1, length+1):
-            if len(secondary_structure.pos1[secondary_structure.pos1 == pos]) != 0:
-                bn.append('(')
-            elif len(secondary_structure.pos2[secondary_structure.pos2 == pos]) != 0:
-                bn.append(')')
+            if len(base_pairs.pos1[base_pairs.pos1 == pos]) != 0:
+                bn.append(base_pairs[base_pairs.pos1 == pos].edge1.values[0])
+            elif len(base_pairs.pos2[base_pairs.pos2 == pos]) != 0:
+                bn.append(base_pairs[base_pairs.pos2 == pos].edge2.values[0])
             else:
                 bn.append('.')
 
@@ -404,10 +490,13 @@ def parse_genbank(genbank_data):
     """
     Parse Genbank data.
 
-    Args:
-     - genbank_data: the Genbank data as a String
+   Parameters:
+   ---------
+    - genbank_data: the Genbank data as a String
+
     Returns:
-    a DNA object and a Pandas Dataframe listing the genomic features. The columns are:
+    ------
+    a DNA object (see pyrna.features) and a pandas Dataframe listing the genomic features. The columns are:
     - type
     - genomicStrand ('+' or '-')
     - genomicPositions
@@ -646,10 +735,13 @@ def parse_embl(embl_data):
     """
     Parse EMBL data.
 
-    Args:
-     - embl_data: the EMBL data as a String
+    Parameters:
+   ---------
+     - embl_data:  EMBL data as a String
+
     Returns:
-    a DNA object and a Pandas Dataframe listing the genomic features. The columns are:
+    -------
+    a DNA object (see pyrna.features) and a pandas Dataframe listing the genomic features. The columns are:
     - feature type
     - genomicStrand ('+' or '-')
     - genomicPositions
@@ -874,13 +966,16 @@ def parse_embl(embl_data):
 
 def parse_rnaml(rnaml_data, canonical_only = False):
     """
-    Parse RNAML file. At now, this method handles only single molecular secondary structures.
+    Parse RNAML data. At now, this method handles only single molecular secondary structures.
 
-    Args:
+    Parameters:
+    ---------
      - rnaml_data: the RNAML data as a String
-     - canonical_only: if True, the helices will be made with canonical base-pairs only (meaning AU c(), GC c() or GU c()). Default value is False.
+     - canonical_only (default: False): if True, the helices will be made exclusively with canonical base-pairs: AU c( ), GC c( ) or GU c( ).
+    
     Returns:
-    an array of SecondaryStructure objects (see pyrna.features)
+    ------
+    a list of SecondaryStructure objects (see pyrna.features)
     """
     secondary_structures = []
     import xml.etree.ElementTree as ET
@@ -970,10 +1065,16 @@ def parse_rnaml(rnaml_data, canonical_only = False):
 
 def parse_fasta(fasta_data, type='RNA'):
     """
-    Args:
-     - fasta_data: the Fasta data as a String
+    Parse FASTA data
+
+    Parameters:
+    ---------
+    - fasta_data: the Fasta data as a String
+    - type (default: 'RNA'): can be equal to 'DNA' or 'RNA'
+
     Returns:
-    an array of Molecule objects (RNA or DNA objects, in agreement with the parameter type) (see pyrna.features)
+    ------
+    a list of RNA or DNA objects (according to the value of the parameter type) (see pyrna.features)
     """
     molecules = []
     pieces = []
@@ -1003,48 +1104,63 @@ def parse_fasta(fasta_data, type='RNA'):
 
 def parse_vienna(vienna_data):
     """
-    Args:
+    Parse Vienna data
+
+    Parameters:
+    ---------
      - vienna_data: the Vienna data as a String
+
     Returns:
-    a list of tuple. Each tuple is like (RNA object, a Pandas Dataframe listing the base pairs).
+    ------
+    list of RNA objects, list of pandas Dataframes (each Dataframe listing base pairs). If more than 1 RNA objects are returned along with a single Dataframe, this Dataframe describes a consensus secondary structure.
     """
     name = None
     secondary_structures = []
-    bn = []
-    sequence = []
+    rnas = []
+    current_bn = []
+    current_sequence = []
     for line in vienna_data.split('\n'):
         if re.match('^[\.()]+$', line):
-            bn.append(line)
+            current_bn.append(line)
         elif re.match('^>', line):
-            if name and len(bn) > 0:
-                secondary_structures.append((RNA(name = name, sequence = ''.join(sequence)), parse_bracket_notation(''.join(bn)) ))
+            if len(current_bn) and len(current_sequence):
+                rnas.append(RNA(name = name, sequence = ''.join(current_sequence)))
+                secondary_structures.append(parse_bn(''.join(current_bn)))
             name = line[1:]
-            bn = []
-            sequence = []
+            current_bn = []
+            current_sequence = []
         elif len(line.strip()):
-            sequence.append(line.strip())
+            current_sequence.append(line.strip())
 
     #last one
-    if name and len(bn) > 0:
-        secondary_structures.append((RNA(name = name, sequence = ''.join(sequence)), parse_bracket_notation(''.join(bn)) ))
-    return secondary_structures
+    if len(current_bn) and len(current_sequence):
+        rnas.append(RNA(name = name, sequence = ''.join(current_sequence)))
+        secondary_structures.append(parse_bn(''.join(current_bn)))
+    return rnas, secondary_structures
 
-def parse_bracket_notation(bn):
+def parse_bn(bn):
     """
-    Args:
+    Parse a bracket notation.
+    
+    Parameters:
+    ---------
      - bn: the bracket notation as a String
+
     Returns:
-    a Pandas Dataframe listing the base pairs. Returns an empty Dataframe if no base-pairs are found.
+    ------
+    a pandas Dataframe listing the base pairs. Returns an empty Dataframe if no base-pairs are found.
     """
     i = 0
     lastPairedPos = []
+    lastPairedSymbol = []
     basePairs = []
     for pos in list(bn):
         i+=1
-        if pos == '(':
+        if pos == '(' or pos == '{' or pos == '[':
             lastPairedPos.append(i)
-        elif pos == ')':
-            basePairs.append(['c', '(', ')', lastPairedPos.pop(), i])
+            lastPairedSymbol.append(pos)
+        elif pos == ')' or pos == '}' or pos == ']':
+            basePairs.append(['c', lastPairedSymbol.pop(), pos, lastPairedPos.pop(), i])
 
     if len(basePairs):
         return DataFrame(basePairs, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2'])
@@ -1055,15 +1171,21 @@ def parse_stockholm(stockholm_data):
     """
     Parse Stokholm data
 
-    Args:
+    Parameters:
+    ---------
      - stockholm_data: the Stockholm data as a String
+
     Returns:
-    a tuple like (array of aligned RNA objects, dict of organism names (keys) and accession numbers/start-end (values), pandas Dataframe describing the consensus secondary structure)
+    ------
+    a tuple containing: 
+    - a list of gapped or ungapped RNA objects
+    - a dict of organism names (keys)  and accession numbers/start-end (values)
+    -a pandas Dataframe listing the paired positions of consensus secondary structure)
     """
     alignedSequences = {}
     organisms={}
     aligned2D = ""
-    rfamId = None
+    rfam_id = None
     lines = stockholm_data.strip().split('\n')
     for line in lines:
         tokens = re.split('\s+', line)
@@ -1075,7 +1197,7 @@ def parse_stockholm(stockholm_data):
         elif len(line) != 0 and re.match('^#=GC SS_cons', line):
             aligned2D += re.sub('>', ')', re.sub('<', '(', tokens[2]))
         elif len(line) != 0 and re.match('^#=GF AC', line):
-            rfamId = tokens[2].strip()
+            rfam_id = tokens[2].strip()
         elif len(line) != 0 and re.match('^#=GS', line):
             organisms[tokens[1]] = tokens[-1]
 
@@ -1083,21 +1205,24 @@ def parse_stockholm(stockholm_data):
 
     for key in alignedSequences.keys():
         rna = RNA(name=key, sequence=alignedSequences[key])
-        rna.source = 'db:rfam:'+rfamId
+        rna.source = 'db:rfam:'+rfam_id
         if not key.split('/') == 2:
             rna.organism = key
         rnas.append(rna)
 
-    return (rnas, organisms, parse_bracket_notation(aligned2D))
+    return (rnas, organisms, parse_bn(aligned2D))
 
 def parse_pdb(pdb_data):
     """
-    Parse PDB data
+    Parse PDB data.
 
-    Args:
+    Parameters:
+    ---------
      - pdb_data: the PDB data as a String
+
     Returns:
-    an array of TertiaryStructure objects (see pyrna.features)
+    ------
+    a list of TertiaryStructure objects (see pyrna.features). if the PDB data describes a tertiary structure made with several molecular chains, this method will return one TertiaryStructure object per chain.
     """
     rnas = []
     tertiary_structures = []
@@ -1149,18 +1274,21 @@ def parse_pdb(pdb_data):
 
     return tertiary_structures
 
-"""
-This method parses a SAM file. It delegates the low-level parsing to the pysam library (https://code.google.com/p/pysam/). For now, this method is not able to handle oriented and paired-ends reads.
-
-Args:
- - sam_file: the absolute path of the SAM file as a String
-Returns:
-a tuple containing:
-- a list of aligned reads (each read is described as a dict like: {'tid':int, 'genomicStart':int, 'genomicEnd':int} )
-- the total number of reads found
-- a dictionary providing the correspondance between the name of the genomic sequences and the tids available in the SAM file
-"""
 def parse_sam(sam_file):
+    """
+    This method parses a SAM file. It delegates the low-level parsing to the pysam library (https://code.google.com/p/pysam/). At now, this method is not able to handle oriented and paired-ends reads.
+
+    Parameters:
+    ---------
+     - sam_file: the absolute path of the SAM file as a String
+
+    Returns:
+    ------
+    a tuple containing:
+    - a list of aligned reads (each read is described as a dict like: {'tid':int, 'genomicStart':int, 'genomicEnd':int} )
+    - the total number of reads described in the SAM file
+    - a dictionary providing the correspondance between the name of the genomic sequences and the tids available in the SAM file
+    """
     reads = []
     tid_dic = {}
     total_read_nb = 0
