@@ -346,13 +346,16 @@ class Rfam:
     Parameters:
     -----------
     - use_website : if False, data will be downloaded from the FTP of Rfam. If True, data will be downloaded from the website using URLs (default: False).
-    - cache_dir: the directory used to cache data if download from the FTP(default: /tmp/RFAM)
+    - cache_dir (default: None): the directory used to cache data if download from the FTP. If None, the wrapper will use /tmp/RFAM_${random_name} 
     - version: the version of Rfam to be used. If data are downloaded from the website, this parameter is not used and only the CURRENT version will be used.
     """
-    def __init__(self, use_website = False, cache_dir="/tmp/RFAM", version = 'CURRENT'):
+    def __init__(self, use_website = False, cache_dir = None, version = 'CURRENT'):
         self.base_url = "http://rfam.sanger.ac.uk/"
         self.use_website = use_website
-        self.cache_dir = cache_dir+"_"+utils.generate_random_name(7)
+        if not cache_dir:
+            self.cache_dir = "/tmp/RFAM_%s"%utils.generate_random_name(7)
+        else:
+            self.cache_dir = cache_dir
         self.version = version
         if not os.path.exists(self.cache_dir):
             shutil.os.mkdir(self.cache_dir)
