@@ -1167,6 +1167,40 @@ def parse_bn(bn):
     else:
         return DataFrame()
 
+def parse_clustalw(clustalw_data):
+    """
+    Parse Clustalw data
+
+    Parameters:
+    ---------
+     - clustalw_data: the Clustalw data as a String
+
+    Returns:
+    ------
+    a tuple containing: 
+    - a list of gapped or ungapped RNA objects
+    - a pandas Dataframe listing the paired positions of consensus secondary structure)
+    """
+
+    bn = None
+    alignedSequences = {}
+    lines = clustalw_data.strip().split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('2D'):
+            bn = line.split('\t')[1]
+        elif len(line) and not line.startswith('#'):
+            tokens = line.split('\t')
+            alignedSequences[tokens[0]] = alignedSequences.get(tokens[0], "") + tokens[1] 
+
+    rnas = []
+    
+    for key in alignedSequences.keys():
+        rna = RNA(name=key, sequence=alignedSequences[key])
+        rnas.append(rna)
+
+    return rnas, parse_bn(bn)   
+
 def parse_stockholm(stockholm_data):
     """
     Parse Stokholm data

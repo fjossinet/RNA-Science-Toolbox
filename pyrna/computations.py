@@ -1193,26 +1193,67 @@ class Rnaplfold(Tool):
         Tool.__init__(self, cache_dir)
         self.find_executable("RNAplfold")
 
-    def fold(self, molecule, winsize, span):
+    def scan(self, molecule, winsize, span, width, free_energies = False, raw_output = False):
         """
+        Compute the mean probability that regions (a stretch of x consecutive nucleotides) of length 1 to width are unpaired for a sequence. This allows to "scan" sequences for short stable RNA structures.
+
+        Molecule: XXXXXXXXXXXXXXXXXXXXXXXXXXXXX <- the molecule
+        winsize:       |-------|                <- the sliding window used to compute the pairing probabilities for each position
+        width:            |--|                  <- the sliding window used to compute a score (free energy or probability) to be unpaired.
+
         Parameters:
         -----------
-        - molecule: a Molecule object (see pyrna.features)
+        - molecule: a Molecule object to scan (see pyrna.features)
         - winsize: window size
         - span: allow only pairs (i,j) with j-i<=span
+        - width: length of the regions
+        - free_energies (default: False): if True, the method returns free energies, else switch to probabilities
+        - raw_output (default: False): if True, the method returns the raw output instead of the pandas Dataframe. 
 
         Returns:
         --------
-        a pandas DataFrame reporting the average pair probabilities over windows of size winsize.
+        a pandas DataFrame reporting the mean probability that regions of length 1 to width are unpaired for a sequence. The index of the Dataframe lists the Molecule positions (from A to molecule's length) and the columns list the length of the region (from 1 to width).   
         """
 
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
         fasta_file = open(fileName, 'w')
         fasta_file.write(parsers.to_fasta([molecule], single_line=True))
-        fasta_file.write("\n"+constraints)
         fasta_file.close()
-        output = commands.getoutput("cd %s ; RNAplfold -W %i -L %i < %s"%(self.cache_dir, winsize, span, fileName)).strip()
-        print output
+        if free_energies:
+            commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i -O < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
+
+            h = open('%s/test_openen'%self.cache_dir)
+            output = h.read()
+            h.close()
+        else:
+            commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
+
+            h = open('%s/test_lunp'%self.cache_dir)
+            output = h.read()
+            h.close()    
+
+        import numpy as np
+
+        if raw_output:
+            return output
+        else:
+            index = []
+            columns = None
+            data = []
+            for line in output.split('\n'):
+                line = line.strip()
+                if len(line) and not line.startswith("#"):
+                    tokens = line.split('\t')
+                    index.append(int(tokens[0]))
+                    row = {}
+                    tokens = tokens[1:]
+                    tokens = [float(x) if x != "NA" else np.nan for x in tokens]
+                    for pos in range(0,len(tokens)):
+                        row[columns[pos]] = tokens[pos]
+                    data.append(row)   
+                elif len(line) and line.startswith("#i$"):
+                    columns = [int(x) for x in line.split("l=")[1].split('\t')]
+            return DataFrame(data, index = index, columns = columns)
 
 class Rnaplot(Tool):
     """

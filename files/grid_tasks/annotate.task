@@ -1,0 +1,357 @@
+#!/usr/bin/env python
+
+"""
+This script realizes an iterative annotation process for ncRNAs. For a species given as argument and available in the MongoDB instance, it will search for new ncRNA candidates for all the alignments/families stored in a database named "comparative_genomics" (in-house alignments). It will also check if some RFAM families from the last RFAM release are not  available as in-house alignments. If not, then this script will search for ncRNAs candidates for these "new" RFAM families.
+"""
+
+import os, sys, math, datetime, re
+
+from pyrna.task import Task
+from pyrna.db import Rfam
+from pyrna.features import DNA, RNA
+from pyrna.computations import Gotohscan, Blastr, Cmsearch, Cmalign, Cmbuild, Cmcalibrate
+from pyrna.parsers import to_clustalw, parse_stockholm, to_stockholm, parse_clustalw
+
+from pandas import DataFrame
+from bson.objectid import ObjectId
+
+class AnnotateTask(Task):
+
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None,  familiesPerJob = 10, calibrate = False, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
+        Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endPoint, algorithms = algorithms_abs_path, python = python_abs_path)
+        self.familiesPerJob = familiesPerJob
+        if rfam_version:
+            self.rfam = Rfam(version = rfam_version)
+        else:
+            self.rfam = Rfam()
+        self.calibrate = calibrate
+        self.gathering_threshold = gathering_threshold
+
+    def getTotalJobsToSubmit(self, data):
+        familiesDetails = self.rfam.get_families_details()
+        rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        in_house_alignments_to_process = []
+        
+        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
+            if in_house_alignment['source'].startswith('db:rfam:'):
+                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
+            in_house_alignments_to_process.append(in_house_alignment['_id'])    
+
+        total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
+
+        count = int(math.floor(len(total_families)/self.familiesPerJob)+1)
+        print "# of jobs to submit: %i"%count
+        return count
+
+    def getScriptContent(self, job_id):
+        familiesDetails = self.rfam.get_families_details()
+        rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        in_house_alignments_to_process = []
+        
+        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
+            if in_house_alignment['source'].startswith('db:rfam:'):
+                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
+            in_house_alignments_to_process.append(in_house_alignment['_id'])    
+
+        total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
+
+        f = int(math.floor(len(total_families)/self.familiesPerJob)+1)
+
+        family_rank = (job_id-1)%f 
+    
+        first_family = family_rank*self.familiesPerJob
+        last_family = family_rank*self.familiesPerJob+self.familiesPerJob
+
+        if last_family > total_families:
+            last_family = total_families
+        
+        families_range = total_families[first_family:last_family]
+        
+        scriptContent = "#Families processed: "+','.join(families_range)+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
+
+        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -calibrate " if self.calibrate else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+        
+        print scriptContent
+
+        return scriptContent
+
+    def storeData(self):
+        print "No data to store..."            
+
+    def doTheJob(self, job_id = 1):
+        familiesDetails = self.rfam.get_families_details()
+        rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        in_house_alignments_to_process = []
+        
+        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
+            if in_house_alignment['source'].startswith('db:rfam:'):
+                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
+            in_house_alignments_to_process.append(in_house_alignment['_id'])    
+
+        total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
+
+        f = int(math.floor(len(total_families)/self.familiesPerJob)+1)
+
+        family_rank = (job_id-1)%f 
+    
+        first_family = family_rank*self.familiesPerJob
+        last_family = family_rank*self.familiesPerJob+self.familiesPerJob
+
+        if last_family > total_families:
+            last_family = total_families
+        
+        families_range = total_families[first_family:last_family]
+
+        if self.calibrate: #calibration for in-house alignments. For now, it is only the calibrations to be used with Infernal. But we can imagine other calibrations for other tools.
+            for id in families_range:
+                if not id.startswith("RF"):
+                    in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'_id':id})
+                    if in_house_alignment:
+                        rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
+                        stockholm_content = to_stockholm(consensus_2d, rnas)
+                        cm_content = Cmbuild().build(stockholm_content = stockholm_content)
+                        cm_content = Cmcalibrate().calibrate(cm_content)
+                        in_house_alignment['cm'] = cm_content
+                        self.client['comparative_genomics']['alignments'].save(in_house_alignment)
+                    else:
+                        print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
+        else: #annotation
+
+            genomic_sequences = None
+
+            for genome in self.db['genomes'].find():
+                dna = DNA(name = genome['name'], sequence = genome['sequence'])
+                dna._id = genome['_id']
+                dna.organism = organism
+                genomic_sequences.append(dna)
+            
+            self.rfam.generate_CMs()
+            self.rfam.generate_seed_alignments()
+
+            for id in families_range:
+                
+                cmalign = Cmalign()
+                cm_content = None
+                stockholm_content = None
+                rnas = None
+                
+                if id.startswith("RF"): #this is an RFAM family we need to do since no corresponding in-house alignment
+                    if len(familiesDetails[familiesDetails['accession'] == id]): #some RFAM families are not available 
+                        self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, None, None, None, familiesDetails)
+                    else: #we still record a computation, even if the family is not available
+
+                        outputs = []
+                        inputs = []
+
+                        for genomic_sequence in genomic_sequences:
+                            inputs.append(str(genomic_sequence._id)+"@genomes")
+
+                        inputs.append("db:rfam:RF%05u" % id)
+
+                        computation = {
+                            '_id': str(ObjectId()),
+                            'date': str(datetime.datetime.now()),
+                            'job_id': job_id,
+                            'inputs': inputs,
+                            'outputs': outputs,
+                            'executable': "script_%i.sh"%job_id
+                        }
+                else: #in-house alignment
+                    in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'_id':id})
+
+                    if in_house_alignment: 
+                        stockholm_content = to_stockholm(parse_clustalw(in_house_alignment['alignment']))
+                        cm_content = in_house_alignment['cm']
+                        self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails)
+                    else:
+                        print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
+
+
+        self.client.disconnect()            
+
+    def annotate_genomic_sequences_with_cmsearch(self, genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails):
+        outputs = []
+        inputs = []
+
+        for genomic_sequence in genomic_sequences:
+            inputs.append(str(genomic_sequence._id)+"@genomes")
+
+        computation = {
+            '_id': str(ObjectId()),
+            'date': str(datetime.datetime.now()),
+            'job_id': job_id,
+            'inputs': inputs,
+            'executable': "script_%i.sh"%job_id
+        }
+
+        cmsearch = Cmsearch()
+        computation['tool'] = 'Infernal, cmsearch'
+
+        hits = []
+        
+        if in_house_alignment: #we have an in-house alignment. We use it
+            inputs.append("%s@alignments" % in_house_alignment['_id'])
+            try:       
+                hits = cmsearch.search(genomic_sequences, cm_content = cm_content, gathering_threshold = False)
+            except Exception, e:
+                print e
+                sys.exit(1)    
+        else: #We will use the RFAM seed alignment
+            inputs.append("db:rfam:%s" % id)
+            try:       
+                hits = cmsearch.search(genomic_sequences, "%s" % id, self.rfam, gathering_threshold = self.gathering_threshold)
+            except Exception, e:
+                print e
+                sys.exit(1)
+
+        ncRNAs = []
+
+        for row in hits.iterrows():
+            hit = row[1]
+            ncRNA = {
+                '_id': str(ObjectId()),
+                'sequence': hit['sequence'],
+                'source': "tool:cmsearch:%s"%hit['source'],
+                'organism': hit['organism'],
+                'genomeName': hit['target_name'],
+                'genomicStrand': hit['target_strand'],
+                'genomicPositions': [hit['target_positions'][0][0], hit['target_positions'][-1][1]],
+                'score': hit['e_value']
+            }
+
+            if id.startswith("RF"): #hit from an RFAM seed alignment
+                ncRNA['name'] = "[New] "+familiesDetails[familiesDetails['accession'] == id].iloc[0,4]#id
+                ncRNA['class'] = "[New] "+familiesDetails[familiesDetails['accession'] == id].iloc[0,2]#family
+            else: #hit from an in-house alignment
+                if in_house_alignment['source'].startswith("db:rfam:"): #in-house alignment recorder from an RFAM entry
+                    rfam_id = in_house_alignment['source'].split("db:rfam:")[1]
+                    ncRNA['name'] = "[New] "+familiesDetails[familiesDetails['accession'] == id].iloc[0,4]#id
+                    ncRNA['class'] = "[New] "+familiesDetails[familiesDetails['accession'] == id].iloc[0,2]#family
+                else: #this is an in-house alignment from a different origin. It it planed that an in-house alignment will have a name and a class field
+                    ncRNA['name'] = "[New] "+in_house_alignment.get('name', 'Unknown')
+                    ncRNA['class'] = "[New] "+in_house_alignment.get('class', 'Unknown')
+
+            for genome in genomic_sequences:
+                if genome.name == hit['target_name']:
+                    ncRNA['genome'] = genome._id+"@genomes"
+                    break
+
+            already_stored = False #already stored?? This is important do avoid to accumulate the same hits after several annotation iterations
+
+            for stored_ncRNA in self.db['ncRNAs'].find({'genome': ncRNA['genome']}):
+                if stored_ncRNA['genomicStrand'] == ncRNA['genomicStrand'] and stored_ncRNA['genomicPositions'] == ncRNA['genomicPositions'] and stored_ncRNA['source'] == ncRNA['source'] and stored_ncRNA['name'] == ncRNA['name']:
+                    already_stored = True
+                    break
+
+            if already_stored:
+                continue
+            else:
+                ncRNAs.append(ncRNA)
+
+        if len(ncRNAs):
+            #we align the new hits against the other sequences from the same family (stored in an in-house alignment or in an RFAM alignment)
+            ncRNAs_to_realign = []
+            cmalign = Cmalign()
+
+            for ncRNA in ncRNAs:
+                ncRNAs_to_realign.append(RNA(name = ncRNA['_id'], sequence = ncRNA['sequence']))
+
+            our_molecules = []
+            consensus2D = None
+
+            if in_house_alignment: #we align the new hits to the in-house alignment
+                (our_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_realign, stockholm_content = stockholm_content, cm_content = cm_content)   
+            else: #we align the new hits to the RFAM family and we reduce the alignment to our own molecules
+                (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_realign, rfam_id = id, rfam = self.rfam)
+
+                #we keep only the sequences from our own organisms in the alignment
+                for ncRNA_to_realign in ncRNAs_to_realign:
+                    for aligned_molecule in aligned_molecules:
+                        if aligned_molecule.name == ncRNA_to_realign.name:
+                            our_molecules.append(aligned_molecule)
+                            break;
+                
+                #now we have an in-house alignment for this RFAM family
+                in_house_alignment = {
+                    '_id': str(ObjectId()),
+                    'source': "db:rfam:%s" % id
+                }
+
+                self.client['comparative_genomics']['alignments'].insert(in_house_alignment)
+
+            in_house_alignment['alignment'] = to_clustalw(consensus2D, our_molecules, curate = True)
+            self.client['comparative_genomics']['alignments'].save(in_house_alignment) #we update the in_house_alignment
+            outputs.append(in_house_alignment['_id']+"@alignments")
+
+            for ncRNA in ncRNAs:
+                ncRNA['alignment'] = in_house_alignment['_id']+"@alignments"
+                self.db["ncRNAs"].insert(ncRNA)
+                outputs.append(ncRNA['_id']+"@ncRNAs")
+
+        #one computation per rfam_id
+        computation['outputs'] = outputs
+        self.db["computations"].insert(computation)
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    db_host = "localhost"
+    db_port = 27017
+    endpoint = None
+    check = False
+    calibrate = False
+    familiesPerJob = 10
+    rfam_version = None
+    gathering_threshold = True
+    python_abs_path = None
+    algorithms_abs_path = None
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-db" in sys.argv:
+        db_name = sys.argv[sys.argv.index("-db")+1]
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+    
+    if "-families" in sys.argv:
+        familiesPerJob = int(sys.argv[sys.argv.index("-families")+1])
+    if "-rfam_version" in sys.argv:
+        rfam_version = sys.argv[sys.argv.index("-rfam_version")+1]
+    if "-ga" in sys.argv:
+        gathering_threshold = sys.argv[sys.argv.index("-ga")+1].strip() == 'Y'
+    if "-algorithms" in sys.argv:
+        algorithms_abs_path = sys.argv[sys.argv.index("-algorithms")+1].strip()
+    if "-python" in sys.argv:
+        python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
+
+    check = "-check" in sys.argv
+
+    calibrate = "-calibrate" in sys.argv
+
+    if not calibrate and not db_name or not python_abs_path or not algorithms_abs_path:
+        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families families_per_job (default: 10)] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
+        sys.exit(1)
+
+    task = RfamTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, familiesPerJob = familiesPerJob, calibrate = calibrate, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(os.path.basename(__file__), db_name)
+        if os.path.exists(outputDir):
+            print "%s already exists"%outputDir
+            sys.exit()
+        task.submitJobs(os.path.basename(__file__))

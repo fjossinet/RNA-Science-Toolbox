@@ -2,6 +2,8 @@
 This scripts check all the let_it_sno tasks: 
 - if some jobs have the status aborted, done_but_failed, done_without_success or unknown_status, they're resubmitted automatically
 - if all jobs have succeed, the last step is launched (the refinement for clusters)
+
+Use cron to time-schedule this script, like: 0,30 * * * * YOUR_PATH/check_letitsno_tasks.sh > /dev/null 
 """
 
 import os, re, sys, datetime
