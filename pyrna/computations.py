@@ -418,7 +418,7 @@ class Clustalw(Tool):
 
         return data, self.parse_output(data, molecules)
 
-    def _parse_output(self, output, molecules):
+    def parse_output(self, output, molecules):
         """
         Return a list of aligned molecules
 
@@ -466,9 +466,9 @@ class Cmalign(Tool):
         --------
         a tuple like: (list of all the aligned molecules, dict of organism names (keys) and accession numbers/start-end (values), Dataframe of the consensus 2D)
         """
-        path = self.cache_dir+"/"+utils.generate_random_name(7)
+        path = self.cache_dir+"/cmalign_"+utils.generate_random_name(7)
         os.mkdir(path)
-        fasta_file = open("%s/input.fasta"%path, 'w+b')
+        fasta_file = open("%s/input.fasta"%path, 'w')
         fasta_file.write(parsers.to_fasta(molecules))
         fasta_file.close()
         if not stockholm_content:
@@ -477,9 +477,9 @@ class Cmalign(Tool):
             except Exception, e:
                 raise e
         if rfam_id:
-            stockholm_file = open("%s/%s.stk"%(path,rfam_id), 'w+b')
+            stockholm_file = open("%s/%s.stk"%(path,rfam_id), 'w')
         else:
-            stockholm_file = open("%s/%s.stk"%(path, utils.generate_random_name(7)), 'w+b')
+            stockholm_file = open("%s/%s.stk"%(path, utils.generate_random_name(7)), 'w')
         
         stockholm_file.write(stockholm_content)
         stockholm_file.close()
@@ -496,11 +496,13 @@ class Cmalign(Tool):
             f.close()
         
         if self.local_mode:
-            output = commands.getoutput("cmalign -l --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.rootDir+'/CMs/'+rfam_id+".cm", fasta_file.name))
+            output = commands.getoutput("cmalign -l --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
         else:
-            output = commands.getoutput("cmalign --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.rootDir+'/CMs/'+rfam_id+".cm", fasta_file.name))
+            output = commands.getoutput("cmalign --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
         shutil.rmtree(path)
-        return parsers.parse_stockholm("#=GF AC "+rfam_id+"\n"+output) #we add the accession number to the output of cmalign to be able to use the stockholm parser which need this information
+        if rfam_id:
+            output = "#=GF AC "+rfam_id+"\n"+output   
+        return parsers.parse_stockholm(output)
 
 class Cmbuild(Tool):
     """
@@ -635,11 +637,11 @@ class Cmsearch(Tool):
             f.close()
 
             if not gathering_threshold:
-                return self.parse_output(commands.getoutput("cmsearch "+rfam.rootDir+"/CMs/"+rfam_id+".cm "+fileName), molecules, False)
+                return self.parse_output(commands.getoutput("cmsearch "+rfam.cache_dir+"/CMs/"+rfam_id+".cm "+fileName), molecules, False)
             else:
-                return self.parse_output(commands.getoutput("cmsearch --ga "+rfam.rootDir+"/CMs/"+rfam_id+".cm "+fileName), molecules, True)
+                return self.parse_output(commands.getoutput("cmsearch --ga "+rfam.cache_dir+"/CMs/"+rfam_id+".cm "+fileName), molecules, True)
 
-    def _parse_output(self, output, molecules, gathering_threshold = True):
+    def parse_output(self, output, molecules, gathering_threshold = True):
         """
         Parse the output of the cmsearch tool.
 

@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+Script to manage GLite jobs
+"""
 
 import sys
 from pyrna import glite

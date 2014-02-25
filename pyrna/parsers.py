@@ -1239,7 +1239,8 @@ def parse_stockholm(stockholm_data):
 
     for key in alignedSequences.keys():
         rna = RNA(name=key, sequence=alignedSequences[key])
-        rna.source = 'db:rfam:'+rfam_id
+        if rfam_id:
+            rna.source = 'db:rfam:'+rfam_id
         if not key.split('/') == 2:
             rna.organism = key
         rnas.append(rna)

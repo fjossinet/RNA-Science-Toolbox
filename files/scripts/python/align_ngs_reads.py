@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-This scripts aligns NGS reads from a FASTQ file to genomic sequences stored in a MongoDB instance. The aligned reads will be then clustered and the clusters will be stored in a clusters collection of the MongoDB instance.
+This script aligns NGS reads from a FASTQ file to genomic sequences stored in a MongoDB instance. The aligned reads will then be clustered and the clusters will be stored in the collection "annotations" of a MongoDB database (whose name is one of the script arguments).
 """
 
 from pymongo import MongoClient
