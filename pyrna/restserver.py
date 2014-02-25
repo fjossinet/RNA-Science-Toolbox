@@ -439,9 +439,7 @@ def plot_2d():
     return Response(ujson.dumps(coords), mimetype='application/json')
 
 @app.route('/api/pdb', methods=['GET', 'POST'])
-@app.route('/api/ark', methods=['GET', 'POST'])
-@app.route('/api/charn', methods=['GET', 'POST'])
-def ark():
+def pdb():
     result = None
     collection = None
     query = None
@@ -477,10 +475,7 @@ def ark():
 
     logs_db['webservices'].insert(log)
 
-    if request.path.endswith('pdb') or request.path.endswith('ark'):
-        db = mongodb['PDB']
-    elif request.path.endswith('charn'):
-        db = mongodb['charndb']
+    db = mongodb['PDB']
 
     if collection and query:
         import simplejson
