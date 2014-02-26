@@ -367,7 +367,7 @@ class Rfam:
     -----------
     - rfam_id: the id of the Rfam family
     - aln_type (default: 'seed'): the type of alignment. Can be equal to 'seed' or 'full'.
-    - nse_labels (default: 0): 0 to have organism names and 1 to have accession numbers/start-end. If equal to 1, the dict returned  in the tuple will be empty.
+    - nse_labels (default: 0): 0 to have organism names and 1 to have accession numbers/start-end. If equal to 1, the dict returned in the tuple will be empty. If data are recovered from the FTP of Rfam, this function will always return accession numbers/start-end.
     - format (default: None): the format of the data returned. Can beequal to 'stockholm', 'fasta' or None. 
 
     Returns:

@@ -23,7 +23,7 @@ class AnnotateTask(Task):
         if rfam_version:
             self.rfam = Rfam(version = rfam_version)
         else:
-            self.rfam = Rfam()
+            self.rfam = Rfam(use_website = True) #if we use the current version, we can use the website, with the advantage to have sequences labeled with the organism name.
         self.calibrate = calibrate
         self.gathering_threshold = gathering_threshold
 
@@ -138,7 +138,8 @@ class AnnotateTask(Task):
                 genomic_sequences.append(dna)
             
             self.rfam.generate_CMs()
-            self.rfam.generate_seed_alignments()
+            if not self.rfam.use_website:
+                self.rfam.generate_seed_alignments()
 
             for id in families_range:
 
@@ -160,7 +161,7 @@ class AnnotateTask(Task):
                         for genomic_sequence in genomic_sequences:
                             inputs.append(str(genomic_sequence._id)+"@genomes")
 
-                        inputs.append("db:rfam:RF%05u" % id)
+                        inputs.append("db:rfam:%s" % id)
 
                         computation = {
                             '_id': str(ObjectId()),
@@ -297,10 +298,11 @@ class AnnotateTask(Task):
                         ncRNA = ncRNAs[int(aligned_molecule.name)]
                         aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+self.db_name
                         our_molecules.append(aligned_molecule)
-                    else:
-                        our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the RFAM alignment
-
-                
+                    else: #we don't forget to keep the former molecules from the RFAM alignment
+                        if len(organisms): #if we recovered a dict with couples conforming to organism_names <-> nse
+                            aligned_molecule.name = aligned_molecule.name+"[%s]"%organisms.get(aligned_molecule.name,"")
+                        our_molecules.append(aligned_molecule) 
+                        
                 #now we have an in-house alignment for this RFAM family
                 in_house_alignment = {
                     '_id': str(ObjectId()),
@@ -321,7 +323,7 @@ class AnnotateTask(Task):
                 ncRNA['alignment'] = in_house_alignment['_id']+"@alignments"
                 self.db['ncRNAs'].insert(ncRNA)
                 outputs.append(ncRNA['_id']+"@ncRNAs")
-        else: #if we used an in-house alignment, we increase the iteration
+        else: #if we used an in-house alignment, we increase the iteration to indicate that we processed it
             if in_house_alignment:
                 in_house_alignment['iteration'] = in_house_alignment.get('iteration', 1) +1
                 self.client['comparative_genomics']['alignments'].save(in_house_alignment)
