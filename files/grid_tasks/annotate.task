@@ -39,11 +39,11 @@ class AnnotateTask(Task):
             in_house_alignments_to_process.append(in_house_alignment['_id'])
 
         if self.calibrate:
-            count = len(in_house_alignments_to_process)
+            total_families = in_house_alignments_to_process
         else:   
             total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
-            count = int(math.floor(len(total_families)/self.familiesPerJob)+1)
-
+        
+        count = int(math.floor(len(total_families)/self.familiesPerJob)+1)
         print "# of jobs to submit: %i"%count
         return count
 
