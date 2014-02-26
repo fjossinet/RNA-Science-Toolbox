@@ -283,10 +283,12 @@ class AnnotateTask(Task):
                     if aligned_molecule.name.isdigit():
                         ncRNA = ncRNAs[int(aligned_molecule.name)]
                         aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+self.db_name
-                        our_molecules.append(aligned_molecule) 
+                        our_molecules.append(aligned_molecule)
+                    else:
+                        our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the in-house alignment
 
                 in_house_alignment['iteration'] = in_house_alignment.get('iteration', 1) +1 #this is a new iteration for this in-house alignment     
-            else: #we align the new hits to the RFAM family and we reduce the alignment to our own molecules
+            else: #we align the new hits to the RFAM family
                 (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_realign, rfam_id = id, rfam = self.rfam)
                 #we keep only the sequences from our own organisms in the alignment, whose name is a digit
                 for aligned_molecule in aligned_molecules:
@@ -294,6 +296,8 @@ class AnnotateTask(Task):
                         ncRNA = ncRNAs[int(aligned_molecule.name)]
                         aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+self.db_name
                         our_molecules.append(aligned_molecule)
+                    else:
+                        our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the RFAM alignment
                 
                 #now we have an in-house alignment for this RFAM family
                 in_house_alignment = {
