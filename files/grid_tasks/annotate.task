@@ -178,8 +178,9 @@ class AnnotateTask(Task):
                         stockholm_content = to_stockholm(consensus_2d, rnas)
                         cm_content = in_house_alignment.get('cm', None)
                         if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the creation of the CM data has been stopped.
-                            print "No cm data found for %s."%id
                             self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails)
+                        else:
+                            print "No cm data found for %s."%id    
                     else:
                         print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
 
@@ -298,6 +299,7 @@ class AnnotateTask(Task):
                         our_molecules.append(aligned_molecule)
                     else:
                         our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the RFAM alignment
+
                 
                 #now we have an in-house alignment for this RFAM family
                 in_house_alignment = {
@@ -319,6 +321,10 @@ class AnnotateTask(Task):
                 ncRNA['alignment'] = in_house_alignment['_id']+"@alignments"
                 self.db['ncRNAs'].insert(ncRNA)
                 outputs.append(ncRNA['_id']+"@ncRNAs")
+        else: #if we used an in-house alignment, we increase the iteration
+            if in_house_alignment:
+                in_house_alignment['iteration'] = in_house_alignment.get('iteration', 1) +1
+                self.client['comparative_genomics']['alignments'].save(in_house_alignment)
 
         #one computation per rfam_id
         computation['outputs'] = outputs
