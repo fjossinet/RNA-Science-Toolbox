@@ -176,8 +176,10 @@ class AnnotateTask(Task):
                     if in_house_alignment: 
                         rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
                         stockholm_content = to_stockholm(consensus_2d, rnas)
-                        cm_content = in_house_alignment['cm']
-                        self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails)
+                        cm_content = in_house_alignment.get('cm', None)
+                        if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the creation of the CM data has been stopped.
+                            print "No cm data found for %s."%id
+                            self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails)
                     else:
                         print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
 
