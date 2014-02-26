@@ -302,7 +302,7 @@ class AnnotateTask(Task):
                         if len(organisms): #if we recovered a dict with couples conforming to organism_names <-> nse
                             aligned_molecule.name = aligned_molecule.name+"[%s]"%organisms.get(aligned_molecule.name,"")
                         our_molecules.append(aligned_molecule) 
-                        
+
                 #now we have an in-house alignment for this RFAM family
                 in_house_alignment = {
                     '_id': str(ObjectId()),
@@ -314,7 +314,7 @@ class AnnotateTask(Task):
 
                 self.client['comparative_genomics']['alignments'].insert(in_house_alignment)
 
-            in_house_alignment['alignment'] = to_clustalw(consensus2D, our_molecules, curate = True)
+            in_house_alignment['alignment'] = to_clustalw(consensus2D, our_molecules)
 
             self.client['comparative_genomics']['alignments'].save(in_house_alignment) #we update the in_house_alignment
             outputs.append(in_house_alignment['_id']+"@alignments")

@@ -387,7 +387,7 @@ def to_clustalw(base_pairs, molecules, curate = False):
     ------
     the clustalw data as a String. The name of the molecules will be non-redundant and will not contain any spaces characters.
     """
-
+    
     sequence_lines = []
     bn = to_bn(base_pairs, len(molecules[0]))
     c = 0
@@ -395,7 +395,7 @@ def to_clustalw(base_pairs, molecules, curate = False):
     while c < len(molecules[0]):
         names = []
         for molecule in molecules:
-            if not gaps_positions:
+            if gaps_positions == None: #and not "if not gaps_positions:". The intersection of gap positions could lead to an empty set (no columns to remove in the alignment). And then, such condition would become true and we will restart with a list of positions corresponding to those of the next molecule processed!! 
                 gaps_positions = set(molecule.get_gaps_positions())
             else: #we search the same gap positions
                 gaps_positions = gaps_positions.intersection(molecule.get_gaps_positions())
@@ -1140,7 +1140,7 @@ def parse_vienna(vienna_data):
 
 def parse_bn(bn):
     """
-    Parse a bracket notation.
+    Parse a bracket notation. The function supports characters like '(', ')', '[', ']', '{' and '}'
     
     Parameters:
     ---------
@@ -1151,16 +1151,34 @@ def parse_bn(bn):
     a pandas Dataframe listing the base pairs. Returns an empty Dataframe if no base-pairs are found.
     """
     i = 0
-    lastPairedPos = []
-    lastPairedSymbol = []
+    lastSquarredPairedPos = []
+    lastSquarredPairedSymbol = []
+
+    lastRoundedPairedPos = []
+    lastRoundedPairedSymbol = []
+
+    lastCurlyPairedPos = []
+    lastCurlyPairedSymbol = []
+
     basePairs = []
+
     for pos in list(bn):
         i+=1
-        if pos == '(' or pos == '{' or pos == '[':
-            lastPairedPos.append(i)
-            lastPairedSymbol.append(pos)
-        elif pos == ')' or pos == '}' or pos == ']':
-            basePairs.append(['c', lastPairedSymbol.pop(), pos, lastPairedPos.pop(), i])
+        if pos == '(':
+            lastRoundedPairedPos.append(i)
+            lastRoundedPairedSymbol.append(pos)
+        elif pos == '{':
+            lastCurlyPairedPos.append(i)
+            lastCurlyPairedSymbol.append(pos)
+        elif pos == '[':
+            lastSquarredPairedPos.append(i)
+            lastSquarredPairedSymbol.append(pos)
+        elif pos == ')':
+            basePairs.append(['c', lastRoundedPairedSymbol.pop(), pos, lastRoundedPairedPos.pop(), i])
+        elif pos == '}':
+            basePairs.append(['c', lastCurlyPairedSymbol.pop(), pos, lastCurlyPairedPos.pop(), i])
+        elif pos == ']':
+            basePairs.append(['c', lastSquarredPairedSymbol.pop(), pos, lastSquarredPairedPos.pop(), i])
 
     if len(basePairs):
         return DataFrame(basePairs, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2'])
