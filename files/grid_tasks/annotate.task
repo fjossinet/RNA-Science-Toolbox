@@ -56,9 +56,12 @@ class AnnotateTask(Task):
         for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
             if in_house_alignment['source'].startswith('db:rfam:'):
                 rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
-            in_house_alignments_to_process.append(in_house_alignment['_id'])    
+            in_house_alignments_to_process.append(in_house_alignment['_id']) 
 
-        total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
+        if self.calibrate:
+            total_families = in_house_alignments_to_process       
+        else:
+            total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
 
         f = int(math.floor(len(total_families)/self.familiesPerJob)+1)
 
@@ -94,7 +97,10 @@ class AnnotateTask(Task):
                 rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
             in_house_alignments_to_process.append(in_house_alignment['_id'])    
 
-        total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
+        if self.calibrate:
+            total_families = in_house_alignments_to_process       
+        else:
+            total_families = in_house_alignments_to_process + ["RF%05u"%x for x in rfam_ids_to_process]
 
         f = int(math.floor(len(total_families)/self.familiesPerJob)+1)
 
@@ -353,6 +359,9 @@ if __name__ == '__main__':
     check = "-check" in sys.argv
 
     calibrate = "-calibrate" in sys.argv
+
+    if calibrate:
+        db_name = "comparative_genomics"
 
     if not calibrate and not db_name or not python_abs_path or not algorithms_abs_path:
         print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families families_per_job (default: 10)] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
