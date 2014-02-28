@@ -363,7 +363,7 @@ class TertiaryStructure:
         - y (float)
         - z (float)
         """
-        atoms = []
+        _atoms = []
         keys =[]
         for k in self.residues.keys():
             keys.append(k)
@@ -373,7 +373,7 @@ class TertiaryStructure:
         for key in keys:
             atoms = self.residues[key]['atoms']
             for atom in atoms:
-                atoms.append({
+                _atoms.append({
                     'name': atom['name'],
                     'absolute position': key,
                     'position label': self.get_residue_label(key),
@@ -384,7 +384,7 @@ class TertiaryStructure:
                     'z': atom['coords'][1]
                 })
         
-        return DataFrame(atoms)
+        return DataFrame(_atoms)
 
     def add_atom(self, atom_name, absolute_position, coords):
         atom_name = re.sub("\*", "'", atom_name)

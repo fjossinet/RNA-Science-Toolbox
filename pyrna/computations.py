@@ -458,7 +458,7 @@ class Cmalign(Tool):
 
         Parameters:
         -----------
-        - molecules: an array of molecules to align
+        - molecules: a list of molecules to align
         - rfam_id: the id of the RFAM family to use for the alignment
         - rfam: an Rfam object
 
