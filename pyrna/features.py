@@ -381,7 +381,7 @@ class TertiaryStructure:
                     'chain name': self.rna.name,
                     'x': atom['coords'][0],
                     'y': atom['coords'][1],
-                    'z': atom['coords'][1]
+                    'z': atom['coords'][2]
                 })
         
         return DataFrame(_atoms)
