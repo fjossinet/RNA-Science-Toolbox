@@ -45,175 +45,179 @@ class PDB:
         Returns a list of PDB ids in answer to the query
 
         Parameters:
-        - query: the query as a PDBQuery object
+        - query: the query as a PDBQuery object or as a String (copy/pasted from the PDB website http://www.rcsb.org/pdb/software/rest.do#search)
 
         Returns:
         - a list of pdb ids
         """
-        min_res = query.min_res or '0.1'
-        max_res = query.max_res or '3.0'
-        min_date = query.min_date or None
-        max_date = query.max_date or None
-        keywords = query.keywords or []
-        authors = query.authors or []
-        pdb_ids = query.pdb_ids or []
-        title_contains = query.title_contains or []
-        contains_rna = query.contains_rna or 'Y'
-        contains_protein = query.contains_protein or 'Y'
-        contains_dna = query.contains_dna or 'N'
-        contains_hybrid = query.contains_hybrid or 'N'
-        experimental_method = query.experimental_method or 'X-RAY'
-        post_data = '<?xml version="1.0" encoding="UTF-8"?><orgPdbCompositeQuery version="1.0">'
-        ids = []
-        refinementLevel = 0
+        post_data = None
+        if type(query) == str:
+            post_data = query
+        else:    
+            min_res = query.min_res or '0.1'
+            max_res = query.max_res or '3.0'
+            min_date = query.min_date or None
+            max_date = query.max_date or None
+            keywords = query.keywords or []
+            authors = query.authors or []
+            pdb_ids = query.pdb_ids or []
+            title_contains = query.title_contains or []
+            contains_rna = query.contains_rna or 'Y'
+            contains_protein = query.contains_protein or 'Y'
+            contains_dna = query.contains_dna or 'N'
+            contains_hybrid = query.contains_hybrid or 'N'
+            experimental_method = query.experimental_method or 'X-RAY'
+            post_data = '<?xml version="1.0" encoding="UTF-8"?><orgPdbCompositeQuery version="1.0">'
+            ids = []
+            refinementLevel = 0
 
-        if experimental_method == 'X-RAY' and (max_res or min_res):
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.ResolutionQuery</queryType>\
-<description>Resolution query</description>\
-<refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
-
-            if min_res:
+            if experimental_method == 'X-RAY' and (max_res or min_res):
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
                 post_data += '\
-<refine.ls_d_res_high.min>'+min_res+'</refine.ls_d_res_high.min>'                   
-            
-            if max_res:
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.ResolutionQuery</queryType>\
+    <description>Resolution query</description>\
+    <refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
+
+                if min_res:
+                    post_data += '\
+    <refine.ls_d_res_high.min>'+min_res+'</refine.ls_d_res_high.min>'                   
+                
+                if max_res:
+                    post_data += '\
+    <refine.ls_d_res_high.max>'+max_res+'</refine.ls_d_res_high.max>'
+
+                post_data += '</orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
+
+            if max_date or min_date:
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
+                
+                post_data +='\
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.ReleaseDateQuery</queryType>\
+    <description>Release Date query</description>\
+    <refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
+                
+                if min_date:
+                    post_data += '\
+    <database_PDB_rev.date.min>'+min_date+'</database_PDB_rev.date.min>'                   
+                
+                if max_date:
+                    post_data += '\
+    <database_PDB_rev.date.max>'+max_date+'</database_PDB_rev.date.max>'
+                
+                post_data += '</orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
+
+            for i in range(0, len(title_contains)):
+                titleContain = title_contains[i]
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
                 post_data += '\
-<refine.ls_d_res_high.max>'+max_res+'</refine.ls_d_res_high.max>'
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.StructTitleQuery</queryType>\
+    <description>StructTitleQuery: struct.title.comparator=contains struct.title.value='+titleContain+'</description>\
+    <struct.title.comparator>contains</struct.title.comparator>\
+    <struct.title.value>'+titleContain+'</struct.title.value>\
+    </orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
 
-            post_data += '</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
-
-        if max_date or min_date:
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            
-            post_data +='\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.ReleaseDateQuery</queryType>\
-<description>Release Date query</description>\
-<refine.ls_d_res_high.comparator>between</refine.ls_d_res_high.comparator>'
-            
-            if min_date:
+            if keywords:
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
                 post_data += '\
-<database_PDB_rev.date.min>'+min_date+'</database_PDB_rev.date.min>'                   
-            
-            if max_date:
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.AdvancedKeywordQuery</queryType>\
+    <description>Text Search for: '+" ".join(keywords)+'</description>\
+    <keywords>'+" ".join(keywords)+'</keywords>\
+    </orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
+
+            if pdb_ids:
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
+                
                 post_data += '\
-<database_PDB_rev.date.max>'+max_date+'</database_PDB_rev.date.max>'
-            
-            post_data += '</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.StructureIdQuery</queryType>\
+    <description>Simple query for a list of PDB IDs ('+str(len(pdb_ids))+' IDs) :'+", ".join(pdb_ids)+'</description>\
+    <structureIdList>'+", ".join(pdb_ids)+'</structureIdList>\
+    </orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
 
-        for i in range(0, len(title_contains)):
-            titleContain = title_contains[i]
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.StructTitleQuery</queryType>\
-<description>StructTitleQuery: struct.title.comparator=contains struct.title.value='+titleContain+'</description>\
-<struct.title.comparator>contains</struct.title.comparator>\
-<struct.title.value>'+titleContain+'</struct.title.value>\
-</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
+            if experimental_method:
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
+                
+                post_data += '\
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\
+    <description>Experimental Method is '+experimental_method+'</description>\
+    <mvStructure.expMethod.value>'+experimental_method+'</mvStructure.expMethod.value>\
+    </orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
 
-        if keywords:
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.AdvancedKeywordQuery</queryType>\
-<description>Text Search for: '+" ".join(keywords)+'</description>\
-<keywords>'+" ".join(keywords)+'</keywords>\
-</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
+            for i in range(0, len(authors)):
+                author = authors[i]
+                if refinementLevel:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
+                else:
+                    post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
+                
+                post_data += '\
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.AdvancedAuthorQuery</queryType>\
+    <description>Author Search: Author Search: audit_author.name='+author+' OR (citation_author.name='+author+' AND citation_author.citation_id=primary)</description>\
+    <exactMatch>false</exactMatch>\
+    <audit_author.name>'+author+'</audit_author.name>\
+    </orgPdbQuery></queryRefinement>'
+                refinementLevel += 1
 
-        if pdb_ids:
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            
-            post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.StructureIdQuery</queryType>\
-<description>Simple query for a list of PDB IDs ('+str(len(pdb_ids))+' IDs) :'+", ".join(pdb_ids)+'</description>\
-<structureIdList>'+", ".join(pdb_ids)+'</structureIdList>\
-</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
-
-        if experimental_method:
+            #chain type
             if refinementLevel:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
             else:
                 post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
             
             post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.ExpTypeQuery</queryType>\
-<description>Experimental Method is '+experimental_method+'</description>\
-<mvStructure.expMethod.value>'+experimental_method+'</mvStructure.expMethod.value>\
-</orgPdbQuery></queryRefinement>'
+    <orgPdbQuery>\
+    <version>head</version>\
+    <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\
+    <description>Chain Type</description>\
+    <contains_protein>'+contains_protein+'</contains_protein>\
+    <contains_dna>'+contains_dna+'</contains_dna>\
+    <contains_rna>'+contains_rna+'</contains_rna>\
+    <contains_hybrid>'+contains_hybrid+'</contains_hybrid>\
+    </orgPdbQuery></queryRefinement>'
             refinementLevel += 1
 
-        for i in range(0, len(authors)):
-            author = authors[i]
-            if refinementLevel:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-            else:
-                post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-            
-            post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.AdvancedAuthorQuery</queryType>\
-<description>Author Search: Author Search: audit_author.name='+author+' OR (citation_author.name='+author+' AND citation_author.citation_id=primary)</description>\
-<exactMatch>false</exactMatch>\
-<audit_author.name>'+author+'</audit_author.name>\
-</orgPdbQuery></queryRefinement>'
-            refinementLevel += 1
-
-        #chain type
-        if refinementLevel:
-            post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel><conjunctionType>and</conjunctionType>'
-        else:
-            post_data += '<queryRefinement><queryRefinementLevel>'+str(refinementLevel)+'</queryRefinementLevel>'   
-        
-        post_data += '\
-<orgPdbQuery>\
-<version>head</version>\
-<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>\
-<description>Chain Type</description>\
-<contains_protein>'+contains_protein+'</contains_protein>\
-<contains_dna>'+contains_dna+'</contains_dna>\
-<contains_rna>'+contains_rna+'</contains_rna>\
-<contains_hybrid>'+contains_hybrid+'</contains_hybrid>\
-</orgPdbQuery></queryRefinement>'
-        refinementLevel += 1
-
-        post_data += '</orgPdbCompositeQuery>'
+            post_data += '</orgPdbCompositeQuery>'
 
         import urllib2
 
-        req =  urllib2.Request("http://www.rcsb.org/pdb/rest/search", data = post_data)
+        req = urllib2.Request("http://www.rcsb.org/pdb/rest/search", data = post_data)
 
         f = urllib2.urlopen(req)
         

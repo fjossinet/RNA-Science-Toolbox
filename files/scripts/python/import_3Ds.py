@@ -12,7 +12,14 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
 
     total_structures = 0
     if not rna3dhub:
-        total_structures = len(PDB().query(PDBQuery()))
+        query ="""<orgPdbQuery>
+    <version>head</version>
+    <queryType>org.pdb.query.simple.HoldingsQuery</queryType>
+    <description>Holdings : Molecule Type=complex  Experimental Method=X-RAY  </description>
+    <experimentalMethod>X-RAY</experimentalMethod>
+    <moleculeType>complex</moleculeType>
+  </orgPdbQuery>"""
+        total_structures = len(PDB().query(query))
     else:
         total_structures = len(RNA3DHub().get_clusters())
 
