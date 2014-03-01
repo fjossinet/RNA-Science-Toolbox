@@ -1077,6 +1077,58 @@ def pdb():
             result = '{"count":%i}'%len(result)
     return Response(ujson.dumps(result), mimetype='application/json')
 
+@app.route('/api/rna3dhub', methods=['GET', 'POST'])
+def rna3dhub():
+    result = None
+    collection = None
+    query = None
+    count = False
+    id = None
+    if request.method == 'POST':
+        if 'coll' in request.form:
+            collection = request.form['coll']
+        if 'query' in request.form:
+            query = request.form['query']
+        if 'id' in request.form:
+            id = request.form['id']
+        if 'count' in request.form:
+            count = True
+    else:
+        if 'coll' in request.args:
+            collection = request.args.get('coll', None)
+        if 'query' in request.args:
+            query = request.args.get('query', None)
+        if 'id' in request.args:
+            id = request.args.get('id', None)
+        if 'count' in request.args:
+            count = True
+    
+    log = {
+        '_id': str(ObjectId()),
+        'path': request.path,
+        'collection': collection,
+        'ip': request.remote_addr,
+        'method': request.method,
+        'date': str(datetime.datetime.now())
+    }
+
+    logs_db['webservices'].insert(log)
+
+    db = mongodb['RNA3DHub']
+
+    if collection and query:
+        import simplejson
+        result = list(db[collection].find(simplejson.loads(str(query))))
+        if count:
+            result = '{"count":%i}'%len(result)
+    elif collection and id:
+        result = db[collection].find_one({'_id':id})
+    elif collection:
+        result = list(db[collection].find())
+        if count:
+            result = '{"count":%i}'%len(result)
+    return Response(ujson.dumps(result), mimetype='application/json')
+
 if __name__ == '__main__':
     webserver_host = "localhost"
     webserver_port = 8080
