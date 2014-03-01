@@ -432,7 +432,7 @@ def plot_2d():
 
     rnas, base_pairs = parse_vienna(vienna_data)
     rnaplot = Rnaplot()
-    plot =  rnaplot.plot(base_pairs[0], rna[0])
+    plot =  rnaplot.plot(base_pairs[0], rnas[0])
     coords = []
     for (index, row) in plot.iterrows():
         coords.append([row['x'], row['y']])
