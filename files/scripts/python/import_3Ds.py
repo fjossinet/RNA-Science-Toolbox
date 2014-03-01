@@ -14,10 +14,12 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
     if not rna3dhub:
         query ="""<orgPdbQuery>
     <version>head</version>
-    <queryType>org.pdb.query.simple.HoldingsQuery</queryType>
-    <description>Holdings : Molecule Type=complex  Experimental Method=X-RAY  </description>
-    <experimentalMethod>X-RAY</experimentalMethod>
-    <moleculeType>complex</moleculeType>
+    <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
+    <description>Chain Type: there is a Protein and a RNA chain but not any DNA or Hybrid</description>
+    <containsProtein>Y</containsProtein>
+    <containsDna>N</containsDna>
+    <containsRna>Y</containsRna>
+    <containsHybrid>N</containsHybrid>
   </orgPdbQuery>"""
         total_structures = len(PDB().query(query))
     else:

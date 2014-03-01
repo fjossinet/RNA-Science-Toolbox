@@ -76,10 +76,12 @@ class Import3Ds(Task):
             query = """
             <orgPdbQuery>
     <version>head</version>
-    <queryType>org.pdb.query.simple.HoldingsQuery</queryType>
-    <description>Holdings : Molecule Type=complex  Experimental Method=X-RAY  </description>
-    <experimentalMethod>X-RAY</experimentalMethod>
-    <moleculeType>complex</moleculeType>
+    <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
+    <description>Chain Type: there is a Protein and a RNA chain but not any DNA or Hybrid</description>
+    <containsProtein>Y</containsProtein>
+    <containsDna>N</containsDna>
+    <containsRna>Y</containsRna>
+    <containsHybrid>N</containsHybrid>
   </orgPdbQuery>
             """
             pdb_ids = PDB().query(query)

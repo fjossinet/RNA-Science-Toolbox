@@ -69,7 +69,7 @@ A second option is to install the dependencies yourself for your Python distribu
 
     * export PYRNA_HOME=the_full_path_of_your_pyrna_location
     * export PYTHONPATH=$PYTHONPATH:$PYRNA_HOME
-    * export PATH=$PATH:$PYRNA_HOME/pyrna:$PYRNA_HOME/files/scripts/python:$PYRNA_HOME/files/scripts/shell
+    * export PATH=$PATH:$PYRNA_HOME/pyrna:$PYRNA_HOME/files/scripts/python:$PYRNA_HOME/files/scripts/shell:$PYRNA_HOME/files/scripts/grid_tasks:
 
 * reload your shell,
 * type:
@@ -113,7 +113,7 @@ You should get an output like:
 
 #Local installation of the RNA algorithms
 
-To increase the speed of your computations and/or to avoid to flood my own server, i recommend you to install the RNA algorithms locally, on your own computer. You can download and install the algorithms yourself or you can use the script "install_algorithms.sh" provided with PyRNA (and located in files/scripts/shell). This script should simplify the installation process, but this is without any guarantee. To be able to run this script efficiently, you will need to have compilation tools installed (gcc and make). You don't need to install all of the algorithms listed above. It will depend on the classes you will import from the module pyrna.computations in your scripts. Once PyRNA installed successfully (see the Quickstart section above):
+To increase the speed of your computations and/or to avoid to flood my own server, i recommend you to install the RNA algorithms locally, on your own computer. You can download and install the algorithms yourself or you can use the script "install_algorithms.sh" provided with PyRNA (and located in files/scripts/shell). This script should simplify the installation process, but this is without any guarantee. To be able to run this script efficiently, you will need to have compilation tools installed (gcc, g++ and make). You don't need to install all of the algorithms listed above. It will depend on the classes you will import from the module pyrna.computations in your scripts. Once PyRNA installed successfully (see the Quickstart section above):
 
 * in a terminal, type:
 
