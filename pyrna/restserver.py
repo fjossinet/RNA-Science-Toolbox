@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from flask import Flask, request, Response ,render_template, abort
-from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt
+from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt, RnaAlifold
 from pyrna.db import PDB
 from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw
 from pyrna.features import RNA
