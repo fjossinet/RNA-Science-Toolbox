@@ -208,7 +208,7 @@ def to_pdb(tertiary_structure, export_numbering_system = False):
     i = 1
     keys = []
 
-    for k in tertiary_structure.residues.keys():
+    for k in tertiary_structure.residues:
         keys.append(k)
 
     keys.sort() #the absolute position are sorted
@@ -1213,7 +1213,7 @@ def parse_clustalw(clustalw_data):
 
     rnas = []
     
-    for key in alignedSequences.keys():
+    for key in alignedSequences:
         rna = RNA(name=key, sequence=alignedSequences[key])
         rnas.append(rna)
 
@@ -1255,7 +1255,7 @@ def parse_stockholm(stockholm_data):
 
     rnas = []
 
-    for key in alignedSequences.keys():
+    for key in alignedSequences:
         rna = RNA(name=key, sequence=alignedSequences[key])
         if rfam_id:
             rna.source = 'db:rfam:'+rfam_id

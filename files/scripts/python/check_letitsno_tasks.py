@@ -100,7 +100,7 @@ def check(db_host = "localhost", db_port = 27017):
 
                         lines_to_keep = []
                         h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h.readlines():
+                        for l in h:
                             if not l in lines_to_remove:
                                 lines_to_keep.append(l)    
                         h.close()
@@ -140,7 +140,7 @@ def check(db_host = "localhost", db_port = 27017):
 
                         lines_to_keep = []
                         h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h.readlines():
+                        for l in h:
                             if not l in lines_to_remove:
                                 lines_to_keep.append(l)    
                         h.close()
@@ -160,7 +160,7 @@ def check(db_host = "localhost", db_port = 27017):
 
                         lines_to_keep = []
                         h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h.readlines():
+                        for l in h:
                             if not l in lines_to_remove:
                                 lines_to_keep.append(l)    
                         h.close()

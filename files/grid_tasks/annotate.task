@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-This script realizes an iterative annotation process for ncRNAs. For a species given as argument and available in the MongoDB instance, it will search for new ncRNA candidates for all the alignments/families stored in a database named "comparative_genomics" (in-house alignments). It will also check if some RFAM families from the last RFAM release are not  available as in-house alignments. If not, then this script will search for ncRNAs candidates for these "new" RFAM families.
+This script realizes an iterative annotation process for ncRNAs. For a species given as argument and available in a MongoDB instance, it will search for new ncRNA candidates for all the alignments/families stored in a database named "comparative_genomics" (in-house alignments). It will also check if some RFAM families from the last RFAM release are not available as in-house alignments. If not, then this script will search for ncRNAs candidates for these "new" RFAM families.
 """
 
 import os, sys, math, datetime, re
@@ -178,13 +178,12 @@ class AnnotateTask(Task):
                         rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
                         stockholm_content = to_stockholm(consensus_2d, rnas)
                         cm_content = in_house_alignment.get('cm', None)
-                        if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the creation of the CM data has been stopped.
+                        if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the generation of the CM data has been stopped.
                             self.annotate_genomic_sequences_with_cmsearch(genomic_sequences, id, in_house_alignment, cm_content, stockholm_content, familiesDetails)
                         else:
                             print "No cm data found for %s."%id    
                     else:
                         print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
-
 
         self.client.disconnect()            
 

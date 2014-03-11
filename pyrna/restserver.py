@@ -386,7 +386,7 @@ def compute_2d():
 
                 residues_descr = {}
                 keys=[]
-                for k in ts.residues.keys():
+                for k in ts.residues:
                     keys.append(k)
 
                 keys.sort() #the absolute position are sorted

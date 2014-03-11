@@ -365,7 +365,7 @@ class TertiaryStructure:
         """
         _atoms = []
         keys =[]
-        for k in self.residues.keys():
+        for k in self.residues:
             keys.append(k)
 
         keys.sort() #the absolute position are sorted

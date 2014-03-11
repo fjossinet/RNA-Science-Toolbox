@@ -343,13 +343,13 @@ class RNA3DHub:
 class Rfam:
 
     """
-    Wrapper for the Rfam database (http://rfam.sanger.ac.uk/)
+    Wrapper for the Rfam database (http://rfam.sanger.ac.uk/). This class allows you to download the data from the FTP of Rfam (use_website = False) or to download them directly from the website (use_website = True). The website is restricted to the last version of Rfam. The FTP allows you to choose any version.
     """
 
     """
     Parameters:
     -----------
-    - use_website : if False, data will be downloaded from the FTP of Rfam. If True, data will be downloaded from the website using URLs (default: False).
+    - use_website : if False, you will need to call the functions generate_seed/full_alignments() before to call get_entry(). If True, data will be downloaded directly from the website using URLs for each call of get_entry() (default: False).
     - cache_dir (default: None): the directory used to cache data if download from the FTP. If None, the wrapper will use /tmp/RFAM_${random_name} 
     - version: the version of Rfam to be used. If data are downloaded from the website, this parameter is not used and only the CURRENT version will be used.
     """
@@ -451,9 +451,8 @@ class Rfam:
             shutil.os.remove(self.cache_dir+'/rfam.txt')
         familiesDetails = []
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
-        f = open(self.cache_dir+'/rfam.txt')
-        lines = f.readlines()
-        for line in lines:
+        h = open(self.cache_dir+'/rfam.txt')
+        for line in h:
             rfam_family = {}
             familiesDetails.append(rfam_family)
             tokens = line.split('\t')
@@ -463,7 +462,7 @@ class Rfam:
             rfam_family['description'] = tokens[4]
             rfam_family['seed'] = tokens[16]
             rfam_family['full'] = tokens[17]
-        f.close()
+        h.close()
         return DataFrame(familiesDetails)
 
     def get_families_with_structures(self):
@@ -488,15 +487,13 @@ class Rfam:
             shutil.os.remove(self.cache_dir+'/rfam.txt')
         database_ids_2_rfam_ids = {}
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
-        f = open(self.cache_dir+'/rfam.txt')
-        lines = f.readlines()
-        for line in lines:
+        h = open(self.cache_dir+'/rfam.txt')
+        for line in h:
             tokens = line.split('\t')
             database_ids_2_rfam_ids[tokens[0]] = tokens[2]
-        f.close()
-        f = open(self.cache_dir+'/pdb_rfam_reg.txt')
-        lines = f.readlines()
-        for line in lines:
+        h.close()
+        h = open(self.cache_dir+'/pdb_rfam_reg.txt')
+        for line in h:
             rfam_family = {}
             tokens = line.split('\t')
             rfam_accession = database_ids_2_rfam_ids[tokens[1]]
@@ -510,7 +507,7 @@ class Rfam:
             if not rfam_families_with_3Ds.has_key(rfam_accession):
                 rfam_families_with_3Ds[rfam_accession] = []    
             rfam_families_with_3Ds[rfam_accession].append(rfam_family)       
-        f.close()
+        h.close()
         return rfam_families_with_3Ds
 
     def get_genomic_entries(self):
@@ -524,19 +521,21 @@ class Rfam:
         - name of the organism
         - lineage of the organism
         """
+        if self.use_website:
+            raise Exception("Cannot be done from the website (try use_website = False) ")
         organisms = []
         if os.path.exists(self.cache_dir+'/genome_entry.txt'):
             shutil.os.remove(self.cache_dir+'/genome_entry.txt')
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.cache_dir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
-        f = open(self.cache_dir+'/genome_entry.txt')
-        lines = f.readlines()
-        for line in lines:
+        h = open(self.cache_dir+'/genome_entry.txt')
+        for line in h:
             tokens = line.split('\t')
             organism = {}
             organism['accession'] = tokens[1]
             organism['name'] = tokens[3]
             organism['lineage'] = tokens[5]
             organisms.append(organism)
+        h.close()
         return DataFrame(organisms)
 
     def generate_seed_alignments(self):
@@ -548,12 +547,11 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/seed/')
             shutil.os.mkdir(self.cache_dir+'/seed/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/seed/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.seed.gz"], shell=True)
-        f = open(self.cache_dir+'/seed/Rfam.seed')
-        lines = f.readlines()
+        h = open(self.cache_dir+'/seed/Rfam.seed')
         currentAccession = None
         currentContent = None
 
-        for line in lines:
+        for line in h:
             if re.match('^#=GF AC', line):
                 if currentContent and currentAccession:
                     output = open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w')
@@ -570,7 +568,7 @@ class Rfam:
             output.write(currentContent)
             output.close()
                             
-        f.close()    
+        h.close()    
                
     def generate_full_alignments(self):
         """
@@ -581,12 +579,11 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/fulls')
             shutil.os.mkdir(self.cache_dir+'/full/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/full/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.full.gz"], shell=True)
-        f = open(self.cache_dir+'/full/Rfam.full')
-        lines = f.readlines()
+        h = open(self.cache_dir+'/full/Rfam.full')
         currentAccession = None
         currentContent = None
 
-        for line in lines:
+        for line in h:
             if re.match('^#=GF AC', line):
                 if currentContent and currentAccession:
                     output = open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w')
@@ -603,7 +600,7 @@ class Rfam:
             output.write(currentContent)
             output.close()
                             
-        f.close()
+        h.close()
 
     def generate_CMs(self):
         """
@@ -614,8 +611,7 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/CMs/')
             shutil.os.mkdir(self.cache_dir+'/CMs/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/CMs/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.cm.gz"], shell=True)
-        f = open(self.cache_dir+'/CMs/Rfam.cm')
-        lines = f.readlines()
+        h = open(self.cache_dir+'/CMs/Rfam.cm')
 
         familyName = None
         rfamHeader = None
@@ -623,7 +619,7 @@ class Rfam:
         currentAccession = None
         currentContent = None
 
-        for line in lines:
+        for line in h:
             if re.match('/^\/\//', line) and currentContent :
                 currentContent += line
             elif re.match('^INFERNAL', line):
@@ -644,12 +640,12 @@ class Rfam:
                 currentContent += line
             elif currentContent:
                 currentContent += line
-        f.close()
+        h.close()
 
         if currentContent:
             families[currentAccession] = currentContent;
         
-        for key in families.keys():
+        for key in families:
             f = open(self.cache_dir+'/CMs/'+key+'.cm', 'w')
             f.write(families[key])
             f.close()

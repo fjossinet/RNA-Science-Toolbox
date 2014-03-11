@@ -211,7 +211,7 @@ class Import3Ds(Task):
 
         residues_descr = {}
         keys=[]
-        for k in tertiary_structure.residues.keys():
+        for k in tertiary_structure.residues:
             keys.append(k)
 
         keys.sort() #the absolute position are sorted

@@ -119,7 +119,7 @@ def check_jobs_statuses(submission_output, serialize=False, suffix="", verbose =
         print "Cannot find %s"%submission_output
         return
     submission_dir =os.path.dirname(os.path.realpath(submission_output))
-    f = open(submission_output,'r')
+    h = open(submission_output,'r')
     running_jobs = 0
     scheduled_jobs = 0
     failed_jobs = 0
@@ -141,7 +141,7 @@ def check_jobs_statuses(submission_output, serialize=False, suffix="", verbose =
         running_status_output = open(submission_dir+"/running_jobs"+suffix,'w')
         cleared_jobs_output = open(submission_dir+"/cleared_jobs"+suffix,'w')
         scheduled_jobs_output = open(submission_dir+"/scheduled_jobs"+suffix,'w')
-    for line in f.readlines():
+    for line in h:
         tokens = line.split(" ")
         output = commands.getoutput("glite-wms-job-status "+tokens[1].strip())
         if re.search("Current Status:.+Success",output):
@@ -208,7 +208,7 @@ def check_jobs_statuses(submission_output, serialize=False, suffix="", verbose =
                 unknown_status_output.write(line)
     if verbose:
         print "Running: %s\nScheduled: %s\nReady: %s\nDone Failed: %s\nDone Without Success: %s\nAborted: %s\nSucceeded: %s\nWaiting: %s\nCancelled: %s\nCleared: %s\nUnknown Status: %s\n"%(str(running_jobs),str(scheduled_jobs),str(ready_jobs),str(failed_jobs),str(done_without_success), str(aborted_jobs),str(succeeded_jobs),str(waiting_jobs),str(cancelled_jobs),str(cleared_jobs), str(unknown_status))          
-    f.close()
+    h.close()
     if serialize:
         failed_jobs_output.close()
         aborted_jobs_output.close()
@@ -229,12 +229,12 @@ def cancel_jobs(jobs_list):
         print "Cannot find %s"%jobs_list
         return
     i=0
-    f = open(jobs_list,'r') 
-    for line in f.readlines():
+    h = open(jobs_list,'r') 
+    for line in h:
         tokens = line.split(" ")     
         commands.getoutput("glite-wms-job-cancel "+tokens[1].strip()+' <<< "y"')
         i+=1
-    f.close()
+    h.close()
     print "%s job(s) cancelled."%(str(i))               
 
 def resubmit_jobs(jobs_list, submission_result_file_name):
@@ -246,8 +246,8 @@ def resubmit_jobs(jobs_list, submission_result_file_name):
         print "Cannot find %s"%jobs_list
         return
     i=0
-    f = open(jobs_list,'r') 
-    for line in f.readlines():
+    h = open(jobs_list,'r') 
+    for line in h:
         tokens = line.split(" ")     
         endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
         if tokens[1].strip().startswith("https://sbgwms2"):
@@ -257,7 +257,7 @@ def resubmit_jobs(jobs_list, submission_result_file_name):
         if i%20 == 0:
             time.sleep(60)#we wait 60 seconds before to resubmit the next 20 jobs
 
-    f.close()
+    h.close()
     print "%s job(s) resubmitted."%(str(i))             
     
 def recover_job_outputs(jobs_list, output_dir):
@@ -274,8 +274,8 @@ def recover_job_outputs(jobs_list, output_dir):
         return
     output_dir = os.path.realpath(output_dir)
     i=0
-    f = open(jobs_list,'r') 
-    for line in f.readlines():
+    h = open(jobs_list,'r') 
+    for line in h:
         tokens = line.split(" ")
         id = tokens[1].strip().split("/")[-1]
         already_recovered = False
@@ -292,7 +292,7 @@ def recover_job_outputs(jobs_list, output_dir):
                     if i%50 == 0:
                         time.sleep(5)#we wait 5 seconds before to recover the next 50 jobs
                     break                               
-    f.close()
+    h.close()
     print "%s job output(s) recovered in %s."%(str(i),output_dir)               
 
 def create_jdl_file(file_name, executable, arguments, input_sandbox, virtual_organisation, job_type="Normal", output_sandbox=["stdout.out","stderr.err"],  stdoutput="stdout.out", stderror="stderr.err", proxy_server=None):
