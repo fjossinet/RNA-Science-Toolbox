@@ -411,6 +411,18 @@ class Rfam:
             (rnas, organisms, consensus2D) = parsers.parse_stockholm(content)
             return parsers.to_fasta(rnas)
 
+    def get_CM(self, rfam_id):
+        """
+        Return the content for a covariance model
+        """
+        content = None
+        if os.path.exists(self.cache_dir+'/CMs/'+rfam_id+".cm"):
+            h = open(self.cache_dir+'/CMs/'+rfam_id+".cm")
+            content = ''.join(h.readlines())
+            h.close()
+        return content
+
+
     """
     This method returns the consensus sequence for an Rfam Entry
 
