@@ -137,41 +137,42 @@ class AnnotateTask(Task):
                         ncRNAs = []
 
                         for database_name in self.client.database_names():
-                            for ncRNA_to_be_aligned in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned':False}):
+                            for ncRNA_to_be_aligned in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned': False}):
                                 ncRNA_to_be_aligned['db_name'] = database_name #that will be useful later
                                 ncRNAs.append(ncRNA_to_be_aligned)
                                 self.client[database_name]['ncRNAs'].update({ '_id': ncRNA_to_be_aligned['_id'] }, { '$unset' : { 'aligned' : 1} })
                         
-                        cmalign = Cmalign()
+                        if len(ncRNAs):
+                            cmalign = Cmalign()
 
-                        ncRNAs_to_be_aligned = []
-                        for ncRNA in ncRNAs: #we create new ncRNA objects to be aligned with cmalign and whose names correspond to their index (their name is a digit)
-                            ncRNAs_to_be_aligned.append(RNA(name = str(ncRNAs.index(ncRNA)), sequence = ncRNA['sequence']))
+                            ncRNAs_to_be_aligned = []
+                            for ncRNA in ncRNAs: #we create new ncRNA objects to be aligned with cmalign and whose names correspond to their index (their name is a digit)
+                                ncRNAs_to_be_aligned.append(RNA(name = str(ncRNAs.index(ncRNA)), sequence = ncRNA['sequence']))
 
-                        our_molecules = []
-                        consensus2D = None
+                            our_molecules = []
+                            consensus2D = None
 
-                        rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
-                        stockholm_content = to_stockholm(consensus_2d, rnas)
-                        cm_content = in_house_alignment.get('cm', None)
+                            rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
+                            stockholm_content = to_stockholm(consensus_2d, rnas)
+                            cm_content = in_house_alignment.get('cm', None)
 
-                        if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the generation of the CM data has been stopped.
-                            (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_be_aligned, stockholm_content = stockholm_content, cm_content = cm_content)
-                    
-                            for aligned_molecule in aligned_molecules:
-                                if aligned_molecule.name.isdigit():
-                                    ncRNA = ncRNAs[int(aligned_molecule.name)]
-                                    aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+ncRNA['db_name']
-                                    our_molecules.append(aligned_molecule)
-                                else:
-                                    our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the in-house alignment
-                            
-                            in_house_alignment['alignment'] = to_clustalw(consensus2D, our_molecules)
+                            if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the generation of the CM data has been stopped.
+                                (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_be_aligned, stockholm_content = stockholm_content, cm_content = cm_content)
+                        
+                                for aligned_molecule in aligned_molecules:
+                                    if aligned_molecule.name.isdigit():
+                                        ncRNA = ncRNAs[int(aligned_molecule.name)]
+                                        aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+ncRNA['db_name']
+                                        our_molecules.append(aligned_molecule)
+                                    else:
+                                        our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the in-house alignment
+                                
+                                in_house_alignment['alignment'] = to_clustalw(consensus2D, our_molecules)
 
-                            self.client['comparative_genomics']['alignments'].save(in_house_alignment)
+                                self.client['comparative_genomics']['alignments'].save(in_house_alignment)
 
-                        else:
-                            print "No cm data found for %s."%id                      
+                            else:
+                                print "No cm data found for %s."%id                      
 
                     else:
                         print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
