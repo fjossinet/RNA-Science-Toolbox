@@ -295,7 +295,7 @@ class AnnotateTask(Task):
                     rfam_id = in_house_alignment['source'].split("db:rfam:")[1]
                     ncRNA['name'] = "[New] "+familiesDetails[familiesDetails['accession'] == rfam_id].iloc[0,4]#id
                     ncRNA['class'] = "[New] "+familiesDetails[familiesDetails['accession'] == rfam_id].iloc[0,2]#family
-                else: #this is an in-house alignment from a different origin. It it planed that an in-house alignment will have a name and a class field
+                else: #this is an in-house alignment from a different origin. It is planed that an in-house alignment will have a name and a class field
                     ncRNA['name'] = "[New] "+in_house_alignment.get('name', 'Unknown')
                     ncRNA['class'] = "[New] "+in_house_alignment.get('class', 'Unknown')
 
@@ -318,19 +318,21 @@ class AnnotateTask(Task):
 
         if len(ncRNAs):
 
-            if not in_house_alignment: #we create an in-house alignment that is a copy of the RFAM data used
-                stockholm_content = self.rfam.get_entry(rfam_id = "%s" % id, format='stockholm')
-                (aligned_molecules, organisms, consensus2D) = parse_stockholm(stockholm_content)
-                in_house_alignment = {
-                    '_id': str(ObjectId()),
-                    'source': "db:rfam:%s" % id,
-                    'name': familiesDetails[familiesDetails['accession'] == id].iloc[0,4],
-                    'class': familiesDetails[familiesDetails['accession'] == id].iloc[0,2],
-                    'alignment': to_clustalw(consensus2D, aligned_molecules),
-                    'cm': self.rfam.get_CM(id)
-                }
+            if not in_house_alignment: #here this means that the job file has asked for an RFAM alignment but......
+                in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'source': 'db:rfam:%s'% id}) #it is possible that, meanwhile, another job has recorded an in-house alignment for this RFAM family
+                if not in_house_alignment: #if not, it is up to this job to record a new in house alignment
+                    stockholm_content = self.rfam.get_entry(rfam_id = "%s" % id, format='stockholm')
+                    (aligned_molecules, organisms, consensus2D) = parse_stockholm(stockholm_content)
+                    in_house_alignment = {
+                        '_id': str(ObjectId()),
+                        'source': "db:rfam:%s" % id,
+                        'name': familiesDetails[familiesDetails['accession'] == id].iloc[0,4],
+                        'class': familiesDetails[familiesDetails['accession'] == id].iloc[0,2],
+                        'alignment': to_clustalw(consensus2D, aligned_molecules),
+                        'cm': self.rfam.get_CM(id)
+                    }
 
-                self.client['comparative_genomics']['alignments'].insert(in_house_alignment)
+                    self.client['comparative_genomics']['alignments'].insert(in_house_alignment)
             
             outputs.append(in_house_alignment['_id']+"@alignments")
 
