@@ -10,7 +10,7 @@ from pyrna.task import Task
 from pyrna.db import Rfam
 from pyrna.features import DNA, RNA
 from pyrna.computations import Gotohscan, Blastr, Cmsearch, Cmalign, Cmbuild, Cmcalibrate
-from pyrna.parsers import to_clustalw, parse_stockholm, to_stockholm, parse_clustalw
+from pyrna.parsers import to_clustalw, parse_stockholm, to_stockholm, parse_clustalw, consensus2d_to_base_pairs, to_bn
 
 from pandas import DataFrame
 from bson.objectid import ObjectId
@@ -96,7 +96,7 @@ class AnnotateTask(Task):
         for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
             if in_house_alignment['source'].startswith('db:rfam:'):
                 rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
-            in_house_alignments_to_process.append(in_house_alignment['_id'])    
+            in_house_alignments_to_process.append(in_house_alignment['_id'])
 
         if self.calibrate or self.align:
             total_families = in_house_alignments_to_process       
@@ -119,6 +119,7 @@ class AnnotateTask(Task):
             for id in families_range:
                 if not id.startswith("RF"):
                     in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'_id':id})
+                    print in_house_alignment['source']
                     if in_house_alignment:
                         rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
                         stockholm_content = to_stockholm(consensus_2d, rnas)
@@ -133,36 +134,57 @@ class AnnotateTask(Task):
             for id in families_range:
                 if not id.startswith("RF"):
                     in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'_id':id})
+                    
                     if in_house_alignment:
-                        ncRNAs = []
+                        ncRNAs_hits_to_keep_in_alignment = []
+                        ncRNAs_hits_to_not_keep_in_alignment = []
 
                         for database_name in self.client.database_names():
-                            for ncRNA_to_be_aligned in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned': False}):
-                                ncRNA_to_be_aligned['db_name'] = database_name #that will be useful later
-                                ncRNAs.append(ncRNA_to_be_aligned)
-                                self.client[database_name]['ncRNAs'].update({ '_id': ncRNA_to_be_aligned['_id'] }, { '$unset' : { 'aligned' : 1} })
+                            print database_name
+                            for new_ncRNA_hit in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned': False}):
+                                if new_ncRNA_hit.get('score', 0) < 1e-5: #if no score, we have no way to know if it's interesting or not. So we keep it (so score = 0)
+                                    new_ncRNA_hit['db_name'] = database_name #that will be useful later
+                                    ncRNAs_hits_to_keep_in_alignment.append(new_ncRNA_hit)
+                                    self.client[database_name]['ncRNAs'].update({ '_id': new_ncRNA_hit['_id'] }, { '$unset' : { 'aligned' : 1} })
+                                else: #this ncRNAs hits will be aligned just to infer their secondary structure. But the alignment will not be kept.
+                                    new_ncRNA_hit['db_name'] = database_name #that will be useful later
+                                    ncRNAs_hits_to_not_keep_in_alignment.append(new_ncRNA_hit)
+                                    self.client[database_name]['ncRNAs'].update({ '_id': new_ncRNA_hit['_id'] }, { '$unset' : { 'aligned' : 1} })
                         
-                        if len(ncRNAs):
-                            cmalign = Cmalign()
+                        cmalign = Cmalign()
+                        our_molecules = []
+                        consensus2D = None
 
-                            ncRNAs_to_be_aligned = []
-                            for ncRNA in ncRNAs: #we create new ncRNA objects to be aligned with cmalign and whose names correspond to their index (their name is a digit)
-                                ncRNAs_to_be_aligned.append(RNA(name = str(ncRNAs.index(ncRNA)), sequence = ncRNA['sequence']))
+                        rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
+                        stockholm_content = to_stockholm(consensus_2d, rnas)
+                        cm_content = in_house_alignment.get('cm', None)
+                        
+                        if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the generation of the CM data has been stopped.
 
-                            our_molecules = []
-                            consensus2D = None
+                            if len(ncRNAs_hits_to_not_keep_in_alignment): #here, each ncRNA hit will be aligned separately
+                                for ncRNA in ncRNAs_hits_to_not_keep_in_alignment:
+                                    ncRNAs_to_be_aligned = [RNA(name = str(ncRNAs_hits_to_not_keep_in_alignment.index(ncRNA)), sequence = ncRNA['sequence'])]
+                                    (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_be_aligned, stockholm_content = stockholm_content, cm_content = cm_content)
+                                    for aligned_molecule in aligned_molecules:
+                                        if aligned_molecule.name.isdigit(): #we infer the secondary structure for the ncRNA hit aligned and we store it as a bracket notation
+                                            ncRNA_hit = ncRNAs_hits_to_not_keep_in_alignment[int(aligned_molecule.name)]
+                                            bn = to_bn(consensus2d_to_base_pairs(aligned_molecule, consensus2D), len(ncRNA_hit['sequence']))
+                                            self.client[ncRNA_hit['db_name']]['ncRNAs'].update({ '_id': ncRNA_hit['_id'] }, {'$set': { 'bn' : bn}})           
+                            
+                            if len(ncRNAs_hits_to_keep_in_alignment): #here, all the ncRNAs hits are aligned in a single computation
 
-                            rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
-                            stockholm_content = to_stockholm(consensus_2d, rnas)
-                            cm_content = in_house_alignment.get('cm', None)
+                                ncRNAs_to_be_aligned = []
+                                for ncRNA in ncRNAs_hits_to_keep_in_alignment: #we create new ncRNA objects to be aligned with cmalign and whose names correspond to their index (their name is a digit)
+                                    ncRNAs_to_be_aligned.append(RNA(name = str(ncRNAs_hits_to_keep_in_alignment.index(ncRNA)), sequence = ncRNA['sequence']))
 
-                            if cm_content != None: #some families can be tricky to calibrate (large families/ncRNAs). So it is possible that the generation of the CM data has been stopped.
                                 (aligned_molecules, organisms, consensus2D) = cmalign.align(ncRNAs_to_be_aligned, stockholm_content = stockholm_content, cm_content = cm_content)
                         
                                 for aligned_molecule in aligned_molecules:
                                     if aligned_molecule.name.isdigit():
-                                        ncRNA = ncRNAs[int(aligned_molecule.name)]
-                                        aligned_molecule.name = "[New]"+ncRNA['_id']+"@"+ncRNA['db_name']
+                                        ncRNA_hit = ncRNAs_hits_to_keep_in_alignment[int(aligned_molecule.name)]
+                                        bn = to_bn(consensus2d_to_base_pairs(aligned_molecule, consensus2D), len(ncRNA_hit['sequence']))
+                                        self.client[ncRNA_hit['db_name']]['ncRNAs'].update({ '_id': ncRNA_hit['_id'] }, {'$set': { 'bn' : bn}})
+                                        aligned_molecule.name = "[New]"+ncRNA_hit['_id']+"@"+ncRNA_hit['db_name']
                                         our_molecules.append(aligned_molecule)
                                     else:
                                         our_molecules.append(aligned_molecule) #we don't forget to keep the former molecules from the in-house alignment
@@ -171,8 +193,8 @@ class AnnotateTask(Task):
 
                                 self.client['comparative_genomics']['alignments'].save(in_house_alignment)
 
-                            else:
-                                print "No cm data found for %s."%id                      
+                        else:
+                            print "No cm data found for %s."%id                      
 
                     else:
                         print "Weird, i cannot recover the in-house alignment %s!!!!!"%id
@@ -187,8 +209,12 @@ class AnnotateTask(Task):
                 dna.organism = genome['organism']
                 genomic_sequences.append(dna)
             
-            self.rfam.generate_CMs()
-            self.rfam.generate_seed_alignments()
+            #is it necessary to download data from RFAM or all the families to process are in-house alignments?
+            for id in families_range:
+                if id.startswith("RF"):
+                    self.rfam.generate_CMs()
+                    self.rfam.generate_seed_alignments()
+                    break
 
             for id in families_range:
 
@@ -307,7 +333,7 @@ class AnnotateTask(Task):
             already_stored = False #already stored?? This is important to avoid to accumulate the same hits after several annotation iterations
 
             for stored_ncRNA in self.db['ncRNAs'].find({'genome': ncRNA['genome']}):
-                if stored_ncRNA['genomicStrand'] == ncRNA['genomicStrand'] and stored_ncRNA['genomicPositions'] == ncRNA['genomicPositions'] and stored_ncRNA['source'] == ncRNA['source'] and stored_ncRNA['name'] == ncRNA['name']:
+                if stored_ncRNA['genomicStrand'] == ncRNA['genomicStrand'] and stored_ncRNA['genomicPositions'] == ncRNA['genomicPositions'] and stored_ncRNA['source'] == ncRNA['source']:
                     already_stored = True
                     break
 
