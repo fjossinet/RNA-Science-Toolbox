@@ -248,7 +248,7 @@ def resubmit_jobs(jobs_list, submission_result_file_name):
             endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
             if tokens[1].strip().startswith("https://sbgwms2"):
                 endpoint="https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
-            submit_glite_job(os.path.dirname(os.path.realpath(jobs_list)),tokens[0].strip(),endpoint,submission_result_file_name)
+            submit_glite_job(os.path.dirname(os.path.realpath(jobs_list)), tokens[0].strip(), endpoint, submission_result_file_name)
             i+=1
             if i%20 == 0:
                 time.sleep(60)#we wait 60 seconds before to resubmit the next 20 jobs
