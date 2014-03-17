@@ -38,10 +38,11 @@ class AnnotateTask(Task):
 
         in_house_alignments_to_process = []
         
-        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
-            if in_house_alignment['source'].startswith('db:rfam:'):
-                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
-            in_house_alignments_to_process.append(in_house_alignment['_id'])
+        for rfam_id in rfam_ids_to_process:
+            in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'source':'db:rfam:RF%05u'%rfam_id})
+            if in_house_alignment:
+                rfam_ids_to_process.remove(rfam_id)
+                in_house_alignments_to_process.append(in_house_alignment['_id'])        
 
         if self.calibrate or self.align:
             total_families = in_house_alignments_to_process
@@ -61,10 +62,11 @@ class AnnotateTask(Task):
 
         in_house_alignments_to_process = []
         
-        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
-            if in_house_alignment['source'].startswith('db:rfam:'):
-                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
-            in_house_alignments_to_process.append(in_house_alignment['_id']) 
+        for rfam_id in rfam_ids_to_process:
+            in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'source':'db:rfam:RF%05u'%rfam_id})
+            if in_house_alignment:
+                rfam_ids_to_process.remove(rfam_id)
+                in_house_alignments_to_process.append(in_house_alignment['_id'])
 
         if self.calibrate or self.align:
             total_families = in_house_alignments_to_process       
@@ -103,10 +105,11 @@ class AnnotateTask(Task):
 
         in_house_alignments_to_process = []
         
-        for in_house_alignment in self.client['comparative_genomics']['alignments'].find():
-            if in_house_alignment['source'].startswith('db:rfam:'):
-                rfam_ids_to_process.remove(int(in_house_alignment['source'].split('db:rfam:RF')[1]))
-            in_house_alignments_to_process.append(in_house_alignment['_id'])
+        for rfam_id in rfam_ids_to_process:
+            in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'source':'db:rfam:RF%05u'%rfam_id})
+            if in_house_alignment:
+                rfam_ids_to_process.remove(rfam_id)
+                in_house_alignments_to_process.append(in_house_alignment['_id'])
 
         if self.calibrate or self.align:
             total_families = in_house_alignments_to_process       
