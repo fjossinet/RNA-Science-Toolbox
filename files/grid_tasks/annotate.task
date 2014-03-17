@@ -85,7 +85,7 @@ class AnnotateTask(Task):
         
         scriptContent = "#Families processed: "+','.join(families_range)+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
 
-        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join(str(self.rfam_ids)) if self.rfam_ids)+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
         
         print scriptContent
 
@@ -422,7 +422,7 @@ if __name__ == '__main__':
     if "-python" in sys.argv:
         python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
     if "-rfam_ids" in sys.argv:
-        rfam_ids = sys.argv[sys.argv.index("-rfam_ids")+1].split(',')
+        rfam_ids = [int(x) for x in sys.argv[sys.argv.index("-rfam_ids")+1].split(',')]
 
     check = "-check" in sys.argv
 
