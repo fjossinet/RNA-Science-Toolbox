@@ -105,10 +105,11 @@ class AnnotateTask(Task):
         print "No data to store..."            
 
     def doTheJob(self, job_id = 1):
+        familiesDetails = self.rfam.get_families_details()
+
         if self.rfam_ids:
             rfam_ids_to_process =  list(self.rfam_ids)
         else:
-            familiesDetails = self.rfam.get_families_details()
             rfam_ids_to_process = range(1, len(familiesDetails)+1)
 
         in_house_alignments_to_process = []
