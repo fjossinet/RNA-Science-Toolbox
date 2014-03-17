@@ -36,9 +36,8 @@ class Task:
             outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(script_name, self.db_name)
             if not os.path.exists(outputDir):
                 shutil.os.mkdir(outputDir)
-            info = open("%s/info"%outputDir, 'a+')
-            info.write("total jobs: %i\n"%totalJobs)
-            info.close()
+            with open("%s/info"%outputDir, 'a+') as info:
+                info.write("total jobs: %i\n"%totalJobs)
 
             for i in range(1, totalJobs+1):
                 glite.write_pyrna_job(outputDir, self.getScriptContent(i), i, [], self.endPoint, algorithms = self.algorithms, python = self.python)

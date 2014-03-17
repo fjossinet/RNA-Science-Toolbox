@@ -94,80 +94,68 @@ def check(db_host = "localhost", db_port = 27017):
                     #if we have unknown_status, aborted, done_but_failed or done_without_success jobs, we remove the annoying jobs from the submission file and we resubmit them
                     
                     if os.path.getsize("%s/%s/%s"%(dir, f, "done_but_failed_jobs")):
-                        h = open("%s/%s/%s"%(dir, f, "done_but_failed_jobs"), 'r')
-                        lines_to_remove = h.readlines()
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, "done_but_failed_jobs"), 'r') as h:
+                            lines_to_remove = h.readlines()
 
                         lines_to_keep = []
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h:
-                            if not l in lines_to_remove:
-                                lines_to_keep.append(l)    
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'r') as h:
+                            for l in h:
+                                if not l in lines_to_remove:
+                                    lines_to_keep.append(l)    
 
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'w')
-                        h.write(''.join(lines_to_keep))
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'w') as h:
+                            h.write(''.join(lines_to_keep))
 
                         submission_files_count += 1
                         resubmit_jobs("%s/%s/%s"%(dir, f, "done_but_failed_jobs"), "submission_result_%i"%submission_files_count)
                         everything_done = False
 
                     if os.path.getsize("%s/%s/%s"%(dir, f, "done_without_success_jobs")):
-                        h = open("%s/%s/%s"%(dir, f, "done_without_success_jobs"), 'r')
-                        lines_to_remove = h.readlines()
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, "done_without_success_jobs"), 'r') as h:
+                            lines_to_remove = h.readlines()
 
                         lines_to_keep = []
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h.readlines():
-                            if not l in lines_to_remove:
-                                lines_to_keep.append(l)    
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'r') as h:
+                            for l in h.readlines():
+                                if not l in lines_to_remove:
+                                    lines_to_keep.append(l)    
 
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'w')
-                        h.write(''.join(lines_to_keep))
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'w') as h:
+                            h.write(''.join(lines_to_keep))
 
                         submission_files_count += 1
                         resubmit_jobs("%s/%s/%s"%(dir, f, "done_without_success_jobs"), "submission_result_%i"%submission_files_count)
                         everything_done = False
                         
                     if os.path.getsize("%s/%s/%s"%(dir, f, "unknown_status_jobs")):
-                        h = open("%s/%s/%s"%(dir, f, "unknown_status_jobs"), 'r')
-                        lines_to_remove = h.readlines()
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, "unknown_status_jobs"), 'r') as h:
+                            lines_to_remove = h.readlines()
 
                         lines_to_keep = []
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h:
-                            if not l in lines_to_remove:
-                                lines_to_keep.append(l)    
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'r') as h:
+                            for l in h:
+                                if not l in lines_to_remove:
+                                    lines_to_keep.append(l)    
 
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'w')
-                        h.write(''.join(lines_to_keep))
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'w') as h:
+                            h.write(''.join(lines_to_keep))
                         
                         submission_files_count += 1
                         resubmit_jobs("%s/%s/%s"%(dir, f, "unknown_status_jobs"), "submission_result_%i"%submission_files_count)
                         everything_done = False
 
                     if os.path.getsize("%s/%s/%s"%(dir, f, "aborted_jobs")):
-                        h = open("%s/%s/%s"%(dir, f, "aborted_jobs"), 'r')
-                        lines_to_remove = h.readlines()
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, "aborted_jobs"), 'r') as h:
+                            lines_to_remove = h.readlines()
 
                         lines_to_keep = []
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'r')
-                        for l in h:
-                            if not l in lines_to_remove:
-                                lines_to_keep.append(l)    
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'r') as h:
+                            for l in h:
+                                if not l in lines_to_remove:
+                                    lines_to_keep.append(l)    
 
-                        h = open("%s/%s/%s"%(dir, f, submission_file), 'w')
-                        h.write(''.join(lines_to_keep))
-                        h.close()
+                        with open("%s/%s/%s"%(dir, f, submission_file), 'w') as h:
+                            h.write(''.join(lines_to_keep))
 
                         submission_files_count += 1
                         resubmit_jobs("%s/%s/%s"%(dir, f, "aborted_jobs"), "submission_result_%i"%submission_files_count)

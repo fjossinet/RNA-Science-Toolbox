@@ -171,14 +171,13 @@ def renumber_pdb_atoms(pdb_file):
 
     new_lines = []
     counter = 1
-    h = open(pdb_file,'r')
-    for line in h:
-        if line.startswith("ATOM") or line.startswith("HETATM"):
-            new_lines.append("%s%5s%s" % (line[0:6],counter,line[11:]))
-            counter += 1
-        else:
-            new_lines.append(line)
-    h.close()
+    with open(pdb_file) as h:
+        for line in h:
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                new_lines.append("%s%5s%s" % (line[0:6],counter,line[11:]))
+                counter += 1
+            else:
+                new_lines.append(line)
     return ''.join(new_lines)
 
 

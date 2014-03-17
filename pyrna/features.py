@@ -139,6 +139,17 @@ class Molecule:
                 c += 79
         return '\n'.join(lines)
 
+    def _repr_html_(self):
+        from pyrna.utils import chunks
+        subsequences = [''.join(subsequence) for subsequence in chunks(list(self.sequence),60)] 
+        html = "<pre>"
+        i = 0
+        for subsequence in subsequences:
+            html += str(i*60+1)+"\t"+re.sub('U', '<font color="green">U</font>', re.sub('T', '<font color="green">T</font>', re.sub('C', '<font color="orange">C</font>', re.sub('G', '<font color="red">G</font>', re.sub('A', '<font color="blue">A</font>',subsequence)))))+"\n"
+            i += 1
+        html += "</pre>"
+        return html
+
     def __add__(self, seq):
         if seq.__class__ == str:
             self.sequence = ''.join([self.sequence, seq])

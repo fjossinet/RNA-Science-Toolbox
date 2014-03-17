@@ -397,9 +397,8 @@ class Rfam:
             if not os.path.exists(path):
                 raise Exception("file %s not found!!"%path)        
             else:
-                h = open(path, 'r')
-                content = h.read()
-                h.close()
+                with open(path) as h:
+                    content = h.read()
                 if not content.strip().split('\n')[-1].strip() == '//': #incomplete file
                     raise Exception("file %s is incomplete!!"%path)    
 
@@ -417,9 +416,8 @@ class Rfam:
         """
         content = None
         if os.path.exists(self.cache_dir+'/CMs/'+rfam_id+".cm"):
-            h = open(self.cache_dir+'/CMs/'+rfam_id+".cm")
-            content = ''.join(h.readlines())
-            h.close()
+            with open(self.cache_dir+'/CMs/'+rfam_id+".cm") as h:
+                content = ''.join(h.readlines())
         return content
 
 
@@ -463,18 +461,17 @@ class Rfam:
             shutil.os.remove(self.cache_dir+'/rfam.txt')
         familiesDetails = []
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
-        h = open(self.cache_dir+'/rfam.txt')
-        for line in h:
-            rfam_family = {}
-            familiesDetails.append(rfam_family)
-            tokens = line.split('\t')
-            rfam_family['id'] = tokens[3]
-            rfam_family['accession'] = tokens[2]
-            rfam_family['family'] = re.sub(';',',', re.sub(';$','',tokens[18])).strip()
-            rfam_family['description'] = tokens[4]
-            rfam_family['seed'] = tokens[16]
-            rfam_family['full'] = tokens[17]
-        h.close()
+        with open(self.cache_dir+'/rfam.txt') as h:
+            for line in h:
+                rfam_family = {}
+                familiesDetails.append(rfam_family)
+                tokens = line.split('\t')
+                rfam_family['id'] = tokens[3]
+                rfam_family['accession'] = tokens[2]
+                rfam_family['family'] = re.sub(';',',', re.sub(';$','',tokens[18])).strip()
+                rfam_family['description'] = tokens[4]
+                rfam_family['seed'] = tokens[16]
+                rfam_family['full'] = tokens[17]
         return DataFrame(familiesDetails)
 
     def get_families_with_structures(self):
@@ -499,27 +496,25 @@ class Rfam:
             shutil.os.remove(self.cache_dir+'/rfam.txt')
         database_ids_2_rfam_ids = {}
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
-        h = open(self.cache_dir+'/rfam.txt')
-        for line in h:
-            tokens = line.split('\t')
-            database_ids_2_rfam_ids[tokens[0]] = tokens[2]
-        h.close()
-        h = open(self.cache_dir+'/pdb_rfam_reg.txt')
-        for line in h:
-            rfam_family = {}
-            tokens = line.split('\t')
-            rfam_accession = database_ids_2_rfam_ids[tokens[1]]
-            rfam_family['pdb_id'] = tokens[2]
-            rfam_family['chain_name'] = tokens[3]
-            rfam_family['3d_start'] = tokens[4]
-            rfam_family['3d_end'] = tokens[5]
-            rfam_family['ncbi_id'] = tokens[6]
-            rfam_family['ncbi_start'] = tokens[7]
-            rfam_family['ncbi_end'] = tokens[8]
-            if not rfam_families_with_3Ds.has_key(rfam_accession):
-                rfam_families_with_3Ds[rfam_accession] = []    
-            rfam_families_with_3Ds[rfam_accession].append(rfam_family)       
-        h.close()
+        with open(self.cache_dir+'/rfam.txt') as h:
+            for line in h:
+                tokens = line.split('\t')
+                database_ids_2_rfam_ids[tokens[0]] = tokens[2]
+        with open(self.cache_dir+'/pdb_rfam_reg.txt') as h:
+            for line in h:
+                rfam_family = {}
+                tokens = line.split('\t')
+                rfam_accession = database_ids_2_rfam_ids[tokens[1]]
+                rfam_family['pdb_id'] = tokens[2]
+                rfam_family['chain_name'] = tokens[3]
+                rfam_family['3d_start'] = tokens[4]
+                rfam_family['3d_end'] = tokens[5]
+                rfam_family['ncbi_id'] = tokens[6]
+                rfam_family['ncbi_start'] = tokens[7]
+                rfam_family['ncbi_end'] = tokens[8]
+                if not rfam_families_with_3Ds.has_key(rfam_accession):
+                    rfam_families_with_3Ds[rfam_accession] = []    
+                rfam_families_with_3Ds[rfam_accession].append(rfam_family)       
         return rfam_families_with_3Ds
 
     def get_genomic_entries(self):
@@ -539,15 +534,14 @@ class Rfam:
         if os.path.exists(self.cache_dir+'/genome_entry.txt'):
             shutil.os.remove(self.cache_dir+'/genome_entry.txt')
         subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.cache_dir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
-        h = open(self.cache_dir+'/genome_entry.txt')
-        for line in h:
-            tokens = line.split('\t')
-            organism = {}
-            organism['accession'] = tokens[1]
-            organism['name'] = tokens[3]
-            organism['lineage'] = tokens[5]
-            organisms.append(organism)
-        h.close()
+        with open(self.cache_dir+'/genome_entry.txt') as h:
+            for line in h:
+                tokens = line.split('\t')
+                organism = {}
+                organism['accession'] = tokens[1]
+                organism['name'] = tokens[3]
+                organism['lineage'] = tokens[5]
+                organisms.append(organism)
         return DataFrame(organisms)
 
     def generate_seed_alignments(self):
@@ -559,29 +553,25 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/seed/')
             shutil.os.mkdir(self.cache_dir+'/seed/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/seed/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.seed.gz"], shell=True)
-        h = open(self.cache_dir+'/seed/Rfam.seed')
-        currentAccession = None
-        currentContent = None
+        with open(self.cache_dir+'/seed/Rfam.seed') as h:
+            currentAccession = None
+            currentContent = None
 
-        for line in h:
-            if re.match('^#=GF AC', line):
-                if currentContent and currentAccession:
-                    output = open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w')
+            for line in h:
+                if re.match('^#=GF AC', line):
+                    if currentContent and currentAccession:
+                        with open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w') as output:
+                            output.write(currentContent)
+                    currentContent = "# STOCKHOLM 1.0\n"
+                    currentContent += line
+                    currentAccession = re.split("\s+", line)[-2]
+                elif currentContent and not re.match('^# STOCKHOLM 1.0', line):
+                    currentContent += line
+
+            if currentContent and currentAccession:
+                with open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w') as output:
                     output.write(currentContent)
-                    output.close()    
-                currentContent = "# STOCKHOLM 1.0\n"
-                currentContent += line
-                currentAccession = re.split("\s+", line)[-2]
-            elif currentContent and not re.match('^# STOCKHOLM 1.0', line):
-                currentContent += line
-
-        if currentContent and currentAccession:
-            output = open(self.cache_dir+'/seed/'+currentAccession+'.sto', 'w')
-            output.write(currentContent)
-            output.close()
-                            
-        h.close()    
-               
+                                           
     def generate_full_alignments(self):
         """
         This method has to be called if the Rfam wrapper uses data from the FTP. Full alignments will be downloaded and stored locally.
@@ -591,28 +581,24 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/fulls')
             shutil.os.mkdir(self.cache_dir+'/full/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/full/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.full.gz"], shell=True)
-        h = open(self.cache_dir+'/full/Rfam.full')
-        currentAccession = None
-        currentContent = None
+        with open(self.cache_dir+'/full/Rfam.full') as h:
+            currentAccession = None
+            currentContent = None
 
-        for line in h:
-            if re.match('^#=GF AC', line):
-                if currentContent and currentAccession:
-                    output = open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w')
-                    output.write(currentContent)
-                    output.close()    
-                currentContent = "# STOCKHOLM 1.0\n"
-                currentContent += line
-                currentAccession = re.split("\s+", line)[-2]
-            elif currentContent and not re.match('^# STOCKHOLM 1.0', line):
-                currentContent += line
+            for line in h:
+                if re.match('^#=GF AC', line):
+                    if currentContent and currentAccession:
+                        with open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w') as output:
+                            output.write(currentContent)
+                    currentContent = "# STOCKHOLM 1.0\n"
+                    currentContent += line
+                    currentAccession = re.split("\s+", line)[-2]
+                elif currentContent and not re.match('^# STOCKHOLM 1.0', line):
+                    currentContent += line
 
-        if currentContent and currentAccession:
-            output = open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w')
-            output.write(currentContent)
-            output.close()
-                            
-        h.close()
+            if currentContent and currentAccession:
+                with open(self.cache_dir+'/full/'+currentAccession+'.sto', 'w') as output:
+                    output.write(currentContent)                            
 
     def generate_CMs(self):
         """
@@ -623,41 +609,39 @@ class Rfam:
                 shutil.rmtree(self.cache_dir+'/CMs/')
             shutil.os.mkdir(self.cache_dir+'/CMs/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/CMs/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.cm.gz"], shell=True)
-        h = open(self.cache_dir+'/CMs/Rfam.cm')
+        with open(self.cache_dir+'/CMs/Rfam.cm') as h:
 
-        familyName = None
-        rfamHeader = None
-        families = {}
-        currentAccession = None
-        currentContent = None
+            familyName = None
+            rfamHeader = None
+            families = {}
+            currentAccession = None
+            currentContent = None
 
-        for line in h:
-            if re.match('/^\/\//', line) and currentContent :
-                currentContent += line
-            elif re.match('^INFERNAL', line):
-                rfamHeader = line    
-            elif re.match('^NAME', line):
-                familyName = line
-                if currentContent:
-                    families[currentAccession] = currentContent;
-                    currentContent = None;
-            elif re.match('^ACC', line):
-                if line.startswith("ACCESSION"):
-                    currentAccession = line.split("ACCESSION")[1].strip()
-                else:    
-                    currentAccession = line.split("ACC")[1].strip()
-                currentContent = ""
-                currentContent += rfamHeader
-                currentContent += familyName
-                currentContent += line
-            elif currentContent:
-                currentContent += line
-        h.close()
+            for line in h:
+                if re.match('/^\/\//', line) and currentContent :
+                    currentContent += line
+                elif re.match('^INFERNAL', line):
+                    rfamHeader = line    
+                elif re.match('^NAME', line):
+                    familyName = line
+                    if currentContent:
+                        families[currentAccession] = currentContent;
+                        currentContent = None;
+                elif re.match('^ACC', line):
+                    if line.startswith("ACCESSION"):
+                        currentAccession = line.split("ACCESSION")[1].strip()
+                    else:    
+                        currentAccession = line.split("ACC")[1].strip()
+                    currentContent = ""
+                    currentContent += rfamHeader
+                    currentContent += familyName
+                    currentContent += line
+                elif currentContent:
+                    currentContent += line
 
         if currentContent:
             families[currentAccession] = currentContent;
         
         for key in families:
-            f = open(self.cache_dir+'/CMs/'+key+'.cm', 'w')
-            f.write(families[key])
-            f.close()
+            with open(self.cache_dir+'/CMs/'+key+'.cm', 'w') as f:
+                f.write(families[key])

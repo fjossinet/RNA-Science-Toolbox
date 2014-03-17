@@ -78,9 +78,8 @@ class Bcheck(Tool):
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
 
-        f = open(fileName, 'w');
-        f.write(parsers.to_fasta(target_molecules))
-        f.close()
+        with open(fileName, 'w') as f:
+            f.write(parsers.to_fasta(target_molecules))
         
         hits = []
         output = commands.getoutput("Bcheck -f %s"%fileName)
@@ -132,9 +131,9 @@ class Blast(Tool):
         """
         path = self.cache_dir+"/"+utils.generate_random_name(7)
         os.mkdir(path)
-        fasta_file = open("%s/input.fasta"%path, 'w+b')
-        fasta_file.write(parsers.to_fasta(self.target_molecules))
-        fasta_file.close()
+        with open("%s/input.fasta"%path, 'w+b') as fasta_file:
+            fasta_file.write(parsers.to_fasta(self.target_molecules))
+
         commands.getoutput("cd %s ; formatdb -i %s -p %s -o"%(self.cache_dir, fasta_file.name, "F" if is_nucleotide else "T"))
         self.formatted_db = fasta_file.name
 
@@ -272,9 +271,9 @@ class Blast(Tool):
         - organism
         """
         tmp_dir = os.path.dirname(self.formatted_db)
-        query_file = open("%s/query.fasta"%tmp_dir, 'w+b')
-        query_file.write(query_molecule.to_fasta())
-        query_file.close()
+        with open("%s/query.fasta"%tmp_dir, 'w+b') as query_file:
+            query_file.write(query_molecule.to_fasta())
+
         return self.parse_output(commands.getoutput("cd %s ; blastall -p blastn -d %s -i %s"%(self.cache_dir, self.formatted_db, query_file.name)))
 
     def rpsblast(self):
@@ -302,9 +301,8 @@ class Blastr(Blast):
         """
         path = self.cache_dir+"/"+utils.generate_random_name(7)
         os.mkdir(path)
-        fasta_file = open("%s/input.fasta"%path, 'w+b')
-        fasta_file.write(parsers.to_fasta(self.target_molecules))
-        fasta_file.close()
+        with open("%s/input.fasta"%path, 'w+b') as fasta_file:
+            fasta_file.write(parsers.to_fasta(self.target_molecules))
         commands.getoutput("cd %s ; formatdbR.pl -i %s"%(self.cache_dir, fasta_file.name))
         self.formatted_db = fasta_file.name
 
@@ -321,9 +319,8 @@ class Blastr(Blast):
         For now, this method returns the raw output of blastr as a String.
         """
         tmp_dir = os.path.dirname(self.formatted_db)
-        query_file = open("%s/query.fasta"%tmp_dir, 'w+b')
-        query_file.write(query_molecule.to_fasta())
-        query_file.close()
+        with open("%s/query.fasta"%tmp_dir, 'w+b') as query_file:
+            query_file.write(query_molecule.to_fasta())
         return self.parse_output(commands.getoutput("cd %s ; blastallR.pl -p blastr -i %s -d %s"%(self.cache_dir, query_file.name, self.formatted_db)))
 
 class Bowtie(Tool):
@@ -357,9 +354,8 @@ class Bowtie(Tool):
 
         fastq_file = os.path.abspath(os.path.normpath(fastq_file))        
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(to_fasta(target_molecules))
-        fasta_file.close()
+        with open(fasta_file_name, 'w') as fasta_file:
+            fasta_file.write(to_fasta(target_molecules))
         
         db_path = self.cache_dir+"/bowtie_db_"+utils.generate_random_name(7)
         result_file = self.cache_dir+'/'+utils.generate_random_name(7)+'.sam'
@@ -406,15 +402,13 @@ class Clustalw(Tool):
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
 
-        f = open(fileName, 'w');
-        f.write(parsers.to_fasta(molecules))
-        f.close()
+        with open(fileName, 'w') as f:
+            f.write(parsers.to_fasta(molecules))
         
         commands.getoutput("clustalw2 -infile=%s"%fileName) 
 
-        outputFile = open(fileName.split('.fasta')[0]+".aln", 'r')
-        data = outputFile.read()
-        outputFile.close()
+        with open(fileName.split('.fasta')[0]+".aln") as output_file:
+            data = output_file.read()
 
         return data, self.parse_output(data, molecules)
 
@@ -468,9 +462,8 @@ class Cmalign(Tool):
         """
         path = self.cache_dir+"/cmalign_"+utils.generate_random_name(7)
         os.mkdir(path)
-        fasta_file = open("%s/input.fasta"%path, 'w')
-        fasta_file.write(parsers.to_fasta(molecules))
-        fasta_file.close()
+        with open("%s/input.fasta"%path, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta(molecules))
         if not stockholm_content:
             try:
                 stockholm_content = rfam.get_entry(rfam_id, format='stockholm')
@@ -491,9 +484,8 @@ class Cmalign(Tool):
         if cm_content:
             cm_file = self.cache_dir+'/'+utils.generate_random_name(7)+'.cm'
 
-            f = open(cm_file, 'w')
-            f.write(cm_content)
-            f.close()
+            with open(cm_file, 'w') as f:
+                f.write(cm_content)
         
         if self.local_mode:
             output = commands.getoutput("cmalign -l --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
@@ -527,16 +519,14 @@ class Cmbuild(Tool):
         stockholm_file = self.cache_dir+'/'+name+'.sto'
         cm_file = self.cache_dir+'/'+name+'.cm'
 
-        f = open(stockholm_file, 'w');
-        f.write(stockholm_content)
-        f.close()
+        with open(stockholm_file, 'w') as f:
+            f.write(stockholm_content)
         
         commands.getoutput("cmbuild %s %s "%(cm_file, stockholm_file))
 
         cm_content = None
-        f = open(cm_file, 'r')
-        cm_content = f.read()
-        f.close()
+        with open(cm_file) as f:
+            cm_content = f.read()
 
         return cm_content
 
@@ -562,15 +552,13 @@ class Cmcalibrate(Tool):
         name = utils.generate_random_name(7)
         cm_file = self.cache_dir+'/'+name+'.cm'
 
-        f = open(cm_file, 'w')
-        f.write(cm_content)
-        f.close()
+        with open(cm_file, 'w') as f:
+            f.write(cm_content)
 
         commands.getoutput("cmcalibrate %s"%cm_file)
         
-        f = open(cm_file, 'r')
-        cm_content = f.read()
-        f.close()
+        with open(cm_file) as f:
+            cm_content = f.read()
 
         return cm_content   
 
@@ -613,15 +601,13 @@ class Cmsearch(Tool):
         if cm_content:
             fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
 
-            f = open(fileName, 'w');
-            f.write(parsers.to_fasta(molecules))
-            f.close()
+            with open(fileName, 'w') as f:
+                f.write(parsers.to_fasta(molecules))
             
             cmFile = self.cache_dir+'/'+utils.generate_random_name(7)+'.cm'
 
-            f = open(cmFile, 'w');
-            f.write(cm_content)
-            f.close()
+            with open(cmFile, 'w') as f:
+                f.write(cm_content)
 
             if not gathering_threshold:
                 return self.parse_output(commands.getoutput("cmsearch "+cmFile+" "+fileName), molecules, False)
@@ -632,9 +618,8 @@ class Cmsearch(Tool):
             #write molecules as FASTA
             fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
 
-            f = open(fileName, 'w');
-            f.write(parsers.to_fasta(molecules))
-            f.close()
+            with open(fileName, 'w') as f:
+                f.write(parsers.to_fasta(molecules))
 
             if not gathering_threshold:
                 return self.parse_output(commands.getoutput("cmsearch "+rfam.cache_dir+"/CMs/"+rfam_id+".cm "+fileName), molecules, False)
@@ -840,9 +825,8 @@ class Contrafold(Tool):
             response.close()
         else:
             fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-            fasta_file = open(fileName, 'w')
-            fasta_file.write(parsers.to_fasta([molecule]))
-            fasta_file.close()
+            with open(fileName, 'w') as fasta_file:
+                fasta_file.write(parsers.to_fasta([molecule]))
             output = commands.getoutput("cd %s ; contrafold predict %s"%(self.cache_dir, fileName)).strip()
         filtered_lines = []
         for line in output.split('\n'):
@@ -888,14 +872,12 @@ class Gotohscan(Tool):
 
         hits = []
         queryFileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        query_file = open(queryFileName, 'w')
-        query_file.write(parsers.to_fasta([query_molecule]))
-        query_file.close()
+        with open(queryFileName, 'w') as query_file:
+            query_file.write(parsers.to_fasta([query_molecule]))
 
         targetFileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        target_file = open(targetFileName, 'w')
-        target_file.write(parsers.to_fasta(target_molecules))
-        target_file.close()
+        with open(targetFileName, 'w') as target_file:
+            target_file.write(parsers.to_fasta(target_molecules))
 
         output = commands.getoutput("GotohScan2a -e %e -d %s -q %s"%(evalue, targetFileName, queryFileName))
 
@@ -939,9 +921,8 @@ class Mlocarna(Tool):
         a tuple like (list of aligned molecules, secondary structure computed as a list of base-pairs in a pandas DataFrame)
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fileName, 'w')
-        fasta_file.write(parsers.to_fasta(molecules))
-        fasta_file.close()
+        with open(fileName, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta(molecules))
         output = commands.getoutput("mlocarna %s"%fileName)
 
         aligned_molecules = {}
@@ -980,9 +961,8 @@ class RnaAlifold(Tool):
         the bracket notation of the MFE structure as a String
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.aln'
-        aln_file = open(fileName, 'w')
-        aln_file.write(alignment)
-        aln_file.close()
+        with open(fileName, 'w') as aln_file:
+            aln_file.write(alignment)
         return commands.getoutput("cd %s ; RNAalifold < %s"%(self.cache_dir, fileName)).strip().split('\n')[-1].split(' ')[0]
 
 class Rnafold(Tool):
@@ -1024,11 +1004,11 @@ class Rnafold(Tool):
             response.close()
         else:
             fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-            fasta_file = open(fileName, 'w')
-            fasta_file.write(parsers.to_fasta([molecule], single_line=True))
-            if constraints:
-                fasta_file.write("\n"+constraints)
-            fasta_file.close()
+            with open(fileName, 'w') as fasta_file:
+                fasta_file.write(parsers.to_fasta([molecule], single_line=True))
+                if constraints:
+                    fasta_file.write("\n"+constraints)
+
             if constraints:
                 output = commands.getoutput("cd %s ; RNAfold -noLP -C < %s"%(self.cache_dir, fileName)).strip()
             else:
@@ -1069,10 +1049,9 @@ class Rnainverse(Tool):
         """
 
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.bn'
-        input_file = open(fileName, 'w')
-        input_file.write(parsers.to_bn(secondary_structure, len(molecule))+'\n')
-        input_file.write('N'*len(molecule))
-        input_file.close()
+        with open(fileName, 'w') as input_file:
+            input_file.write(parsers.to_bn(secondary_structure, len(molecule))+'\n')
+            input_file.write('N'*len(molecule))
 
         rnas = []
         i = 0
@@ -1116,9 +1095,8 @@ class RNAMotif(Tool):
         """
         flag = False
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(parsers.to_fasta(target_molecules))
-        fasta_file.close()
+        with open(fasta_file_name, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta(target_molecules))
         descr_file_name = self.download_file(descriptor_file)
         output = commands.getoutput("rnamotif -descr %s %s | rmprune"%(descr_file_name, fasta_file_name))
         hits = []
@@ -1159,17 +1137,16 @@ class RNAMotif(Tool):
                     for sequence in tokens[5:]:
                         length_list.append(len(sequence))
                     bracket_list = []
-                    infh = open(descr_file_name, 'r')
-                    line = infh.readline()
-                    while line:
-                        if line.lstrip().startswith('h5'):
-                            bracket_list.append('(')
-                        elif line.lstrip().startswith('ss'):
-                            bracket_list.append('.')
-                        elif line.lstrip().startswith('h3'):
-                            bracket_list.append(')')
+                    with open(descr_file_name) as infh:
                         line = infh.readline()
-                    infh.close()
+                        while line:
+                            if line.lstrip().startswith('h5'):
+                                bracket_list.append('(')
+                            elif line.lstrip().startswith('ss'):
+                                bracket_list.append('.')
+                            elif line.lstrip().startswith('h3'):
+                                bracket_list.append(')')
+                            line = infh.readline()
                     chain = ''
                     if len(length_list) == len(bracket_list):
                         j = 0
@@ -1218,9 +1195,9 @@ class Rnaplfold(Tool):
         """
 
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fileName, 'w')
-        fasta_file.write(parsers.to_fasta([molecule], single_line=True))
-        fasta_file.close()
+        with open(fileName, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta([molecule], single_line=True))
+
         if free_energies:
             commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i -O < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
 
@@ -1230,9 +1207,8 @@ class Rnaplfold(Tool):
         else:
             commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
 
-            h = open('%s/test_lunp'%self.cache_dir)
-            output = h.read()
-            h.close()    
+            with open('%s/test_lunp'%self.cache_dir) as h:
+                output = h.read()
 
         import numpy as np
 
@@ -1298,17 +1274,15 @@ class Rnaplot(Tool):
 
             _rna = RNA(name="rna", sequence=rna.sequence) #the name of the rna object should not contains any / character.
             vienna_file_name = path+'/'+utils.generate_random_name(7)+'.fasta'
-            f = open(vienna_file_name, 'w')
-            f.write(parsers.to_vienna([secondary_structure], [_rna], single_line=True))
-            f.close()
+            with open(vienna_file_name, 'w') as f:
+                f.write(parsers.to_vienna([secondary_structure], [_rna], single_line=True))
 
             commands.getoutput("cd %s ; RNAplot -o svg < %s"%(path, vienna_file_name))
 
             for f in os.listdir(path):
                 if f.endswith('.svg'):
-                    svg_file = open("%s/%s"%(path, f), 'r')
-                    output = svg_file.read()
-                    svg_file.close()
+                    with open("%s/%s"%(path, f)) as svg_file: 
+                        output = svg_file.read()
 
         if raw_output:
             return output
@@ -1350,9 +1324,10 @@ class Rnasubopt(Tool):
         all the suboptimal secondary structures as a list of pandas DataFrames. Each pandas Dataframe contains a list of base-pairs.
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fileName, 'w')
-        fasta_file.write(parsers.to_fasta([molecule], single_line=True))
-        fasta_file.close()
+        
+        with open(fileName, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta([molecule], single_line=True))
+
         output = commands.getoutput("cd %s ; RNAsubopt -noLP %s %s < %s"%(self.cache_dir, "-e %i"%range if range else "" ,  "-p %i"%random_sample if random_sample else "", fileName)).strip()
         secondary_structures = []
         for line in output.split('\n'):
@@ -1396,22 +1371,19 @@ class Rnaview(Tool):
             response.close()
         else:
             pdb_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.pdb'
-            pdb_file = open(pdb_file_name, 'w')
-
-            if pdb_content:
-                pdb_file.write(pdb_content)
-            else:
-                pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
-            pdb_file.close()
+            with open(pdb_file_name, 'w') as pdb_file:
+                if pdb_content:
+                    pdb_file.write(pdb_content)
+                else:
+                    pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
 
             commands.getoutput("rnaview -p %s"%(pdb_file_name))
             
             xml_file_name = pdb_file_name+".xml"
             xml_content = ""
             if os.path.exists(xml_file_name):
-                xml_file = open(xml_file_name, 'r')
-                xml_content = xml_file.read()
-                xml_file.close()
+                with open(xml_file_name) as xml_file:
+                    xml_content = xml_file.read()
             else:
                 raise Exception("No file %s"%xml_file_name)
         if raw_output:
@@ -1565,9 +1537,8 @@ class SnoGPS(Tool):
         - bracket_notation
         """
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(parsers.to_fasta(target_molecules))
-        fasta_file.close()
+        with open(fasta_file_name, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta(target_molecules))
         scores_file_name = self.download_file(scores_table_file)
         targets_file_name = self.download_file(targets_file)
         descr_file_name = self.download_file(descriptor_file)
@@ -1711,9 +1682,8 @@ class Snoreport(Tool):
         - ACA-box (genomicPositions & sequence)
         """
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(parsers.to_fasta([molecule], single_line=True))
-        fasta_file.close()
+        with open(fasta_file_name, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta([molecule], single_line=True))
         output = commands.getoutput("snoReport %s < %s"%("-r" if reverse_complement else "", fasta_file_name))
         hits = []
         lines = output.split('\n')
@@ -1793,9 +1763,10 @@ class Snoscan(Tool):
         """
         flag = False
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(parsers.to_fasta(target_molecules))
-        fasta_file.close()
+        
+        with open(fasta_file_name, 'w') as fasta_file:
+            fasta_file.write(parsers.to_fasta(target_molecules))
+
         meth_file_name = self.download_file(meth_sites_file)
         rrna_file_name = self.download_file(r_rna_file)
         output = commands.getoutput("snoscan -m %s %s %s"%(meth_file_name, rrna_file_name, fasta_file_name))

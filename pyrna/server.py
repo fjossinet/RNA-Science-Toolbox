@@ -110,6 +110,10 @@ def teaching():
     logs_db['websites'].insert(log)
     return render_template('teaching.html')
 
+@app.route("/tests")
+def tests():
+    return render_template('tests.html')
+
 ################# CHARNDB WEBSITE #########################
 
 @app.route("/charndb")
@@ -220,9 +224,8 @@ def upload():
             fh = open("NUL",'w') #to disable console output
             p = Popen(shlex.split(command_line), stdout = fh, stderr = fh)
 
-            info = open(os.getenv("HOME")+"/tmp/jobs_let_it_sno.task_on_%s/info"%secret_key,'a+')
-            info.write("process ID: %i\n"%p.pid)
-            info.close()
+            with open(os.getenv("HOME")+"/tmp/jobs_let_it_sno.task_on_%s/info"%secret_key,'a+') as info:
+                info.write("process ID: %i\n"%p.pid)
 
             return jsonify({"secret_key": secret_key, "annotations_count": mongodb[secret_key]['annotations'].count(), 'genomic_sequences_count': mongodb[secret_key]['genomes'].count()} )
 
@@ -521,9 +524,8 @@ def check():
     import os.path
     total_jobs_to_submit = 0
     if os.path.isfile(os.getenv("HOME")+'/tmp/jobs_let_it_sno.task_on_%s/info'%request.args['id']):
-        h = open(os.getenv("HOME")+'/tmp/jobs_let_it_sno.task_on_%s/info'%request.args['id'], 'r')
-        info_content = h.read()
-        h.close()
+        with open(os.getenv("HOME")+'/tmp/jobs_let_it_sno.task_on_%s/info'%request.args['id']) as h:
+            info_content = h.read()
 
         groups = re.findall("total jobs: (\d+)", info_content)
 
@@ -1144,9 +1146,8 @@ if __name__ == '__main__':
     if "-mp" in sys.argv:
         mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
     if "-conf" in sys.argv:
-        h = open(sys.argv[sys.argv.index("-conf")+1], 'r')
-        json_data = h.read()
-        h.close()
+        with open(sys.argv[sys.argv.index("-conf")+1]) as h:
+            json_data = h.read()
         enabled_algorithms = ujson.loads(json_data)["rest_server"]["enable-algorithms"]
 
     try :

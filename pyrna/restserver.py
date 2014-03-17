@@ -557,9 +557,8 @@ if __name__ == '__main__':
     if "-mp" in sys.argv:
         mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
     if "-conf" in sys.argv:
-        h = open(sys.argv[sys.argv.index("-conf")+1], 'r')
-        json_data = h.read()
-        h.close()
+        with open(sys.argv[sys.argv.index("-conf")+1]) as h:
+            json_data = h.read()
         enabled_algorithms = ujson.loads(json_data)["rest_server"]["enable-algorithms"]
 
     try :

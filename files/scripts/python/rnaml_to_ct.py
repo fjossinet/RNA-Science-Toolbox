@@ -28,9 +28,8 @@ if __name__ == '__main__':
             rnaml_files.append(arg)
     
     for rnaml_file in rnaml_files:
-        h = open(rnaml_file, 'r')
-        rnaml_content = h.read()
-        h.close()
+        with open(rnaml_file) as h:
+            rnaml_content = h.read()
 
         for secondary_structure in parse_rnaml(rnaml_content, canonical_only = canonical_only):
             print to_ct(secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = keep_tertiaries), secondary_structure.rna) 

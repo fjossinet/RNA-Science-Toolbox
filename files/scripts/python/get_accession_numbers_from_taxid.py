@@ -13,77 +13,76 @@ def recover(file, taxid):
     iteration_step = 10000
     if os.path.exists('%s_tmp'%file):
         os.renames('%s_tmp'%file, file)
-    h2 = open('%s_tmp'%file, 'w')
-    if os.path.exists(file):
-        h = open(file, 'r')
-        lines = h.readlines()
-        it = 0
-        for i in range(0, len(lines)):
-            if lines[i].startswith('retstart:'):
-                it += 1
-                retstart = int(lines[i].split(' ')[1])
-                count = int(lines[i].split(' ')[2])
-                if not count == iteration_step:
-                    print "Don't have %i accession numbers for retstart %i. New attempt..."%(iteration_step,retstart) 
-                    accession_numbers = []
-                    result = ncbi.esearch(db = "nucleotide", term = "txid"+str(taxid)+"[Organism:exp]", retstart = retstart, retmax = iteration_step)
-                    try:
-                        result = ET.fromstring(result)
-                        ids = []
-                        if result.find('IdList') is not None:
-                            for id in result.find('IdList').findall('Id'):
-                                ids.append(id.text)
-                            result = ncbi.esummary(db = "nucleotide", ids = ids, retmax = iteration_step)
-                            result = ET.fromstring(result)
-                            for docsum in result.findall('DocSum'):
-                                for item in docsum.findall("Item[@Name='Caption']"):
-                                    accession_numbers.append(item.text)
-                    except Exception, e:
-                        print e
-                    h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
-                    h2.write(','.join(accession_numbers))
-                    h2.write('\n')
-                    h2.flush()
-                else:
-                    accession_numbers = lines[i+1].split(',')
-                    h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
-                    h2.write(','.join(accession_numbers))
-                    h2.write('\n')
-                    h2.flush()
-        h.close()
-        os.remove(file)            
-    
-        retstart = it*iteration_step
+    with open('%s_tmp'%file, 'w') as h2:
+        if os.path.exists(file):
+            with open(file) as h:
+                lines = h.readlines()
+                it = 0
+                for i in range(0, len(lines)):
+                    if lines[i].startswith('retstart:'):
+                        it += 1
+                        retstart = int(lines[i].split(' ')[1])
+                        count = int(lines[i].split(' ')[2])
+                        if not count == iteration_step:
+                            print "Don't have %i accession numbers for retstart %i. New attempt..."%(iteration_step,retstart) 
+                            accession_numbers = []
+                            result = ncbi.esearch(db = "nucleotide", term = "txid"+str(taxid)+"[Organism:exp]", retstart = retstart, retmax = iteration_step)
+                            try:
+                                result = ET.fromstring(result)
+                                ids = []
+                                if result.find('IdList') is not None:
+                                    for id in result.find('IdList').findall('Id'):
+                                        ids.append(id.text)
+                                    result = ncbi.esummary(db = "nucleotide", ids = ids, retmax = iteration_step)
+                                    result = ET.fromstring(result)
+                                    for docsum in result.findall('DocSum'):
+                                        for item in docsum.findall("Item[@Name='Caption']"):
+                                            accession_numbers.append(item.text)
+                            except Exception, e:
+                                print e
+                            h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
+                            h2.write(','.join(accession_numbers))
+                            h2.write('\n')
+                            h2.flush()
+                        else:
+                            accession_numbers = lines[i+1].split(',')
+                            h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
+                            h2.write(','.join(accession_numbers))
+                            h2.write('\n')
+                            h2.flush()
+            os.remove(file)            
+        
+            retstart = it*iteration_step
 
-    while True:
-        print 'retstart: %i'%retstart
-        accession_numbers =[]
-        result = ncbi.esearch(db = "nucleotide", term = "txid"+str(taxid)+"[Organism:exp]", retstart = retstart, retmax = iteration_step)
-        try:
-            result = ET.fromstring(result)
-            ids = []
-            if result.find('IdList') is not None:
-                for id in result.find('IdList').findall('Id'):
-                    ids.append(id.text)
-
-                result = ncbi.esummary(db = "nucleotide", ids = ids, retmax = iteration_step)
+        while True:
+            print 'retstart: %i'%retstart
+            accession_numbers =[]
+            result = ncbi.esearch(db = "nucleotide", term = "txid"+str(taxid)+"[Organism:exp]", retstart = retstart, retmax = iteration_step)
+            try:
                 result = ET.fromstring(result)
-                for docsum in result.findall('DocSum'):
-                    for item in docsum.findall("Item[@Name='Caption']"):
-                        accession_numbers.append(item.text)
-            else:
-                break
-            
-        except Exception, e:
-            print e
-        print 'got %i accession numbers'%len(accession_numbers)
-        h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
-        h2.write(','.join(accession_numbers))
-        h2.write('\n')
-        h2.flush()
-        retstart += iteration_step
-    h2.close()
-    os.renames('%s_tmp'%file, file)
+                ids = []
+                if result.find('IdList') is not None:
+                    for id in result.find('IdList').findall('Id'):
+                        ids.append(id.text)
+
+                    result = ncbi.esummary(db = "nucleotide", ids = ids, retmax = iteration_step)
+                    result = ET.fromstring(result)
+                    for docsum in result.findall('DocSum'):
+                        for item in docsum.findall("Item[@Name='Caption']"):
+                            accession_numbers.append(item.text)
+                else:
+                    break
+                
+            except Exception, e:
+                print e
+            print 'got %i accession numbers'%len(accession_numbers)
+            h2.write('retstart: %i %i accession_numbers\n'%(retstart, len(accession_numbers)))
+            h2.write(','.join(accession_numbers))
+            h2.write('\n')
+            h2.flush()
+            retstart += iteration_step
+
+        os.renames('%s_tmp'%file, file)
 
     print "End"
 
