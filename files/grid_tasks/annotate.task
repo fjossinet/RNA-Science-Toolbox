@@ -17,10 +17,11 @@ from bson.objectid import ObjectId
 
 class AnnotateTask(Task):
 
-    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None,  familiesPerJob = 10, rfam_ids = None, calibrate = False, align = False, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None,  familiesPerJob = 10, rfam_ids = None, ignore = [], calibrate = False, align = False, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
         Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endPoint, algorithms = algorithms_abs_path, python = python_abs_path)
         self.familiesPerJob = familiesPerJob
         self.rfam_ids = rfam_ids
+        self.ignore = ignore
         if rfam_version:
             self.rfam = Rfam(version = rfam_version)
         else:
@@ -35,6 +36,10 @@ class AnnotateTask(Task):
         else:   
             familiesDetails = self.rfam.get_families_details()
             rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
+
+        print rfam_ids_to_process   
 
         in_house_alignments_to_process = []
         ids_to_remove = []
@@ -63,6 +68,8 @@ class AnnotateTask(Task):
         else: 
             familiesDetails = self.rfam.get_families_details()
             rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
         in_house_alignments_to_process = []
         ids_to_remove = []
@@ -95,7 +102,7 @@ class AnnotateTask(Task):
         
         scriptContent = "#Families processed: "+','.join(families_range)+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
 
-        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -ignore "+','.join([str(x) for x in self.ignore]) if len(self.ignore) else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
         
         print scriptContent
 
@@ -111,6 +118,8 @@ class AnnotateTask(Task):
             rfam_ids_to_process =  list(self.rfam_ids)
         else:
             rfam_ids_to_process = range(1, len(familiesDetails)+1)
+
+        rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
         in_house_alignments_to_process = []
         ids_to_remove = []
@@ -413,6 +422,7 @@ if __name__ == '__main__':
     python_abs_path = None
     algorithms_abs_path = None
     rfam_ids = None
+    ignore = []
 
     if "-id" in sys.argv:
         job_id = int(sys.argv[sys.argv.index("-id")+1])
@@ -439,6 +449,8 @@ if __name__ == '__main__':
         python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
     if "-rfam_ids" in sys.argv:
         rfam_ids = [int(x) for x in sys.argv[sys.argv.index("-rfam_ids")+1].split(',')]
+    if "-ignore" in sys.argv:
+        ignore = [int(x) for x in sys.argv[sys.argv.index("-ignore")+1].split(',')]
 
     check = "-check" in sys.argv
 
@@ -450,10 +462,10 @@ if __name__ == '__main__':
         db_name = "comparative_genomics"
 
     if not python_abs_path or not algorithms_abs_path:
-        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
+        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process] [-ignore rfam families to ignore] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
         sys.exit(1)
 
-    task = AnnotateTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, familiesPerJob = familiesPerJob, rfam_ids = rfam_ids, calibrate = calibrate, align = align, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
+    task = AnnotateTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, familiesPerJob = familiesPerJob, rfam_ids = rfam_ids, ignore = ignore, calibrate = calibrate, align = align, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
 
     if check:
         task.getTotalJobsToSubmit(None)
