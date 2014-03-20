@@ -39,8 +39,6 @@ class AnnotateTask(Task):
 
         rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
-        print rfam_ids_to_process   
-
         in_house_alignments_to_process = []
         ids_to_remove = []
         
