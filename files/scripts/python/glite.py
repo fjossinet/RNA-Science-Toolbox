@@ -52,13 +52,15 @@ if __name__ == '__main__':
                     with open(os.path.dirname(os.path.realpath(job_list_file))+"/script_%s.sh"%job_id) as script:
                         for line in script:
                             if line.startswith("#Families processed:"):
-                                ids = line.split('#Families processed:')[1].strip().split(',')
-                                for id in ids:
-                                    if not id.startswith('RF'):
-                                        in_house_alignment = db['alignments'].find_one({'_id':id})
-                                        families_to_resubmit.append(int(in_house_alignment['source'].split('RF')[1]))         
-                                    else:
-                                        families_to_resubmit.append(int(id.split('RF')[1]))    
+                                line = line.split('#Families processed:')[1].strip()
+                                if len(line): #we could have a script with a line like #Families processed:
+                                    ids = line.split(',')
+                                    for id in ids:
+                                        if not id.startswith('RF'):
+                                            in_house_alignment = db['alignments'].find_one({'_id':id})
+                                            families_to_resubmit.append(int(in_house_alignment['source'].split('RF')[1]))         
+                                        else:
+                                            families_to_resubmit.append(int(id.split('RF')[1]))    
                                 break
         client.close()
 
