@@ -456,7 +456,7 @@ if __name__ == '__main__':
                 rfam_ids +=  range(int(token.split('-')[0]), int(token.split('-')[1])+1)
             else:
                 rfam_ids.append(int(token))
-         rfam_ids.sort()       
+        rfam_ids.sort()       
     if "-ignore" in sys.argv:
         ignore = [int(x) for x in sys.argv[sys.argv.index("-ignore")+1].split(',')]
 
