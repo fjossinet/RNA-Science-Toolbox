@@ -17,15 +17,16 @@ from bson.objectid import ObjectId
 
 class AnnotateTask(Task):
 
-    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None,  familiesPerJob = 10, rfam_ids = None, ignore = [], calibrate = False, align = False, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None,  cache_dir = None, familiesPerJob = 10, rfam_ids = None, ignore = [], calibrate = False, align = False, rfam_version = None, gathering_threshold = True, python_abs_path = None, algorithms_abs_path = None):
         Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endPoint, algorithms = algorithms_abs_path, python = python_abs_path)
         self.familiesPerJob = familiesPerJob
         self.rfam_ids = rfam_ids
         self.ignore = ignore
+        self.cache_dir = cache_dir
         if rfam_version:
-            self.rfam = Rfam(version = rfam_version)
+            self.rfam = Rfam(cache_dir = self.cache_dir, version = rfam_version)
         else:
-            self.rfam = Rfam()
+            self.rfam = Rfam(cache_dir = self.cache_dir)
         self.calibrate = calibrate
         self.align = align
         self.gathering_threshold = gathering_threshold
@@ -100,7 +101,7 @@ class AnnotateTask(Task):
         
         scriptContent = "#Families processed: "+','.join(families_range)+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
 
-        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -ignore "+','.join([str(x) for x in self.ignore]) if len(self.ignore) else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+(" -cache_dir "+self.cache_dir if self.cache_dir else "")+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -ignore "+','.join([str(x) for x in self.ignore]) if len(self.ignore) else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
         
         from time import gmtime, strftime
         print strftime("%Y-%m-%d %H:%M:%S", gmtime()) #a timestamp that could be useful to track back a screen session.
@@ -424,6 +425,7 @@ if __name__ == '__main__':
     algorithms_abs_path = None
     rfam_ids = None
     ignore = []
+    cache_dir = None
 
     if "-id" in sys.argv:
         job_id = int(sys.argv[sys.argv.index("-id")+1])
@@ -459,6 +461,8 @@ if __name__ == '__main__':
         rfam_ids.sort()       
     if "-ignore" in sys.argv:
         ignore = [int(x) for x in sys.argv[sys.argv.index("-ignore")+1].split(',')]
+    if "-cache_dir" in sys.argv:
+        cache_dir = sys.argv[sys.argv.index("-cache_dir")+1].strip()
 
     check = "-check" in sys.argv
 
@@ -470,10 +474,10 @@ if __name__ == '__main__':
         db_name = "comparative_genomics"
 
     if not python_abs_path or not algorithms_abs_path:
-        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process (can be 1,2,3,45,46 or 1-3,45-65)] [-ignore rfam families to ignore] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
+        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-cache_dir cache dir for Rfam data] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process (can be 1,2,3,45,46 or 1-3,45-65)] [-ignore rfam families to ignore] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
         sys.exit(1)
 
-    task = AnnotateTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, familiesPerJob = familiesPerJob, rfam_ids = rfam_ids, ignore = ignore, calibrate = calibrate, align = align, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
+    task = AnnotateTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, cache_dir = cache_dir, familiesPerJob = familiesPerJob, rfam_ids = rfam_ids, ignore = ignore, calibrate = calibrate, align = align, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
 
     if check:
         task.getTotalJobsToSubmit(None)

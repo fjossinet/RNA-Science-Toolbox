@@ -457,10 +457,11 @@ class Rfam:
         - number of sequences in the seed alignment
         - number of sequences in the full alignment
         """
-        if os.path.exists(self.cache_dir+'/rfam.txt'):
-            shutil.os.remove(self.cache_dir+'/rfam.txt')
         familiesDetails = []
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+
+        if not os.path.exists(self.cache_dir+'/rfam.txt'):
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+        
         with open(self.cache_dir+'/rfam.txt') as h:
             for line in h:
                 rfam_family = {}
@@ -491,11 +492,11 @@ class Rfam:
         - ncbi_end
         """
         rfam_families_with_3Ds = {}
-        #first we're using the file rfam.txt from the RFAM FTP to get the correspondance between the RFAM ID and the database ID (the file pdb_rfam_reg.txt is using the database ID instead of the RFAM ID)
-        if os.path.exists(self.cache_dir+'/rfam.txt'):
-            shutil.os.remove(self.cache_dir+'/rfam.txt')
         database_ids_2_rfam_ids = {}
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+        #first we're using the file rfam.txt from the RFAM FTP to get the correspondance between the RFAM ID and the database ID (the file pdb_rfam_reg.txt is using the database ID instead of the RFAM ID)
+        if not os.path.exists(self.cache_dir+'/rfam.txt'):
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
+        
         with open(self.cache_dir+'/rfam.txt') as h:
             for line in h:
                 tokens = line.split('\t')
@@ -528,12 +529,10 @@ class Rfam:
         - name of the organism
         - lineage of the organism
         """
-        if self.use_website:
-            raise Exception("Cannot be done from the website (try use_website = False) ")
         organisms = []
-        if os.path.exists(self.cache_dir+'/genome_entry.txt'):
-            shutil.os.remove(self.cache_dir+'/genome_entry.txt')
-        subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.cache_dir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
+        if not os.path.exists(self.cache_dir+'/genome_entry.txt'):
+            subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_genomicEntries.sh "+self.cache_dir+" ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/database_files/genome_entry.txt.gz"], shell=True)
+        
         with open(self.cache_dir+'/genome_entry.txt') as h:
             for line in h:
                 tokens = line.split('\t')
@@ -549,10 +548,10 @@ class Rfam:
         This method has to be called if the Rfam wrapper uses data from the FTP. Seed alignments will be downloaded and stored locally.
         """
         if not os.path.exists(self.cache_dir+'/seed/Rfam.seed'):
-            if os.path.exists(self.cache_dir+'/seed/'):
-                shutil.rmtree(self.cache_dir+'/seed/')
-            shutil.os.mkdir(self.cache_dir+'/seed/')
+            if not os.path.exists(self.cache_dir+'/seed/'):
+                shutil.os.mkdir(self.cache_dir+'/seed/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/seed/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.seed.gz"], shell=True)
+        
         with open(self.cache_dir+'/seed/Rfam.seed') as h:
             currentAccession = None
             currentContent = None
@@ -577,10 +576,10 @@ class Rfam:
         This method has to be called if the Rfam wrapper uses data from the FTP. Full alignments will be downloaded and stored locally.
         """
         if not os.path.exists(self.cache_dir+'/full/Rfam.full'):
-            if os.path.exists(self.cache_dir+'/full/'):
-                shutil.rmtree(self.cache_dir+'/fulls')
-            shutil.os.mkdir(self.cache_dir+'/full/')
+            if not os.path.exists(self.cache_dir+'/full/'):
+                shutil.os.mkdir(self.cache_dir+'/full/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/full/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.full.gz"], shell=True)
+        
         with open(self.cache_dir+'/full/Rfam.full') as h:
             currentAccession = None
             currentContent = None
@@ -605,10 +604,10 @@ class Rfam:
         This method has to be called if you plan to use cmsearch (see pyrna.computations). The covariance models will be downloaded and stored locally.
         """
         if not os.path.exists(self.cache_dir+'/CMs/Rfam.cm'):
-            if os.path.exists(self.cache_dir+'/CMs/'):
-                shutil.rmtree(self.cache_dir+'/CMs/')
-            shutil.os.mkdir(self.cache_dir+'/CMs/')
+            if not os.path.exists(self.cache_dir+'/CMs/'):
+                shutil.os.mkdir(self.cache_dir+'/CMs/')
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../files/scripts/shell/getRfam_data.sh "+self.cache_dir+"/CMs/ ftp://ftp.sanger.ac.uk/pub/databases/Rfam/"+self.version+"/ Rfam.cm.gz"], shell=True)
+        
         with open(self.cache_dir+'/CMs/Rfam.cm') as h:
 
             familyName = None
