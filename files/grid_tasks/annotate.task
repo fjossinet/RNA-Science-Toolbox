@@ -449,7 +449,14 @@ if __name__ == '__main__':
     if "-python" in sys.argv:
         python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
     if "-rfam_ids" in sys.argv:
-        rfam_ids = [int(x) for x in sys.argv[sys.argv.index("-rfam_ids")+1].split(',')]
+        import itertools
+        rfam_ids = []
+        for token in sys.argv[sys.argv.index("-rfam_ids")+1].split(','):
+            if '-' in token:
+                rfam_ids +=  range(int(token.split('-')[0]), int(token.split('-')[1])+1)
+            else:
+                rfam_ids.append(int(token))
+         rfam_ids.sort()       
     if "-ignore" in sys.argv:
         ignore = [int(x) for x in sys.argv[sys.argv.index("-ignore")+1].split(',')]
 
@@ -463,7 +470,7 @@ if __name__ == '__main__':
         db_name = "comparative_genomics"
 
     if not python_abs_path or not algorithms_abs_path:
-        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process] [-ignore rfam families to ignore] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
+        print "Usage: annotate.task -algorithms algorithms_abs_path -python python_abs_path [-db db_name_to_annotate (optional for calibration)] [-h database_host] [-p database_port] [-families nb of families per job (default: 10)] [-rfam_ids families to use for the full annotation process (can be 1,2,3,45,46 or 1-3,45-65)] [-ignore rfam families to ignore] [-e glite_end_point] [-calibrate to calibrate in-house alignments] [-align to align ncRNAs found from the previous iteration process to their seed alignment] [-rfam_version Rfam version (default 11.0)] [-ga Y|N gathering_threshold (default: Y)]"
         sys.exit(1)
 
     task = AnnotateTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, familiesPerJob = familiesPerJob, rfam_ids = rfam_ids, ignore = ignore, calibrate = calibrate, align = align, rfam_version = rfam_version, gathering_threshold = gathering_threshold, python_abs_path = python_abs_path, algorithms_abs_path = algorithms_abs_path)
