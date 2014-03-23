@@ -246,12 +246,10 @@ class AnnotateTask(Task):
                 dna.organism = genome['organism']
                 genomic_sequences.append(dna)
             
-            #is it necessary to download data from RFAM or all the families to process are in-house alignments?
-            for id in families_range:
-                if id.startswith("RF"):
-                    self.rfam.generate_CMs()
-                    self.rfam.generate_seed_alignments()
-                    break
+            if not os.path.exists(self.rfam.cache_dir+'/CMs/Rfam.cm'):
+                self.rfam.generate_CMs()
+            if not os.path.exists(self.rfam.cache_dir+'/seed/Rfam.seed'):
+                self.rfam.generate_seed_alignments()
 
             for id in families_range:
 
