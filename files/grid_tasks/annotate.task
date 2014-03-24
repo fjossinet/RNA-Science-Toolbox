@@ -36,7 +36,10 @@ class AnnotateTask(Task):
             rfam_ids_to_process =  list(self.rfam_ids)
         else:   
             familiesDetails = self.rfam.get_families_details()
-            rfam_ids_to_process = range(1, len(familiesDetails)+1)
+            rfam_ids_to_process = []
+            for index, family in self.rfam.get_families_details().iterrows():
+                rfam_ids_to_process.append(int(family['accession'].split('RF')[1]))
+            rfam_ids_to_process.sort()
 
         rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
@@ -66,7 +69,10 @@ class AnnotateTask(Task):
             rfam_ids_to_process =  list(self.rfam_ids)
         else: 
             familiesDetails = self.rfam.get_families_details()
-            rfam_ids_to_process = range(1, len(familiesDetails)+1)
+            rfam_ids_to_process = []
+            for index, family in self.rfam.get_families_details().iterrows():
+                rfam_ids_to_process.append(int(family['accession'].split('RF')[1]))
+            rfam_ids_to_process.sort()
 
         rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
@@ -119,7 +125,10 @@ class AnnotateTask(Task):
         if self.rfam_ids:
             rfam_ids_to_process =  list(self.rfam_ids)
         else:
-            rfam_ids_to_process = range(1, len(familiesDetails)+1)
+            rfam_ids_to_process = []
+            for index, family in self.rfam.get_families_details().iterrows():
+                rfam_ids_to_process.append(int(family['accession'].split('RF')[1]))
+            rfam_ids_to_process.sort()
 
         rfam_ids_to_process = list(set(rfam_ids_to_process).difference(set(self.ignore)))
 
