@@ -191,13 +191,14 @@ def base_pairs_to_secondary_structure(rna, base_pairs):
 
     return ss
 
-def to_pdb(tertiary_structure, export_numbering_system = False):
+def to_pdb(tertiary_structure, location = None, export_numbering_system = False):
     """
     Convert a TertiaryStructure object into PDB data
 
     Parameters:
     ---------
     - tertiary_structure: a TertiaryStructure object (see pyrna.features)
+    - location (default: None): a Location object (see pyrna.features). Restrict the export to the atoms of the residues enclosed by this location.
     - export_numbering_system (default: False): export the numbering system. If False, the residues are numbered from 1 to the length of the molecular chain
 
     Returns:
@@ -209,7 +210,8 @@ def to_pdb(tertiary_structure, export_numbering_system = False):
     keys = []
 
     for k in tertiary_structure.residues:
-        keys.append(k)
+        if location and location.has_position(k) or not location:
+            keys.append(k)
 
     keys.sort() #the absolute position are sorted
 
@@ -992,10 +994,10 @@ def parse_rnaml(rnaml_data, canonical_only = False):
             for helix in molecule.find('structure').find('model').find('str-annotation').findall('helix'):
                 secondary_structure.add_helix(helix.get('id'), int(helix.find('base-id-5p').find('base-id').find('position').text), int(helix.find('base-id-3p').find('base-id').find('position').text), int(helix.find('length').text));
 
-            for single_strand in molecule.find('structure').find('model').find('str-annotation').findall('single-strand'):
-                end5 = int(single_strand.find('segment').find('base-id-5p').find('base-id').find('position').text)
-                end3 = int(single_strand.find('segment').find('base-id-3p').find('base-id').find('position').text)
-                secondary_structure.add_single_strand(single_strand.find('segment').find('seg-name').text, end5, end3-end5+1);
+            #for single_strand in molecule.find('structure').find('model').find('str-annotation').findall('single-strand'):
+            #    end5 = int(single_strand.find('segment').find('base-id-5p').find('base-id').find('position').text)
+            #    end3 = int(single_strand.find('segment').find('base-id-3p').find('base-id').find('position').text)
+            #    secondary_structure.add_single_strand(single_strand.find('segment').find('seg-name').text, end5, end3-end5+1);
 
             for base_pair in molecule.find('structure').find('model').find('str-annotation').findall('base-pair'):
                 edge1 = '('
@@ -1057,6 +1059,8 @@ def parse_rnaml(rnaml_data, canonical_only = False):
 
             for bp in non_canonical_bps: #the non-canonical interactions are tertiary ones
                 secondary_structure.add_tertiary_interaction(bp[0], bp[1], bp[2], bp[3], bp[4])
+
+        secondary_structure.find_single_strands()
 
         secondary_structures.append(secondary_structure)
 

@@ -105,6 +105,15 @@ class Location:
             single_positions += xrange(block.start, block.end+1)
         return single_positions
 
+    def has_position(self, position):
+        """
+        Test if the location encloses a single position. 
+        Parameters:
+        ---------
+        position: an integer
+        """
+        return position in self.get_single_positions()
+
 
 class Molecule:
     def __init__(self, name):
@@ -230,10 +239,34 @@ class SecondaryStructure:
                 return helix['location'][0][0]+ helix['location'][-1][-1] - pos
         return -1
 
+    def find_single_strands(self):
+        full_location = Location(start = 1, end = len(self.rna))
+        for helix in self.helices:
+            full_location =  full_location.remove_location(Location(start = helix['location'][0][0], end = helix['location'][0][-1]))
+            full_location =  full_location.remove_location(Location(start = helix['location'][-1][0], end = helix['location'][-1][-1]))
+        single_positions = full_location.get_single_positions()
+        single_positions.sort()
+
+        start = None
+        length = 0
+        single_strand_count = 1
+        for index, current_pos in enumerate(single_positions):
+            if index == 0 or current_pos == single_positions[index-1]+1:
+                length += 1
+                if index == 0:
+                    start = current_pos    
+            else:
+                self.add_single_strand("SS_%i"%single_strand_count, start, length)
+                single_strand_count +=1
+                length = 1
+                start = current_pos
+        #the last
+        self.add_single_strand("SS_%i"%single_strand_count, start, length)
+
     def find_junctions(self):
-        self.junctions=[]
+        self.junctions = []
         for single_strand in self.single_strands:
-            if single_strand['location'][0] == 1 or single_strand['location'][-1] == len (self.rna) or len(filter(lambda junction: single_strand in junction['single_strands'], self.junctions)):
+            if single_strand['location'][0] == 1 or single_strand['location'][-1] == len(self.rna) or len(filter(lambda junction: single_strand in junction['single_strands'], self.junctions)):
                 continue
             strands = [single_strand]
             descr = self.rna[single_strand['location'][0]-1:single_strand['location'][-1]]+" "
@@ -264,7 +297,86 @@ class SecondaryStructure:
                     'crown': crown                    
                 })
 
+        #the last
+        if next_single_strand and next_single_strand[0] == single_strand:
+            self.junctions.append({
+                'single_strands': strands,
+                'description': descr.strip(),
+                'crown': crown                    
+            })       
+
+    def find_stem_loops(self):
+        if not self.junctions:
+            self.find_junctions()
+        #we search for all the stem-loops. A stem loop is a set of contigous helices linked with inner loops and with an apical loop at one end.
+        self.stem_loops = []
+        ranges = []
+        for helix in self.helices:
+            #print "helix",helix['location'] 
+            start = helix['location'][0][0]
+            end = helix['location'][-1][-1]
+            #if the helix ends are linked to a junction of degree >= 3 or not linked to any junction, this is a range to keep.
+            linked_to_a_junction = False
+            for junction in self.junctions:
+                for i in range(0, len(junction['crown'])-1):
+                    if start == junction['crown'][i][-1] and end == junction['crown'][i+1][0]:
+                        if len(junction['crown']) >= 3:
+                            ranges.append([start, end])
+                        linked_to_a_junction = True
+                if start == junction['crown'][-1][-1] and end == junction['crown'][0][0]: #we test the last two ends of the crown (first and last values of the matrix)
+                    if len(junction['crown']) >= 3:
+                        ranges.append([start, end])
+                    linked_to_a_junction = True
+            if not linked_to_a_junction:
+                ranges.append([start, end])
+        #print ranges
+
+        for _range in ranges:
+            start = _range[0]
+            end = _range[1]
+            #print '\n\n', "search between: ", start,"-", end, '\n\n' 
+            enclosed_apical_loops = []
+            enclosed_junctions = []
+            enclosed_inner_loops = []
+            enclosed_helices = []
+            for _junction in self.junctions:
+                _start = min(_junction['crown'])[0] #the lowest end
+                _end = max(_junction['crown'])[-1] #the highest end
+                if _start > start and _end < end:
+                    if len(_junction['crown']) == 1:
+                        enclosed_apical_loops.append(_junction)
+                        #print "found apical loop at ", _start, _end
+                    elif len(_junction['crown']) == 2:
+                        enclosed_inner_loops.append(_junction)
+                        #print "found inner loop at ", _start, _end
+                        #print _junction['crown']
+                    elif len(_junction['crown']) >= 3:
+                        enclosed_junctions.append(_junction)
+                        #print "found enclosed junction at ", _start, _end
+                        #print _junction['crown']
+            for helix in self.helices:
+                _start = helix['location'][0][0]
+                _end = helix['location'][-1][-1]
+                if _start >= start and _end <= end:
+                    enclosed_helices.append(helix)
+            #print "enclosed apical loops", len(enclosed_apical_loops)
+            #print "enclosed junctions", len(enclosed_junctions)   
+            if len(enclosed_apical_loops) == 1 and not enclosed_junctions:
+                stem_loop = {'location': [start, end]}
+                stem_loop['apical_loop'] = enclosed_apical_loops[0]
+                stem_loop['inner_loops'] = enclosed_inner_loops
+                stem_loop['helices'] = enclosed_helices
+                self.stem_loops.append(stem_loop)
+
     def add_helix(self, name, start, end, length):
+        _ends = [start, start+length-1, end-length+1, end]
+        #no pseudoknot allowed
+        for helix in self.helices:
+            ends = [helix['location'][0][0], helix['location'][0][1], helix['location'][-1][0], helix['location'][-1][-1]]
+            if _ends[0] >= ends[1] and _ends[0] <= ends[2] and _ends[3] >= ends[3] or _ends[0] <= ends[0] and _ends[3] >= ends[1] and _ends[3] <= ends[2]: #pseudoknot
+                for i in range(0, length):
+                    self.add_tertiary_interaction('C', '(', ')', start+i, end-i)
+                return None
         helix = {
             'name': name,
             'location': [[start,start+length-1],[end-length+1,end]],
@@ -284,6 +396,11 @@ class SecondaryStructure:
         return single_strand
 
     def add_tertiary_interaction(self, orientation, edge1, edge2, pos1, pos2):
+        location = [[pos1, pos1], [pos2, pos2]]
+        for tertiary_interaction in self.tertiary_interactions:
+            if tertiary_interaction['location'] == location:
+                self.tertiary_interactions.remove(tertiary_interaction)
+                break    
         self.tertiary_interactions.append({
                             'orientation': orientation, 
                             'edge1': edge1, 
@@ -293,7 +410,7 @@ class SecondaryStructure:
 
     def add_base_pair(self, orientation, edge1, edge2, pos1, pos2):
         is_secondary_interaction = False
-
+        location = [[pos1, pos1], [pos2, pos2]]
         for helix in self.helices:
             start = helix['location'][0][0]
             end = helix['location'][-1][-1]
@@ -310,23 +427,24 @@ class SecondaryStructure:
                             self.rna.sequence[pos1-1] == 'G' and self.rna.sequence[pos2-1] == 'U' or \
                             self.rna.sequence[pos1-1] == 'U' and self.rna.sequence[pos2-1] == 'G') or \
                           orientation != 'C' or edge1 != '(' or edge2 != ')': #we have a non-canonical secondary-interaction
+                        
+                        for secondary_interaction in helix['interactions']:
+                            if secondary_interaction['location'] == location:
+                                helix['interactions'].remove(secondary_interaction)
+                                break
+
                         helix['interactions'].append({
                             'orientation': orientation, 
                             'edge1': edge1, 
                             'edge2': edge2, 
-                            'location': [[pos1, pos1], [pos2, pos2]]
+                            'location': location
                         })
                     is_secondary_interaction = True
                     break
 
         if not is_secondary_interaction:
             #if we reach this point, its a tertiary interaction
-            self.tertiary_interactions.append({
-                            'orientation': orientation, 
-                            'edge1': edge1, 
-                            'edge2': edge2, 
-                            'location': [[pos1, pos1], [pos2, pos2]]
-                        })
+            self.add_tertiary_interaction(orientation, edge1, edge2, pos1, pos2)
 
 class StructuralAlignment:
 

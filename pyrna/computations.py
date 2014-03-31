@@ -1010,9 +1010,9 @@ class Rnafold(Tool):
                     fasta_file.write("\n"+constraints)
 
             if constraints:
-                output = commands.getoutput("cd %s ; RNAfold -noLP -C < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("cd %s ; RNAfold -noPS -noLP -C < %s"%(self.cache_dir, fileName)).strip()
             else:
-                output = commands.getoutput("cd %s ; RNAfold -noLP < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("cd %s ; RNAfold -noPS -noLP < %s"%(self.cache_dir, fileName)).strip()
         if raw_output:
             return output
         vienna_data = "" 
@@ -1427,10 +1427,10 @@ class Rnaview(Tool):
                 for helix in molecule.find('structure').find('model').find('str-annotation').findall('helix'):
                     secondary_structure.add_helix(helix.get('id'), int(helix.find('base-id-5p').find('base-id').find('position').text), int(helix.find('base-id-3p').find('base-id').find('position').text), int(helix.find('length').text));
 
-                for single_strand in molecule.find('structure').find('model').find('str-annotation').findall('single-strand'):
-                    end5 = int(single_strand.find('segment').find('base-id-5p').find('base-id').find('position').text)
-                    end3 = int(single_strand.find('segment').find('base-id-3p').find('base-id').find('position').text)
-                    secondary_structure.add_single_strand(single_strand.find('segment').find('seg-name').text, end5, end3-end5+1);
+                #for single_strand in molecule.find('structure').find('model').find('str-annotation').findall('single-strand'):
+                #    end5 = int(single_strand.find('segment').find('base-id-5p').find('base-id').find('position').text)
+                #    end3 = int(single_strand.find('segment').find('base-id-3p').find('base-id').find('position').text)
+                #    secondary_structure.add_single_strand(single_strand.find('segment').find('seg-name').text, end5, end3-end5+1);
 
                 for base_pair in molecule.find('structure').find('model').find('str-annotation').findall('base-pair'):
                     edge1 = '('
@@ -1493,6 +1493,8 @@ class Rnaview(Tool):
                 for bp in non_canonical_bps: #the non-canonical interactions are tertiary ones
                     secondary_structure.add_tertiary_interaction(bp[0], bp[1], bp[2], bp[3], bp[4])
             
+            secondary_structure.find_single_strands()
+
             if new_3D:
                 return (secondary_structure, new_3D)
             else:
