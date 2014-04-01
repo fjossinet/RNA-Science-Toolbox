@@ -246,7 +246,7 @@ class Import3Ds(Task):
                             'source': tertiary_structure.source
                         },
                         'description': junction['description'],
-                        'crown': junction['crown']
+                        'location': junction['location']
                     }
                     computation['outputs'].append(junction_descr['_id']+"@junctions")
                     

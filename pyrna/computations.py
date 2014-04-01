@@ -1412,7 +1412,7 @@ class Rnaview(Tool):
                 #- we're keeping track of the number of missing residues
                 #- in the new 3D, the new absolute position = the original absolute position - the missing residues
                 #- in the new 3D, the numbering-system link the residue label to its new absolute position
-                print tertiary_structure.numbering_system
+                #print tertiary_structure.numbering_system
                 for residue_label in numbering_system:
                     absolute_position = int(tertiary_structure.numbering_system[residue_label]) #we get the absolute position in the initial 3D according to the residue label in the numbering table
                     missing_residues += (absolute_position-previous_absolute_position-1)

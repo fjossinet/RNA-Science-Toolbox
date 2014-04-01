@@ -1,4 +1,4 @@
-PyRNA -- Produce and Analyse RNA Data with Python
+PyRNA -- Produce and Mine RNA Data with Python
 =================================================
 
 PyRNA allows you to:
@@ -11,6 +11,8 @@ PyRNA allows you to:
 * deploy some functionalities as REST Web services.
 
 [Assemble2](http://www.bioinformatics.org/assemble/) is an example of Java graphical client consuming PyRNA Web services.
+
+To learn more about PyRNA, check the [PyRNA Cookbook](http://goo.gl/q20VoF)
 
 PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and tested on MacOSX 10.8 and Scientific Linux 5.8 (python 2.7, gcc 4.1 or 4.2).
 
@@ -32,11 +34,6 @@ In its current state, PyRNA is able to handle the following algorithms:
 * [Snoscan](http://goo.gl/P5EQiH)
 
 The algorithms highlighted with a * can be used directly from my own server (arn-ibmc.in2p3.fr), without any installation. You just have to configure your Python scripts properly (see "Create secondary structures from algorithms" in [this IPython notebook](http://goo.gl/WHpfWh)).
-
-Several IPython notebooks are available online to get your feet wet with PyRNA:
-
-* [Create and manipulate molecules with PyRNA](http://nbviewer.ipython.org/gist/fjossinet/9033572)
-* [Create and manipulate secondary structures with PyRNA](http://nbviewer.ipython.org/gist/fjossinet/9035788)
 
 You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as they happen.
 

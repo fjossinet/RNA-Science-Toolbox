@@ -366,7 +366,7 @@ def compute_2d():
                 for junction in ss.junctions:
                     junctions_descr.append({
                         'description': junction['description'],
-                        'crown': junction['crown']
+                        'location': junction['location']
                     })
 
 

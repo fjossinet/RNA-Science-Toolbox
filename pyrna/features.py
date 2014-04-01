@@ -6,7 +6,7 @@ from operator import itemgetter
 
 class Block:
     """
-    A continuous set of positions
+    A continuous range of molecular positions, with a single start and end point. 
     """
     def __init__(self, start, end):
         if start < end:
@@ -28,14 +28,16 @@ class Block:
     def merge(self, block):
         pass
 
-
 class Location:
     """
-    A Location is composed of Block objects.
+    A Location defines a range of molecular positions, continuous or not. A location is made with Block objects.
     """
-    def __init__(self, start = None, end = None, single_positions = None):
+    def __init__(self, start = None, end = None, single_positions = None, nested_lists = None):
         """
-        A location can be constructed either with a start and end positions or as a list of single positions. 
+        To instantiate a Location, you can:
+        - set a start and end position: Location(start=34, end=69). The location will contain all the positions between the start end end.
+        - list all the single positions (sorted or not) to be contained in the location: Location(single_positions=[34, 56, 57, 58, 67, 68, 69])
+        - list the ranges of continuous positions as nested lists: Location(nested_lists=[[34,34], [56,58], [67,69]]) 
         """       
         self.blocks = []
         if start and end:
@@ -45,6 +47,9 @@ class Location:
             for k, g in groupby(enumerate(single_positions), lambda (i,x):i-x):
                 _range = map(itemgetter(1), g)
                 self.blocks.append(Block(min(_range), max(_range)))
+        elif nested_lists:
+            for nested_list in nested_lists:
+                self.blocks.append(Block(min(nested_list), max(nested_list)))
 
     def add_block(self, block):
         blocks_to_remove = []
@@ -113,6 +118,12 @@ class Location:
         position: an integer
         """
         return position in self.get_single_positions()
+
+    def start(self):
+        return self.blocks[0].start
+
+    def end(self):
+        return self.blocks[-1].end        
 
 
 class Molecule:
@@ -271,7 +282,7 @@ class SecondaryStructure:
             strands = [single_strand]
             descr = self.rna[single_strand['location'][0]-1:single_strand['location'][-1]]+" "
             current_pos =  self.get_paired_residue(single_strand['location'][-1]+1)+1
-            crown = [[single_strand['location'][0]-1, single_strand['location'][-1]+1]] 
+            location = [[single_strand['location'][0]-1, single_strand['location'][-1]+1]] 
             next_single_strand = None           
 
             while current_pos >= 1 and current_pos <= len(self.rna):
@@ -280,21 +291,21 @@ class SecondaryStructure:
                     break
                 elif next_single_strand:
                     strands.append(next_single_strand[0])
-                    crown.append([next_single_strand[0]['location'][0]-1, next_single_strand[0]['location'][-1]+1])
+                    location.append([next_single_strand[0]['location'][0]-1, next_single_strand[0]['location'][-1]+1])
                     descr += self.rna[next_single_strand[0]['location'][0]-1:next_single_strand[0]['location'][-1]]+" "
                     current_pos = self.get_paired_residue(next_single_strand[0]['location'][-1]+1)+1
                     continue
                 next_helix = filter(lambda helix: current_pos == helix['location'][0][0] or current_pos == helix['location'][-1][-1]-helix['length']+1, self.helices)
                 if next_helix:
                     descr += '- '
-                    crown.append([current_pos-1, current_pos])
+                    location.append([current_pos-1, current_pos])
                     current_pos = self.get_paired_residue(current_pos)+1
 
             if next_single_strand and next_single_strand[0] == single_strand:
                 self.junctions.append({
                     'single_strands': strands,
                     'description': descr.strip(),
-                    'crown': crown                    
+                    'location': location                    
                 })
 
         #the last
@@ -302,7 +313,7 @@ class SecondaryStructure:
             self.junctions.append({
                 'single_strands': strands,
                 'description': descr.strip(),
-                'crown': crown                    
+                'location': location                    
             })       
 
     def find_stem_loops(self):
@@ -318,13 +329,13 @@ class SecondaryStructure:
             #if the helix ends are linked to a junction of degree >= 3 or not linked to any junction, this is a range to keep.
             linked_to_a_junction = False
             for junction in self.junctions:
-                for i in range(0, len(junction['crown'])-1):
-                    if start == junction['crown'][i][-1] and end == junction['crown'][i+1][0]:
-                        if len(junction['crown']) >= 3:
+                for i in range(0, len(junction['location'])-1):
+                    if start == junction['location'][i][-1] and end == junction['location'][i+1][0]:
+                        if len(junction['location']) >= 3:
                             ranges.append([start, end])
                         linked_to_a_junction = True
-                if start == junction['crown'][-1][-1] and end == junction['crown'][0][0]: #we test the last two ends of the crown (first and last values of the matrix)
-                    if len(junction['crown']) >= 3:
+                if start == junction['location'][-1][-1] and end == junction['location'][0][0]: #we test the last two ends of the location (first and last values of the matrix)
+                    if len(junction['location']) >= 3:
                         ranges.append([start, end])
                     linked_to_a_junction = True
             if not linked_to_a_junction:
@@ -340,20 +351,20 @@ class SecondaryStructure:
             enclosed_inner_loops = []
             enclosed_helices = []
             for _junction in self.junctions:
-                _start = min(_junction['crown'])[0] #the lowest end
-                _end = max(_junction['crown'])[-1] #the highest end
+                _start = min(_junction['location'])[0] #the lowest end
+                _end = max(_junction['location'])[-1] #the highest end
                 if _start > start and _end < end:
-                    if len(_junction['crown']) == 1:
+                    if len(_junction['location']) == 1:
                         enclosed_apical_loops.append(_junction)
                         #print "found apical loop at ", _start, _end
-                    elif len(_junction['crown']) == 2:
+                    elif len(_junction['location']) == 2:
                         enclosed_inner_loops.append(_junction)
                         #print "found inner loop at ", _start, _end
-                        #print _junction['crown']
-                    elif len(_junction['crown']) >= 3:
+                        #print _junction['location']
+                    elif len(_junction['location']) >= 3:
                         enclosed_junctions.append(_junction)
                         #print "found enclosed junction at ", _start, _end
-                        #print _junction['crown']
+                        #print _junction['location']
             for helix in self.helices:
                 _start = helix['location'][0][0]
                 _end = helix['location'][-1][-1]
@@ -367,6 +378,47 @@ class SecondaryStructure:
                 stem_loop['inner_loops'] = enclosed_inner_loops
                 stem_loop['helices'] = enclosed_helices
                 self.stem_loops.append(stem_loop)
+
+    def find_connected_modules(self):
+        self.connected_modules = []
+        if not self.junctions:
+            self.find_junctions()
+        if not self.stem_loops:
+            self.find_stem_loops()
+               
+        tertiary_interactions = self.tertiary_interactions
+
+        for tertiary_interaction in self.tertiary_interactions:
+            start = tertiary_interaction['location'][0][0]
+            end = tertiary_interaction['location'][-1][-1]
+            #print "Tertiary Interaction",start, end
+            for stem_loop_1 in self.stem_loops:
+                location_1 = Location(start = stem_loop_1['location'][0], end = stem_loop_1['location'][1])
+                if location_1.has_position(start):
+                    for junction in self.junctions:
+                        if len(junction['location']) >=3 :
+                            location_2 = Location(nested_lists = junction['location'])
+                            if location_2.has_position(end):
+                                if location_2.end() < location_1.start() or location_2.start() > location_1.end():
+                                    self.connected_modules.append((stem_loop_1, junction))
+                                    #print location_1.start(),location_1.end() 
+                                    #print location_2.start(),location_2.end()
+                    for stem_loop_2 in self.stem_loops:
+                        location_2 = Location(start = stem_loop_2['location'][0], end = stem_loop_2['location'][1])
+                        if location_2.has_position(end) and stem_loop_2 != stem_loop_1:
+                            if location_2.end() < location_1.start() or location_2.start() > location_1.end():
+                                self.connected_modules.append((stem_loop_1, stem_loop_2))
+                                #print location_1.start(),location_1.end() 
+                                #print location_2.start(),location_2.end()
+                if location_1.has_position(end):
+                    for junction in self.junctions:
+                        if len(junction['location']) >=3 :
+                            location_2 = Location(nested_lists = junction['location'])
+                            if location_2.has_position(start):
+                                if location_2.end() < location_1.start() or location_2.start() > location_1.end():
+                                    self.connected_modules.append((stem_loop_1, junction))
+                                    #print location_1.start(),location_1.end() 
+                                    #print location_2.start(),location_2.end() 
 
     def add_helix(self, name, start, end, length):
         _ends = [start, start+length-1, end-length+1, end]
