@@ -1155,34 +1155,28 @@ def parse_bn(bn):
     a pandas Dataframe listing the base pairs. Returns an empty Dataframe if no base-pairs are found.
     """
     i = 0
-    lastSquarredPairedPos = []
-    lastSquarredPairedSymbol = []
-
-    lastRoundedPairedPos = []
-    lastRoundedPairedSymbol = []
-
-    lastCurlyPairedPos = []
-    lastCurlyPairedSymbol = []
+    lastPairedPos = []
+    lastPairedSymbol = []
 
     basePairs = []
 
     for pos in list(bn):
         i+=1
         if pos == '(':
-            lastRoundedPairedPos.append(i)
-            lastRoundedPairedSymbol.append(pos)
+            lastPairedPos.append(i)
+            lastPairedSymbol.append(pos)
         elif pos == '{':
-            lastCurlyPairedPos.append(i)
-            lastCurlyPairedSymbol.append(pos)
+            lastPairedPos.append(i)
+            lastPairedSymbol.append(pos)
         elif pos == '[':
-            lastSquarredPairedPos.append(i)
-            lastSquarredPairedSymbol.append(pos)
+            lastPairedPos.append(i)
+            lastPairedSymbol.append(pos)
         elif pos == ')':
-            basePairs.append(['c', lastRoundedPairedSymbol.pop(), pos, lastRoundedPairedPos.pop(), i])
+            basePairs.append(['c', lastPairedSymbol.pop(), pos, lastPairedPos.pop(), i])
         elif pos == '}':
-            basePairs.append(['c', lastCurlyPairedSymbol.pop(), pos, lastCurlyPairedPos.pop(), i])
+            basePairs.append(['c', lastPairedSymbol.pop(), pos, lastPairedPos.pop(), i])
         elif pos == ']':
-            basePairs.append(['c', lastSquarredPairedSymbol.pop(), pos, lastSquarredPairedPos.pop(), i])
+            basePairs.append(['c', lastPairedSymbol.pop(), pos, lastPairedPos.pop(), i])
 
     if len(basePairs):
         return DataFrame(basePairs, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2'])
