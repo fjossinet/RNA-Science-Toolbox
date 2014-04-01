@@ -373,7 +373,7 @@ class SecondaryStructure:
             #print "enclosed apical loops", len(enclosed_apical_loops)
             #print "enclosed junctions", len(enclosed_junctions)   
             if len(enclosed_apical_loops) == 1 and not enclosed_junctions:
-                stem_loop = {'location': [start, end]}
+                stem_loop = {'location': [[start, end]]}
                 stem_loop['apical_loop'] = enclosed_apical_loops[0]
                 stem_loop['inner_loops'] = enclosed_inner_loops
                 stem_loop['helices'] = enclosed_helices
@@ -393,7 +393,7 @@ class SecondaryStructure:
             end = tertiary_interaction['location'][-1][-1]
             #print "Tertiary Interaction",start, end
             for stem_loop_1 in self.stem_loops:
-                location_1 = Location(start = stem_loop_1['location'][0], end = stem_loop_1['location'][1])
+                location_1 = Location(nested_lists = stem_loop_1['location'])
                 if location_1.has_position(start):
                     for junction in self.junctions:
                         if len(junction['location']) >=3 :
@@ -404,7 +404,7 @@ class SecondaryStructure:
                                     #print location_1.start(),location_1.end() 
                                     #print location_2.start(),location_2.end()
                     for stem_loop_2 in self.stem_loops:
-                        location_2 = Location(start = stem_loop_2['location'][0], end = stem_loop_2['location'][1])
+                        location_2 = Location(nested_lists = stem_loop_2['location'])
                         if location_2.has_position(end) and stem_loop_2 != stem_loop_1:
                             if location_2.end() < location_1.start() or location_2.start() > location_1.end():
                                 self.connected_modules.append((stem_loop_1, stem_loop_2))
