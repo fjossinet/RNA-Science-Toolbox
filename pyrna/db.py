@@ -1,7 +1,6 @@
 import os, shutil, subprocess, re, urllib, urllib2
 from pandas import DataFrame
 from pyrna.features import RNA
-from bs4 import BeautifulSoup
 import parsers, utils
 
 class PDBQuery:

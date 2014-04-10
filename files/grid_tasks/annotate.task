@@ -186,7 +186,6 @@ class AnnotateTask(Task):
                         ncRNAs_hits_to_not_keep_in_alignment = []
 
                         for database_name in self.client.database_names():
-                            print database_name
                             for new_ncRNA_hit in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned': False}):
                                 if new_ncRNA_hit.get('score', 0) < 1e-5: #if no score, we have no way to know if it's interesting or not. So we keep it (so score = 0)
                                     new_ncRNA_hit['db_name'] = database_name #that will be useful later

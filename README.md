@@ -39,9 +39,10 @@ You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as 
 
 #Dependencies
 
-To be able to use 99% of all PyRNA functionalities, you will only need a single Python dependency:
+To be able to use 99% of all PyRNA functionalities, you will only need two Python dependencies:
 
 * [Pandas](http://pandas.pydata.org/): the data structures from pandas are used to describe RNA data,
+* [PyMongo](http://goo.gl/z8qQSh): a Python distribution containing tools for working with MongoDB
 
 If you want to handle NGS data, you will also need to install [pysam](https://code.google.com/p/pysam/), a Python interface for the SAM/BAM sequence alignment and mapping format.
 
@@ -50,13 +51,15 @@ A first option is to install and use a "scientific" Python distribution like [Ca
 A second option is to install the dependencies yourself for your Python distribution. I recommend you to first install the command [easy_install](http://pythonhosted.org/distribute/easy_install.html). Then you can type:
 
 * sudo easy_install pandas
+* sudo easy_install pymongo
 * sudo easy_install pysam
 
 #Quick Start
 
 * if you don't have it, install the command [easy_install](http://pythonhosted.org/distribute/easy_install.html)
-* install the Python dependencies Pandas and pysam (if you plan to handle NGS data):
+* install the Python dependencies Pandas, PyMongo and pysam (if you plan to handle NGS data):
     * sudo easy_install pandas
+    * sudo easy_install pymongo
     * sudo easy_install pysam
 * in a UNIX shell, type:
 
