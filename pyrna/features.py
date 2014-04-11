@@ -225,7 +225,18 @@ class RNA(Molecule):
             self.sequence = ''.join([self.sequence, '-'])
         else:
             #print "Unknown residue "+residue
-            self.sequence = ''.join([self.sequence, residue])    
+            self.sequence = ''.join([self.sequence, residue])
+
+    def get_complement(self):
+        """
+        Returns:
+        ------
+        the complement sequence as a string.
+        """
+        basecomplement = {'A': 'U', 'C': 'G', 'G': 'C', 'U': 'A'}
+        letters = list(self.sequence)
+        letters = [basecomplement[base] if basecomplement.has_key(base) else base for base in letters]
+        return ''.join(letters)    
 
 class SecondaryStructure:
 
@@ -306,15 +317,7 @@ class SecondaryStructure:
                     'single_strands': strands,
                     'description': descr.strip(),
                     'location': location                    
-                })
-
-        #the last
-        if next_single_strand and next_single_strand[0] == single_strand:
-            self.junctions.append({
-                'single_strands': strands,
-                'description': descr.strip(),
-                'location': location                    
-            })       
+                })      
 
     def find_stem_loops(self):
         if not self.junctions:
