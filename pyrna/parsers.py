@@ -1124,12 +1124,14 @@ def parse_vienna(vienna_data):
     current_bn = []
     current_sequence = []
     for line in vienna_data.split('\n'):
+        print line
         if re.match('^[\.()]+$', line):
             current_bn.append(line)
         elif re.match('^>', line):
-            if len(current_bn) and len(current_sequence):
+            if len(current_sequence):
                 rnas.append(RNA(name = name, sequence = ''.join(current_sequence)))
-                secondary_structures.append(parse_bn(''.join(current_bn)))
+                if len(current_bn):
+                    secondary_structures.append(parse_bn(''.join(current_bn)))
             name = line[1:]
             current_bn = []
             current_sequence = []
@@ -1137,9 +1139,10 @@ def parse_vienna(vienna_data):
             current_sequence.append(line.strip())
 
     #last one
-    if len(current_bn) and len(current_sequence):
+    if len(current_sequence):
         rnas.append(RNA(name = name, sequence = ''.join(current_sequence)))
-        secondary_structures.append(parse_bn(''.join(current_bn)))
+        if len(current_bn):
+            secondary_structures.append(parse_bn(''.join(current_bn)))
     return rnas, secondary_structures
 
 def parse_bn(bn):
