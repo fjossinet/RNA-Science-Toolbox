@@ -1124,7 +1124,6 @@ def parse_vienna(vienna_data):
     current_bn = []
     current_sequence = []
     for line in vienna_data.split('\n'):
-        print line
         if re.match('^[\.()]+$', line):
             current_bn.append(line)
         elif re.match('^>', line):
