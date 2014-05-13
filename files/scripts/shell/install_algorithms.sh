@@ -426,6 +426,40 @@ else
 
 fi
 
+################# BOWTIE 2 ##########################
+
+cd "$DEST"
+
+if [ -f bowtie2-2.2.2/bowtie2 ]
+then
+    RESULT=$RESULT"Bowtie2\tALREADY INSTALLED\n"
+else
+
+    cd tmp
+    
+    echo "Installation of Bowtie2... (http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)"
+    echo "Please wait..."
+
+    echo -e "\nInstallation of Bowtie2... (http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)\n" >> $DEST/installation.log
+    
+    $FETCHER bowtie2-2.2.2-source.zip "https://dl.dropboxusercontent.com/u/3753967/algorithms/bowtie2-2.2.2-source.zip" >> $DEST/installation.log 2>&1
+    unzip bowtie2-2.2.2-source.zip >> $DEST/installation.log 2>&1
+    cd bowtie2-2.2.2/
+    make >> $DEST/installation.log 2>&1
+    cd ..
+    mv bowtie2-2.2.2 ../bowtie2-2.2.2
+                
+    if [ -f $DEST/bowtie2-2.2.2/bowtie2 ]
+    then
+        RESULT=$RESULT"Bowtie2\tYES\n"
+    else
+        RESULT=$RESULT"Bowtie2\tNO\n"
+    fi
+
+    echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/bowtie2-2.2.2/' >> "$DEST/setmyenv"
+
+fi
+
 ################# GotohScan ##########################
 
 cd "$DEST"
