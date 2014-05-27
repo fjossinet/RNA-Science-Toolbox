@@ -380,6 +380,85 @@ class Bowtie(Tool):
         print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
         return DataFrame(all_clustered_reads)
 
+class Bowtie2(Tool):
+    """
+    Application Controller for Bowtie2.
+    """
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("bowtie2-build")
+        self.find_executable("bowtie2")
+
+    def parse_sam(self, sam_file, target_molecules):
+        """
+        Parse a SAM file and returns aligned reads.
+        
+        Returns:
+        --------
+        A pandas DataFrame describing the reads. The columns are:
+        - genomicStart (an int)
+        - genomicEnd (an int)
+        - genomicStrand ('+' or '-')
+        - genomeName (a String)
+        """ 
+
+        aligned_reads, total_reads, tids  = parsers.parse_sam(sam_file)
+        reads = []
+        total_aligned_reads = 0
+        for aligned_reads_per_genome in aligned_reads:
+            total_aligned_reads += len(aligned_reads_per_genome)
+            for target_molecule in target_molecules:
+                if target_molecule.name == tids[aligned_reads_per_genome[0]['tid']]:
+                    current_molecule = target_molecule
+            genomeName = tids[aligned_reads_per_genome[0]['tid']]
+
+            for aligned_read in aligned_reads_per_genome :
+                reads.append({
+                    'genomicStart': aligned_read['genomicStart'],
+                    'genomicEnd': aligned_read['genomicEnd'],
+                    'genomeName': genomeName,
+                    'genomicStrand': aligned_read['genomicStrand']
+                })
+        print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
+        return DataFrame(reads)   
+
+    def align(self, target_molecules, fastq_file, no_parsing = False):
+        """
+        Align reads against target molecules.
+
+        Parameters:
+        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
+        - fastq_file: the absolute path for the fastq file containing the reads (as a String)
+        - no_parsing (default: False): if True, the function returns the absolute path of the SAM file without parsing it
+
+        Returns:
+        --------
+        The absolute path of the SAM file or a pandas DataFrame describing the reads. The columns are:
+        - genomicStart (an int)
+        - genomicEnd (an int)
+        - genomicStrand ('+' or '-')
+        - genomeName (a String)
+        """
+
+        fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')        
+        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        fasta_file = open(fasta_file_name, 'w')
+        fasta_file.write(to_fasta(target_molecules))
+        fasta_file.close()
+        
+        db_path = self.cache_dir+"/bowtie_db_"+utils.generate_random_name(7)
+        result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
+
+        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, db_path))
+        print "bowtie2 %s -q \"%s\" -S %s"%(db_path, fastq_file, result_file)
+        commands.getoutput("bowtie2 %s -q \"%s\" -S %s"%(db_path, fastq_file, result_file))
+        print "SAM file %s produced successfully!!"%result_file
+
+        if no_parsing:
+            return result_file
+
+        return self.parse_sam(result_file, target_molecules)
+
 class Clustalw(Tool):
 
     """
@@ -1499,6 +1578,45 @@ class Rnaview(Tool):
                 return (secondary_structure, new_3D)
             else:
                 return (secondary_structure, tertiary_structure)
+
+class Samtools(Tool):
+    """
+    Application Controller for Samtools.
+    """
+    def __init__(self, sam_file, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("samtools")
+        self.sam_file = sam_file
+
+    def sort_and_index(self):
+        """
+        Sort and index a SAM file.
+
+        Parameters:
+        ----------
+        sam_file: the absolute path of the SAM file
+
+        """
+        path = self.sam_file.split('.sam')[0]
+        commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
+        print "BAM file done"
+        commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
+        print "Sorted BAM file done"
+        commands.getoutput("samtools index %s.sorted.bam"%path)
+        print "Indexed BAM file done"
+
+    def count(self, chromosome_name, start, end, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
+        path = self.sam_file.split('.sam')[0]
+        sorted_bam_file = "%s.sorted.bam"%path 
+        restrict_to = ""
+        if restrict_to_plus_strand:
+            restrict_to = '-F 16'
+        if  restrict_to_minus_strand:
+            restrict_to = '-f 16'       
+        query = "%s"%chromosome_name
+        if start and end:
+            query = "%s:%i-%i"%(query, start, end)
+        return int(commands.getoutput("samtools view %s -c %s %s"%(restrict_to, sorted_bam_file, query)))       
 
 class SnoGPS(Tool):
     """

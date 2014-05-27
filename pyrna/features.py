@@ -247,8 +247,341 @@ class SecondaryStructure:
         self.single_strands = []
         self.tertiary_interactions = []
         self.junctions = []
+        self.stem_loops = []
         self.source = "N.A:N.A:N.A"
         self._id = str(ObjectId())
+        self.__step = None
+
+    def _repr_html_(self):
+        if self.__step:
+            return self.draw_as_d3()
+        else:
+            return "No plot available"
+
+    def __walk(self, helix, x_coords, current_y, verbose = False):
+        from numpy import mean
+        enclosed_stem_loops = []
+        if verbose:
+            print "walking helix", helix['location']
+        #do we have a >= 3-way junction linked to this helix?
+        next_junction = None
+        for junction in self.junctions:
+            junction_location = sorted(junction['location'])
+            if len(junction_location) >= 3 and helix['location'][0][-1] == junction_location[0][0] :
+                next_junction = junction
+                if verbose:
+                    print "linked to >=3 junction",junction_location
+                #the occupancy will be the number of residues on the largest side
+                junction_occupancy = mean([junction_location[-1][-1]-junction_location[-1][0]+1, junction_location[0][-1]-junction_location[0][0]+1])-1
+                for i in range(len(junction_location)-1):
+                    for h in self.helices: #next helices in junction
+                        if h['location'][0][0] == junction_location[i][-1]:
+                            if verbose:
+                                print "next helix in junction is helix", h['location']
+                            self.__walk(h, x_coords, current_y-(helix['location'][0][-1]-helix['location'][0][0])*self.__residue_occupancy-1.5*self.__junction_diameter, verbose)
+                    for stem_loop in self.stem_loops: #this helix will lead to which stem loops?
+                        if stem_loop['location'][0][0] >= junction_location[i][-1] and stem_loop['location'][-1][-1] <= junction_location[i+1][0]:
+                            enclosed_stem_loops.append(stem_loop)
+            elif len(junction_location) == 2 and helix['location'][0][-1] == junction_location[0][0]:
+                next_junction = junction
+                if verbose:
+                    print "linked to 2-way junction", junction_location
+                #the occupancy will be the number of residues on the largest side
+                junction_occupancy = mean([junction_location[-1][-1]-junction_location[-1][0]+1, junction_location[0][-1]-junction_location[0][0]+1])-1
+                for h in self.helices:
+                    if h['location'][0][0] == junction_location[0][-1]:
+                        if verbose:
+                            print "next helix in junction is helix", h['location']
+                        self.__walk(h, x_coords, current_y-(helix['location'][0][-1]-helix['location'][0][0])*self.__residue_occupancy-1.5*self.__junction_diameter, verbose)
+                for stem_loop in self.stem_loops: #this helix will lead to which stem loops?
+                    if stem_loop['location'][0][0] >= junction_location[0][0] and stem_loop['location'][-1][-1] <= junction_location[-1][-1]:
+                        enclosed_stem_loops.append(stem_loop)
+            elif len(junction_location) == 1 and helix['location'][0][-1] == junction_location[0][0]:
+                next_junction = junction
+                if verbose:
+                    print "linked to apical loop", junction_location
+        if not len(enclosed_stem_loops): #there was no junction linked to this helix, so it should be in a stem-loop
+            for stem_loop in self.stem_loops:
+                if helix['location'][0][0] >= stem_loop['location'][0][0] and helix['location'][-1][-1] <= stem_loop['location'][-1][-1]:
+                    enclosed_stem_loops.append(stem_loop)
+        _x_coords = []
+        for enclosed_stem_loop in enclosed_stem_loops:
+            _x_coords.append(x_coords[self.stem_loops.index(enclosed_stem_loop)])
+        m = mean(_x_coords)
+        helix['coords'] = [[m, current_y], [m, current_y-(helix['location'][0][-1]-helix['location'][0][0])*self.__residue_occupancy]]
+        if verbose:
+            print "helix", helix['location']
+            print "coords", helix['coords']
+        next_junction['coords'] = [[m, helix['coords'][-1][-1]-self.__junction_diameter/2-5]]
+        if verbose:
+            print "junction", next_junction['location']
+            print "coords", next_junction['coords']
+
+    def compute_plot(self, step = 25, residue_occupancy = 5, junction_diameter = 15, verbose = False):
+        if not self.stem_loops:
+            self.find_stem_loops()
+        self.helices = sorted(self.helices, key=lambda x: x['location'][0][0])
+        if verbose:
+            print len(self.helices), "helices"
+            print len(self.stem_loops), "stem-loops"
+            print len(self.single_strands), "single-strands"
+            print len(self.junctions), "junctions"
+        self.__step = step
+        self.__residue_occupancy = residue_occupancy
+        self.__junction_diameter = junction_diameter
+        if not len(self.helices):
+            raise Exception("Your secondary structure contains no helices!!") 
+        x = 0
+        if verbose:
+            print "\nStem-loops placement\n"
+        x_coords = []
+        if verbose:
+            print "stem loop", self.stem_loops[0]['location']
+            print "x:", x
+        x_coords.append(x)
+        for i in range(0, len(self.stem_loops)-1):
+            before = self.stem_loops[i]['location'][-1][-1]
+            after = self.stem_loops[i+1]['location'][0][0]
+            total_residues = 0
+            total_junctions = 0
+            for junction in self.junctions:
+                if len(junction['location']) >=3:
+                    for single_strand_location in sorted(junction['location'])[1:-1]: #we only use the single-strands that are not on the left and right "sides"
+                        if before <= single_strand_location[0] and after >= single_strand_location[1]:
+                            total_residues += single_strand_location[1]-single_strand_location[0]+1
+                            total_junctions += 1
+            if verbose:
+                print "total residues", total_residues
+                print "total junctions", total_junctions
+            if total_junctions == 0: #we have two stem-loops linked with no junctions. ___||___||___
+                x += (after-before+1)*self.__residue_occupancy+self.__junction_diameter
+            else:    
+                x += total_junctions*self.__step
+            if verbose:
+                print "stem loop", self.stem_loops[i+1]['location']
+                print "x:", x
+            x_coords.append(x)
+
+        if verbose:
+            print "\nHelices placement\n"
+        helix = self.helices[0]
+        currentPos = helix['location'][-1][-1]
+        current_y = 200
+        self.__walk(helix, x_coords, current_y, verbose)
+        while currentPos <= len(self.rna):
+            currentPos +=1
+            if verbose:
+                print "currentPos", currentPos
+            for helix in self.helices:
+                if currentPos == helix['location'][0][0]:
+                    current_y = 200
+                    self.__walk(helix, x_coords, current_y, verbose)
+                    currentPos = helix['location'][-1][-1]
+                    break
+
+        single_strands_not_in_junctions = self.single_strands[:]
+        for junction in self.junctions:
+            for single_strand in junction['single_strands']:
+                single_strands_not_in_junctions.remove(single_strand)
+                            
+        single_strands_not_in_junctions = sorted(single_strands_not_in_junctions)
+        
+        for single_strand in single_strands_not_in_junctions:
+            if verbose:
+                print "single strand not in a junction", single_strand['location']
+            if single_strand['location'][0] == 1:
+                for helix in self.helices:
+                    if helix['location'][0][0] == single_strand['location'][-1]+1: 
+                        single_strand['coords'] = [[helix['coords'][0][0]-helix['location'][0][0]*self.__residue_occupancy, helix['coords'][0][1]], [helix['coords'][0][0], helix['coords'][0][1]]]
+                        break
+            elif single_strand['location'][-1] == len(self.rna):
+                for helix in self.helices:
+                    if helix['location'][-1][-1] == single_strand['location'][0]-1: 
+                        single_strand['coords'] = [[helix['coords'][0][0], helix['coords'][0][1]], [helix['coords'][0][0]+(len(self.rna)-helix['location'][-1][-1]+1)*self.__residue_occupancy, helix['coords'][0][1]]]
+                        break
+            else:
+                first_helix = None
+                second_helix = None
+                for helix in self.helices:
+                    if helix['location'][-1][-1] == single_strand['location'][0]-1: 
+                        first_helix =  helix
+                    if helix['location'][0][0] == single_strand['location'][-1]+1:
+                        second_helix = helix
+                    if first_helix and second_helix:
+                        single_strand['coords'] = [[first_helix['coords'][0][0], first_helix['coords'][0][1]], [second_helix['coords'][0][0], second_helix['coords'][0][1]]]
+                        break
+
+    def draw_as_d3(self, stroke_width = 2, verbose = False):
+        from pyrna import utils
+        from numpy import mean
+        all_x =[]
+        all_y = []
+        quantitative_values = []
+
+        single_strands_not_in_junctions = []
+
+        for single_strand in self.single_strands: #only the single-strands with a coords key are not in junctions
+            if single_strand.has_key('coords'):
+                single_strands_not_in_junctions.append(single_strand)    
+        
+        for single_strand in single_strands_not_in_junctions:
+            if single_strand.has_key('quantitative_value'):
+                quantitative_values.append(single_strand['quantitative_value'])   
+            all_x.append(single_strand['coords'][0][0])
+            all_y.append(single_strand['coords'][0][1])
+            all_x.append(single_strand['coords'][1][0])
+            all_y.append(single_strand['coords'][1][1])
+        for helix in self.helices:
+            if helix.has_key('quantitative_value'):
+                quantitative_values.append(helix['quantitative_value'])
+            all_x.append(helix['coords'][0][0])
+            all_y.append(helix['coords'][0][1])
+            all_x.append(helix['coords'][1][0])
+            all_y.append(helix['coords'][1][1])
+        for junction in self.junctions:
+            if junction.has_key('quantitative_value'):
+                quantitative_values.append(junction['quantitative_value'])
+            all_x.append(junction['coords'][0][0])
+            all_y.append(junction['coords'][0][1])
+
+        min_x = min(all_x)
+        min_y = min(all_y)
+        
+        for single_strand in single_strands_not_in_junctions:
+            single_strand['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in single_strand['coords']]
+        for helix in self.helices:
+            helix['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in helix['coords']]
+        for junction in self.junctions:
+            junction['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in junction['coords']]
+        
+        all_x = [x-min_x+self.__junction_diameter for x in all_x]
+        all_y = [y-min_y+self.__junction_diameter for y in all_y]
+
+        colors_d3 = """"""
+        if quantitative_values:
+            colors_d3 = """var colors = d3.scale.linear().domain(["""+str(min(quantitative_values))+""","""+str(mean(quantitative_values))+""","""+str(max(quantitative_values))+"""]).range(["#4daf4a",  "#377eb8", "#e41a1c"]);"""
+        
+        helices_d3 = """"""
+        helix_color = '"steelblue"'
+        if helix.has_key('quantitative_value'):
+            helix_color = "colors("+str(helix['quantitative_value'])+")"
+        for helix in self.helices:
+            helices_d3 += """svg.append("line")
+                            .style("stroke", """+helix_color+""") 
+                            .style("stroke-width", """+str(stroke_width)+""")
+                            .attr("x1", """+str(helix['coords'][0][0])+""")
+                            .attr("y1", """+str(helix['coords'][0][1])+""")
+                            .attr("x2", """+str(helix['coords'][1][0])+""")
+                            .attr("y2", """+str(helix['coords'][1][1])+""");
+                    """
+
+        junctions_d3 = """"""
+        for junction in self.junctions:
+            if len(junction['location']) >= 3:
+                junction_location = sorted(junction['location'])
+                for i in range(len(junction_location)-1):
+                    for h in self.helices: #next helices in junction
+                        if h['location'][0][0] == junction_location[i][-1]:
+                            if h['coords'][0][1] != junction['coords'][0][1]: #to avoid to redraw a vertical line
+                                new_points = utils.get_points(h['coords'][0][0], h['coords'][0][1], junction['coords'][0][0], junction['coords'][0][1], distance = (self.__junction_diameter+10)/2)
+                                if len(new_points) == 2:
+                                    helix_color = '"steelblue"'
+                                    if h.has_key('quantitative_value'):
+                                        helix_color = "colors("+str(h['quantitative_value'])+")"
+                                    junctions_d3 += """svg.append("line")
+                                        .style("stroke-linecap", "round")
+                                        .style("stroke", """+helix_color+""") 
+                                        .style("stroke-width", """+str(stroke_width)+""")
+                                        .attr("x1", """+str(h['coords'][0][0])+""")
+                                        .attr("y1", """+str(h['coords'][0][1])+""")
+                                        .attr("x2", """+str(new_points[1][0])+""")
+                                        .attr("y2", """+str(new_points[1][1])+""");
+                                    """
+
+            junction_color = '"steelblue"'
+            if junction.has_key('quantitative_value'):
+                junction_color = "colors("+str(junction['quantitative_value'])+")"
+
+            junctions_d3 += """svg.append("circle")
+                            .style("fill", """+junction_color+""") 
+                            .attr("cx", """+str(junction['coords'][0][0])+""")
+                            .attr("cy", """+str(junction['coords'][0][1])+""")
+                            .attr("r", """+str(self.__junction_diameter/2)+""");
+                    """
+            
+            junction_color = '"steelblue"'
+            if junction.has_key('quantitative_value'):
+                junction_color = "colors("+str(junction['quantitative_value'])+")"
+
+            junctions_d3 += """svg.append("circle")
+                    .style("fill", "none")
+                    .style("stroke", """+junction_color+""")
+                    .style("stroke-width", """+str(stroke_width)+""")
+                    .attr("cx", """+str(junction['coords'][0][0])+""")
+                    .attr("cy", """+str(junction['coords'][0][1])+""")
+                    .attr("r", """+str((1.5*self.__junction_diameter)/2)+""");
+            """            
+
+        single_strands_d3 = """"""
+        for single_strand in single_strands_not_in_junctions:
+
+            single_strand_color = '"steelblue"'
+            if single_strand.has_key('quantitative_value'):
+                single_strand_color = "colors("+str(single_strand['quantitative_value'])+")"
+
+            single_strands_d3 += """svg.append("line")
+                                    .style("stroke-linecap", "round")
+                                    .style("stroke", """+single_strand_color+""") 
+                                    .style("stroke-width", """+str(stroke_width)+""")
+                                    .attr("x1", """+str(single_strand['coords'][0][0])+""")
+                                    .attr("y1", """+str(single_strand['coords'][0][1])+""")
+                                    .attr("x2", """+str(single_strand['coords'][1][0])+""")
+                                    .attr("y2", """+str(single_strand['coords'][1][1])+""");
+                                """
+
+        #we end with the helices directly linked at the basis of the drawing
+        directly_linked_helices_d3 = """"""
+        previous_helix = self.helices[0]
+        currentPos = previous_helix['location'][-1][-1]
+        while currentPos <= len(self.rna):
+            currentPos +=1
+            if verbose:
+                print "currentPos", currentPos
+            for helix in self.helices:
+                if currentPos == helix['location'][0][0]:
+                    if previous_helix['location'][-1][-1] +1 == helix['location'][0][0]:
+                        if verbose:
+                            print "directly linked helices", previous_helix['location'] , helix['location']
+                        directly_linked_helices_d3 += """svg.append("line")
+                                        .style("stroke-linecap", "round")
+                                        .style("stroke", "grey") 
+                                        .style("stroke-width", """+str(stroke_width)+""")
+                                        .attr("x1", """+str(previous_helix['coords'][0][0])+""")
+                                        .attr("y1", """+str(previous_helix['coords'][0][1])+""")
+                                        .attr("x2", """+str(helix['coords'][0][0])+""")
+                                        .attr("y2", """+str(helix['coords'][0][1])+""");
+                                    """
+                    currentPos = helix['location'][-1][-1]
+                    previous_helix = helix
+                    break
+
+        d3_description = """
+        
+            <div id="viz"></div>
+            <script type="text/javascript">
+
+            var svg = d3.select("#viz")
+                .append("svg")
+                .attr("width", """+str(max(all_x)+self.__junction_diameter)+""")
+                .attr("height", """+str(max(all_y)+self.__junction_diameter)+""");
+                """+colors_d3+"""
+                """+junctions_d3+"""
+                """+helices_d3+"""
+                """+single_strands_d3+"""
+                """+directly_linked_helices_d3+"""
+                </script>"""
+
+        return d3_description   
 
     def get_junctions(self):
         return DataFrame(self.junctions)
@@ -317,7 +650,64 @@ class SecondaryStructure:
                     'single_strands': strands,
                     'description': descr.strip(),
                     'location': location                    
-                })      
+                })
+
+        #now we search for junctions with only directly linked helices
+        for helix in self.helices:
+            if helix['location'][0][0] == 1 or helix['location'][-1][-1] == len(self.rna) or len(filter(lambda junction: helix['location'][0][0] in sum(junction['location'],[]) or helix['location'][-1][-1] in sum(junction['location'],[]), self.junctions)):
+                continue
+            descr = ""
+            location = []
+            next_helix = None
+            current_pos = helix['location'][-1][-1]+1
+
+            while current_pos >= 1 and current_pos <= len(self.rna):
+                next_helix = filter(lambda helix: current_pos == helix['location'][0][0] or current_pos == helix['location'][1][0], self.helices)
+                if next_helix and next_helix[0] == helix:
+                    descr += '- '
+                    location.append([current_pos-1, current_pos])
+                    break
+                elif next_helix:
+                    descr += '- '
+                    location.append([current_pos-1, current_pos])
+                    current_pos = self.get_paired_residue(current_pos)+1
+                else:
+                    break
+
+            if next_helix and next_helix[0] == helix:
+                self.junctions.append({
+                    'single_strands': [],
+                    'description': descr.strip(),
+                    'location': location                    
+                })  
+
+            #the other side
+            descr = ""
+            location = []
+            next_helix = None
+            current_pos = helix['location'][0][1]+1
+
+            while current_pos >= 1 and current_pos <= len(self.rna):
+                next_helix = filter(lambda helix: current_pos == helix['location'][0][0] or current_pos == helix['location'][1][0], self.helices)
+                if next_helix and next_helix[0] == helix:
+                    descr += '- '
+                    location.append([current_pos-1, current_pos])
+                    break
+                elif next_helix:
+                    descr += '- '
+                    location.append([current_pos-1, current_pos])
+                    current_pos = self.get_paired_residue(current_pos)+1
+                else:
+                    break
+
+            if next_helix and next_helix[0] == helix:
+                self.junctions.append({
+                    'single_strands': [],
+                    'description': descr.strip(),
+                    'location': location                    
+                })  
+
+        self.junctions = sorted(self.junctions, key=lambda x: x['location'][0][0])      
 
     def find_stem_loops(self):
         if not self.junctions:
@@ -381,6 +771,8 @@ class SecondaryStructure:
                 stem_loop['inner_loops'] = enclosed_inner_loops
                 stem_loop['helices'] = enclosed_helices
                 self.stem_loops.append(stem_loop)
+
+        self.stem_loops = sorted(self.stem_loops, key=lambda x: x['apical_loop']['location'][0])
 
     def find_connected_modules(self):
         self.connected_modules = []

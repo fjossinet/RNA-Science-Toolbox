@@ -3,6 +3,47 @@ import math, re
 from features import RNA, DNA
 from bson.objectid import ObjectId
 
+def get_points(x1, y1, x2, y2, distance):
+    opposite_side = get_distance(x1, y1, x1, y2)
+    adjacent_side = get_distance(x1, y2, x2, y2)
+    if not adjacent_side:
+        return []
+    angle = get_angle(opposite_side, adjacent_side)
+    new_x1 = None
+    new_y1 = None
+    new_x2 = None
+    new_y2 = None
+    
+    if x1 >= x2:
+        new_x2 = x2 + get_adjacent_side(angle, distance)
+        new_x1 = x1 - get_adjacent_side(angle, distance)
+    else:
+        new_x2 = x2 - get_adjacent_side(angle, distance)
+        new_x1 = x1 + get_adjacent_side(angle, distance)
+    
+    if y1 >= y2:
+        new_y2 = y2 + get_opposite_side(angle, distance)
+        new_y1 = y1 - get_opposite_side(angle, distance)
+    else:
+        new_y2 = y2 - get_opposite_side(angle, distance)
+        new_y1 = y1 + get_opposite_side(angle, distance)
+        
+    return [[new_x1, new_y1], [new_x2, new_y2]]
+    
+def get_angle(opposite_side, adjacent_side):
+    return math.atan(opposite_side/adjacent_side)
+    
+def get_distance(x1, y1, x2, y2):
+    horizontal = x1 - x2
+    vertical = y1 - y2
+    return math.sqrt(horizontal*horizontal + vertical*vertical)
+
+def get_adjacent_side(angle, hypothenuse):
+    return math.cos(angle) * hypothenuse
+
+def get_opposite_side(angle, hypothenuse):
+    return math.sin(angle) * hypothenuse
+
 """
 This methods finds clusters from a list of genomic annotations.
 Args:

@@ -1352,10 +1352,10 @@ def parse_sam(sam_file):
     for i in range(0, sequence_nb):
         reads.append([])
         sequence_names.append(sam_file_content.header['SQ'][i]['SN'])
-    
+
     for alignedread in sam_file_content.fetch(): #alignedread: <type 'csamtools.AlignedRead'>
         total_read_nb += 1
-        if alignedread.rname != -1:
+        if alignedread.flag != 4:
             aligned_read_nb +=1
             for name in sequence_names:
                 if name == sam_file_content.getrname(alignedread.rname):
@@ -1385,10 +1385,16 @@ def parse_sam(sam_file):
                         r -= tu[1]
                     c += tu[1]
                     r += tu[1]
-            read['genomicStart'] = aligned_seq[0] 
+            read['genomicStart'] = aligned_seq[0]
             #read.append(aligned_seq[0])
             read['genomicEnd'] = aligned_seq[-1]
             #read.append(aligned_seq[-1])
+            if alignedread.flag == 0:
+                read['genomicStrand'] = '+'
+            elif alignedread.flag == 16:
+                read['genomicStrand'] = '-'
+            else:
+                read['genomicStrand'] = '?'   
             reads[alignedread.rname-1].append(read)
     sam_file_content.close()
     return reads, total_read_nb, tid_dic
