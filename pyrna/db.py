@@ -255,14 +255,14 @@ class NCBI:
             species.append(' '.join(species_dir.split('/')[-1].split('_')))
         return species
 
-    def efetch(self, db, ids, rettype = None, header = None):
+    def efetch(self, db, ids, rettype = None, retmode = "text", header = None):
         """
         Wrapper for the Efetch Entrez Utilities
         """
         if rettype:
-            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s&rettype=%s"%(self._eutils_base_url, db, ','.join(ids), rettype))
+            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s&rettype=%s&retmode=%s"%(self._eutils_base_url, db, ','.join(ids), rettype,retmode))
         else:
-            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s"%(self._eutils_base_url, db, ','.join(ids)))
+            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s&retmode=%s"%(self._eutils_base_url, db, ','.join(ids),retmode))
         if header:
             content = str(response.read(header))
         else:
