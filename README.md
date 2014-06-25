@@ -131,7 +131,7 @@ To increase the speed of your computations and/or to avoid to flood my own serve
 * parsers.py: functions to parse and convert RNA data,
 * computations.py: classes to wrap RNA algorithms,
 * db.py: classes to connect public databases,
-* restserver.py: executable script to launch the embedded REST server
+* server.py: executable script to launch the embedded REST server
 
 The modules task.py and glite.py allow to design, submit and manage grid jobs using the [gLite](http://glite.web.cern.ch/glite/) middleware. As a "basic user", you should not care about them.
 
@@ -155,14 +155,14 @@ PyRNA provides you the ability to deploy some functionalities as REST Web servic
 
 Once everything installed, launch your MongoDB and type: 
 
-    $ ./restserver.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)] [-conf configuration_file] 
+    $ ./server.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)] [-conf configuration_file] 
 
 The configuration file allows you to define which algorithms are enabled for remote computations. A sample configuration is provided with PyRNA (named pyrna.conf).
 
 Examples: 
 
-    $ ./restserver.py
+    $ ./server.py
 
-    $ ./restserver.py -wh my_host_name -wp 80
+    $ ./server.py -wh my_host_name -wp 80
 
-    $ ./restserver.py -wh my_host_name -wp 80 -conf $PYRNA_HOME/pyrna.conf
+    $ ./server.py -wh my_host_name -wp 80 -conf $PYRNA_HOME/pyrna.conf
