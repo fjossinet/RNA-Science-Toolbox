@@ -107,7 +107,7 @@ class AnnotateTask(Task):
         
         scriptContent = "#Families processed: "+','.join(families_range)+"\n" #we keep track of the families that will be processed by the job (improve the debugging for annoying jobs (like neverending jobs))
 
-        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+(" -cache_dir "+self.cache_dir if self.cache_dir else "")+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -ignore "+','.join([str(x) for x in self.ignore]) if len(self.ignore) else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))
+        scriptContent += "./files/grid_tasks/annotate.task -db "+self.db_name+" -algorithms "+self.algorithms+" -python "+self.python+" -h "+self.client.host+" -p "+str(self.client.port)+(" -cache_dir "+self.cache_dir if self.cache_dir else "")+" -id "+str(job_id)+" -families "+str(self.familiesPerJob)+(" -rfam_ids "+','.join([str(x) for x in self.rfam_ids]) if self.rfam_ids else "")+(" -ignore "+','.join([str(x) for x in self.ignore]) if len(self.ignore) else "")+(" -calibrate " if self.calibrate else "")+(" -align " if self.align else "")+(" -rfam_version %s -ga %s"%(self.rfam.version, 'Y' if self.gathering_threshold else 'N'))+" -e %s"%self.endPoint
         
         from time import gmtime, strftime
         print strftime("%Y-%m-%d %H:%M:%S", gmtime()) #a timestamp that could be useful to track back a screen session.
