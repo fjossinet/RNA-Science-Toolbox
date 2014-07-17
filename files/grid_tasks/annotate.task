@@ -165,7 +165,6 @@ class AnnotateTask(Task):
             for id in families_range:
                 if not id.startswith("RF"):
                     in_house_alignment = self.client['comparative_genomics']['alignments'].find_one({'_id':id})
-                    print in_house_alignment['source']
                     if in_house_alignment:
                         rnas, consensus_2d = parse_clustalw(in_house_alignment['alignment'])
                         stockholm_content = to_stockholm(consensus_2d, rnas)

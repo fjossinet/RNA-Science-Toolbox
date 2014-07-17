@@ -354,7 +354,10 @@ class SecondaryStructure:
                 print "total residues", total_residues
                 print "total junctions", total_junctions
             if total_junctions == 0: #we have two stem-loops linked with no junctions. ___||___||___
-                x += (after-before+1)*self.__residue_occupancy+self.__junction_diameter
+                 l = (after-before+1)*self.__residue_occupancy+self.__junction_diameter
+                 if l > 2*self.__junction_diameter:
+                    l = 2*self.__junction_diameter
+                 x += l
             else:    
                 x += total_junctions*self.__step
             if verbose:
@@ -391,13 +394,19 @@ class SecondaryStructure:
                 print "single strand not in a junction", single_strand['location']
             if single_strand['location'][0] == 1:
                 for helix in self.helices:
-                    if helix['location'][0][0] == single_strand['location'][-1]+1: 
-                        single_strand['coords'] = [[helix['coords'][0][0]-helix['location'][0][0]*self.__residue_occupancy, helix['coords'][0][1]], [helix['coords'][0][0], helix['coords'][0][1]]]
+                    if helix['location'][0][0] == single_strand['location'][-1]+1:
+                        l = helix['location'][0][0]*self.__residue_occupancy
+                        if l > 2*self.__junction_diameter:
+                            l = 2*self.__junction_diameter 
+                        single_strand['coords'] = [[helix['coords'][0][0]-l, helix['coords'][0][1]], [helix['coords'][0][0], helix['coords'][0][1]]]
                         break
             elif single_strand['location'][-1] == len(self.rna):
                 for helix in self.helices:
-                    if helix['location'][-1][-1] == single_strand['location'][0]-1: 
-                        single_strand['coords'] = [[helix['coords'][0][0], helix['coords'][0][1]], [helix['coords'][0][0]+(len(self.rna)-helix['location'][-1][-1]+1)*self.__residue_occupancy, helix['coords'][0][1]]]
+                    if helix['location'][-1][-1] == single_strand['location'][0]-1:
+                        l =  (len(self.rna)-helix['location'][-1][-1]+1)*self.__residue_occupancy
+                        if l > 2*self.__junction_diameter:
+                            l = 2*self.__junction_diameter 
+                        single_strand['coords'] = [[helix['coords'][0][0], helix['coords'][0][1]], [helix['coords'][0][0]+l, helix['coords'][0][1]]]
                         break
             else:
                 first_helix = None

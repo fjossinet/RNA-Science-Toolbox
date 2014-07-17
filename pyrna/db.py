@@ -259,10 +259,21 @@ class NCBI:
         """
         Wrapper for the Efetch Entrez Utilities
         """
+        data = {
+            'db': db,
+            'id': ','.join(ids),
+            'retmode': retmode
+        }
         if rettype:
-            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s&rettype=%s&retmode=%s"%(self._eutils_base_url, db, ','.join(ids), rettype,retmode))
+            data['rettype'] = rettype
+
+        response = None
+
+        if len(ids) > 200:
+            response = urllib.urlopen("%sefetch.fcgi"%self._eutils_base_url, urllib.urlencode(data))
         else:
-            response = urllib.urlopen("%sefetch.fcgi?db=%s&id=%s&retmode=%s"%(self._eutils_base_url, db, ','.join(ids),retmode))
+            response = urllib.urlopen("%sefetch.fcgi?%s"%(self._eutils_base_url, urllib.urlencode(data)))
+        
         if header:
             content = str(response.read(header))
         else:

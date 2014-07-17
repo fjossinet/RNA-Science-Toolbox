@@ -692,7 +692,6 @@ class Cmsearch(Tool):
                 return self.parse_output(commands.getoutput("cmsearch "+cmFile+" "+fileName), molecules, False)
             else:
                 return self.parse_output(commands.getoutput("cmsearch --ga "+cmFile+" "+fileName), molecules, True)
-
         else:
             #write molecules as FASTA
             fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
