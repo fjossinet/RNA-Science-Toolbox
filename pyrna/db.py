@@ -255,6 +255,28 @@ class NCBI:
             species.append(' '.join(species_dir.split('/')[-1].split('_')))
         return species
 
+    def get_organism(self, ids, db = 'nucleotide'):
+        """
+        Search for organism names given a list of NCBI ids.
+        Parameters:
+        -----------
+        - ids: a list of NCBI ids from the database,
+        - db: the NCBI database storing the ids (default: 'nucleotide').
+
+        Returns:
+        --------
+        a list of strings.
+        """
+        result = self.efetch(db = db, ids = ids, rettype = "fasta", retmode="xml")
+        organisms = []
+        matches = re.finditer(r'<TSeq_orgname>(.+)</TSeq_orgname>', result)
+        for match in matches:
+            organism = match.group(1)
+            if organism:
+                organisms.append(organism)
+        return organisms
+
+
     def efetch(self, db, ids, rettype = None, retmode = "text", header = None):
         """
         Wrapper for the Efetch Entrez Utilities
