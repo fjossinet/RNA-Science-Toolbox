@@ -3,7 +3,6 @@ from pandas import DataFrame
 from pyrna.features import RNA, DNA, TertiaryStructure, SecondaryStructure
 from pyrna import utils
 from pysam import Samfile
-from pyrna.computations import Samtools
 
 def consensus2d_to_base_pairs(aligned_rna, consensus_2d):
     """
@@ -489,14 +488,16 @@ def to_bn(base_pairs, length):
 
     return ''.join(bn)
 
-def read_counts_to_tsv(file_name, sam_file, chromosome_name, start, end, step, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
+def read_counts_to_tsv(file_name, sam_file, chromosome_name, start, end, step = 1, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
+    from pyrna.computations import Samtools
     samtools = Samtools(sam_file = sam_file)
     with open(file_name, 'w') as tsv_file: 
-        for i in range(start, end, step):
+        for i in range(start, end+1, step):
+            print i
             if step != 1:
-                tsv_file.write("%i-%i\t%i"%(i, i+step-1, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand))
+                tsv_file.write("%i-%i\t%i\n"%(i, i+step-1, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))
             else:
-                tsv_file.write("%i\t%i"%(i,samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand))     
+                tsv_file.write("%i\t%i\n"%(i, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))     
 
 def parse_genbank(genbank_data):
     """
