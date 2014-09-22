@@ -878,7 +878,7 @@ if __name__ == '__main__':
         curate(db_host = db_host, db_port = db_port)
     else:
         if not base_path:
-            print "Usage: charnDB_mongo.py -dir output_dir [-h db_host (default: localhost)] [-p db_port (default: 27017)] [-remove species_name] [-add species_name genbank_file_1,embl_file_2,...] [-dump] [-drop]"
+            print "Usage: charnDB_mongo.py [-dir output_dir] [-h db_host (default: localhost)] [-p db_port (default: 27017)] [-remove database_name] [-add database_name genbank_file_1 embl_file_2 ...] [-dump] [-drop]"
             sys.exit(-1)
         create(base_path, db_host = db_host, db_port = db_port)
 

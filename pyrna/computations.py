@@ -790,7 +790,7 @@ class Cmsearch(Tool):
                         seq = ''.join(tokens[1:-1])
                         target_sequence += seq
                         target_turn = False
-                        if lines[i].strip().endswith("%i"%target_end) or len(lines[i+2].strip()) == 0:
+                        if lines[i].strip().endswith("%i"%target_end) and lines[i-2].strip().endswith("%i"%query_end)  or len(lines[i+2].strip()) == 0:
                             break
                         i += 3
                 current_query_start = query_start
