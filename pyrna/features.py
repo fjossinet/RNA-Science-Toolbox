@@ -136,6 +136,7 @@ class Molecule:
         self.lineage = None
         self.source = 'N.A.:N.A.:N.A.'
         self.sequence = ""
+        self.dbxref = [] #to store the references, as strings, to external databases for this molecule ("RFAM:RF00001", "GO:0006355", "GeneID:13886572")
 
     def get_gaps_positions(self):
         positions = []
