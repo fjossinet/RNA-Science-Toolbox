@@ -186,7 +186,7 @@ class AnnotateTask(Task):
 
                         for database_name in self.client.database_names():
                             for new_ncRNA_hit in self.client[database_name]['ncRNAs'].find({'alignment': id+"@alignments", 'aligned': False}):
-                                if new_ncRNA_hit.get('score', 0) < 1e-5: #if no score, we have no way to know if it's interesting or not. So we keep it (so score = 0)
+                                if new_ncRNA_hit.get('score', 0) <= 1e-10: #if no score, we have no way to know if it's interesting or not. So we keep it (so score = 0)
                                     new_ncRNA_hit['db_name'] = database_name #that will be useful later
                                     ncRNAs_hits_to_keep_in_alignment.append(new_ncRNA_hit)
                                     self.client[database_name]['ncRNAs'].update({ '_id': new_ncRNA_hit['_id'] }, { '$unset' : { 'aligned' : 1} })
