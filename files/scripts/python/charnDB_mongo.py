@@ -279,7 +279,9 @@ def dump(db_host = "localhost", db_port = 27017):
         data = {}
         for s in species:
             db = client[s]
-            lineage = db['genomes'].find_one()['lineage'].split(';')
+            genome = db['genomes'].find_one()
+            print genome['organism']
+            lineage = genome['lineage'].split(';')
 
             if lineage[2] == " Microsporidia":
                 continue
@@ -546,9 +548,7 @@ def dump(db_host = "localhost", db_port = 27017):
                         print "%i close annotations in %s for %s"%(len(close_annotations), ncRNA['organism'], alignment['name'])
 
                         ncRNA.pop("sequence", None)
-                        ncRNA.pop("genome", None)
                         ncRNA.pop("alignment", None)
-                        ncRNA.pop("_id", None)
 
                         orthologs.append({
                             'ortholog': ncRNA,

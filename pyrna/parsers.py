@@ -774,6 +774,7 @@ def parse_embl(embl_data):
     features = []
     organism = None
     location = None
+    lineage = ""
     lines = embl_data.strip().split('\n')
     if not lines[-1].strip() == '//':
         raise Exception("Uncomplete file")
@@ -783,6 +784,8 @@ def parse_embl(embl_data):
             accession = re.split('\s+', line)[-1]
         elif line.strip().startswith('OS'):
             organism = line.strip().split('OS')[1].strip()
+        elif line.strip().startswith('OC'):
+            lineage += line.strip().split('OC')[1].strip().replace('.','; ')
         elif line.startswith('SQ'): #the genomic sequence
             start_of_sequence = True
             #we store the last feature
@@ -964,6 +967,9 @@ def parse_embl(embl_data):
             pieces_of_seq.append(''.join(re.split('\s+',line.strip())[:-1]).upper())
 
     dna = DNA( name = accession, sequence=''.join(pieces_of_seq))
+
+    tokens = lineage.split('; ')
+    dna.lineage = '; '.join(tokens[:-2])+'.'
 
     if organism:
         dna.organism = organism
