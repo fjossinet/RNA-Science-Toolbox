@@ -48,6 +48,85 @@ class Tool:
             sys.exit(1)
         return file_name
 
+class Augustus(Tool):
+
+    """
+    Application Controller for Augustus.
+    """
+
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("augustus")
+
+    def search(self, molecules, species = "saccharomyces_cerevisiae_S288C"):
+        """"
+        Parameters:
+        ---------
+        - molecules: the target molecules that will be used to do the search (as a list of Molecule objects, see pyrna.features)
+        - species: the identifier of the species that will be used to do the search (for the list of available species, see the augustus readme file)
+        """
+
+        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        f = open(fileName, 'w')
+        f.write(parsers.to_fasta(molecules))
+        f.close()
+
+        data = commands.getoutput('cd %s ; augustus --species=%s %s'%(self.cache_dir, species, fileName))
+
+        return data, self.parse_output(data)
+
+    def parse_output(self, output):
+
+        """
+        Parameters:
+        -----------
+        - output: the Augustus output as a String.
+
+        Returns:
+        -----------
+        A pandas DataFrame describing all the Augustus genes. The index stores genes ids. The column are:
+        - sequence_name
+        - source
+        - genomic_positions
+        - score
+        - strand
+        - frame
+        - gene_id
+        - protein_sequence
+        """
+
+        genes = []
+        i = 0
+        lines = output.split('\n')
+        for line in lines:
+            if line.startswith('# start gene'):
+                tokens = re.split('\t', lines[i+1])
+                gene = {
+                    "sequence_name": tokens[0],
+                    "source": tokens[1],
+                    "genomic_positions": [tokens[3], tokens[4]],
+                    "score": tokens[5],
+                    "strand": tokens[6],
+                    "frame": tokens[7],
+                    "gene_id": tokens[8]
+                }
+                j = 1
+                flag = False
+                while flag == False:
+                    if lines[i+j].startswith('# protein sequence'):
+                        protein_sequence = lines[i+j].split('[')[1].split(']')[0]
+                        if not ']' in lines[i+j]:
+                            k = 1
+                            while not ']' in lines[i+j+k]:
+                                protein_sequence += (lines[i+j+k].split('# ')[1].split(']')[0])
+                                k += 1
+                        gene['protein_sequence'] = protein_sequence
+                        flag = True
+                    j += 1
+                genes.append(gene)
+            i += 1
+        return DataFrame(genes)
+
 class Bcheck(Tool):
     """
     Application Controller for Bcheck.
