@@ -216,7 +216,7 @@ class Blast(Tool):
         commands.getoutput("cd %s ; formatdb -i %s -p %s -o"%(self.cache_dir, fasta_file.name, "F" if is_nucleotide else "T"))
         self.formatted_db = fasta_file.name
 
-    def _parse_output(self, output):
+    def parse_output(self, output):
         """
         Parse a blast output
 
