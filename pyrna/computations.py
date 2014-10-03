@@ -281,6 +281,8 @@ class Blast(Tool):
                 query_positions = []
                 subject_positions = []
                 evalue = line.split("Expect =")[1].split(',')[0].strip() #the instruction .split(',') is to be compatible with the blastR output (which is a blastP output)
+                if evalue.startswith('e'):
+                    evalue = '1'+evalue
                 if len(lines[i-3].strip()): #otherwise its a hit for the same sequence
                     sequence_name = lines[i-3][1:].strip()
             elif line.startswith("Strand ="):
@@ -506,6 +508,7 @@ class Bowtie2(Tool):
         Align reads against target molecules.
 
         Parameters:
+        -----------
         - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
         - fastq_file: the absolute path for the fastq file containing the reads (as a String)
         - no_parsing (default: False): if True, the function returns the absolute path of the SAM file without parsing it
@@ -538,6 +541,30 @@ class Bowtie2(Tool):
 
         return self.parse_sam(result_file, target_molecules)
 
+    def build_index(self, target_molecules):
+        """
+        Build a new index for the target molecules
+        
+        Parameters:
+        -----------
+        - target_molecules: the genomic sequences to be used for the index (an array of Molecule objects, see pyrna.features)
+
+        Returns:
+        --------
+        The absolute path of the directory containing the index files
+        """
+
+        index_path = self.cache_dir+"/index_"+utils.generate_random_name(7)
+        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        fasta_file = open(fasta_file_name, 'w')
+        fasta_file.write(to_fasta(target_molecules))
+        fasta_file.close()
+        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, index_path))
+        print "Index files produced successfully!!"
+
+        return index_path
+
+
 class Clustalw(Tool):
 
     """
@@ -552,7 +579,7 @@ class Clustalw(Tool):
         """
         Parameters:
         ---------
-        - molecules:  the molecules to align (as a list of Molecule objects, see pyrna.features)
+        - molecules: the molecules to align (as a list of Molecule objects, see pyrna.features)
 
         Returns:
         -------- 
@@ -2026,3 +2053,32 @@ class Snoscan(Tool):
             return DataFrame(hits, columns = ['source', 'class', 'target_name', 'organism', 'score', 'target_positions', 'target_strand', 'sequence', 'target_rRNA', 'name', 'C-box', 'D-box', 'guide_sequence'])       
         else:
             return DataFrame()
+
+class Tophat(Tool):
+    """
+    Application Controller for Tophat.
+    """
+    
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("tophat")
+
+    def align(self, target_molecules, fastq_file, bowtie2_index = None):
+        """
+        Align reads to target molecules
+
+        Parameters:
+        -----------
+        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
+        - fastq_file: the absolute path for the fastq file containing the reads (as a String)
+        - bowtie2_index: the absolute path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
+
+        """
+
+        if not bowtie_index:
+            bowtie2_index = Bowtie2(cache_dir = cache_dir).build_index(target_molecules)
+
+        output = commands.getoutput("tophat %s %s"%(bowtie2_index, fastq_file))
+
+        print output
+
