@@ -281,7 +281,7 @@ class Blast(Tool):
                 query_positions = []
                 subject_positions = []
                 evalue = line.split("Expect =")[1].split(',')[0].strip() #the instruction .split(',') is to be compatible with the blastR output (which is a blastP output)
-                if evalue.startswith('e'):
+                if evalue.startswith('e'): #sometimes blast output evalues like 'e-104'
                     evalue = '1'+evalue
                 if len(lines[i-3].strip()): #otherwise its a hit for the same sequence
                     sequence_name = lines[i-3][1:].strip()
@@ -404,63 +404,6 @@ class Blastr(Blast):
             query_file.write(query_molecule.to_fasta())
         return self.parse_output(commands.getoutput("cd %s ; blastallR.pl -p blastr -i %s -d %s"%(self.cache_dir, query_file.name, self.formatted_db)))
 
-class Bowtie(Tool):
-    """
-    Application Controller for Bowtie.
-    """
-    def __init__(self, cache_dir="/tmp"):
-        Tool.__init__(self, cache_dir)
-        self.find_executable("bowtie-build")
-        self.find_executable("bowtie")
-
-    def align(self, target_molecules, fastq_file, threshold = 2, fill_cluster_with_genomic_annotations = False):
-        """
-        Align reads against target molecules and cluster the aligned reads.
-
-        Parameters:
-        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
-        - fastq_file: the absolute path for the fastq file containing the reads (as a String)
-        - threshold:  (default: 2) this methods will only return the clusters whose size is >= threshold
-        - fill_cluster_with_genomic_annotations (default: False): if True, all the genomic annotations making the cluster are stored in a list linked to the key 'genomic_annotations'.
-
-        Returns:
-        --------
-        A pandas DataFrame describing the cluster of reads. The columns are:
-        - genomicStart (an int)
-        - genomicEnd (an int)
-        - annotations_count (an int)
-        - genomic_annotations (a list). This field will be empty if the parameter fill_cluster_with_genomic_annotations is set to False.
-        - genomeName (a String)
-        """
-
-        fastq_file = os.path.abspath(os.path.normpath(fastq_file))        
-        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        with open(fasta_file_name, 'w') as fasta_file:
-            fasta_file.write(to_fasta(target_molecules))
-        
-        db_path = self.cache_dir+"/bowtie_db_"+utils.generate_random_name(7)
-        result_file = self.cache_dir+'/'+utils.generate_random_name(7)+'.sam'
-        commands.getoutput("bowtie-build %s %s"%(fasta_file_name, db_path))
-        commands.getoutput("bowtie %s -q \"%s\" -S %s"%(db_path, fastq_file, result_file))
-        print "SAM file %s produced successfully!!"%result_file
-
-        from parsers import parse_sam
-        from pyrna.utils import cluster_genomic_annotations
-
-        aligned_reads, total_reads, tids  = parse_sam(result_file)
-        all_clustered_reads = []
-        total_aligned_reads = 0
-        for aligned_reads_per_genome in aligned_reads:
-            total_aligned_reads += len(aligned_reads_per_genome)
-            if len(aligned_reads_per_genome):
-                clustered_reads = cluster_genomic_annotations(aligned_reads_per_genome, threshold, fill_cluster_with_genomic_annotations) #we keep only the clusters with at least "threshold" reads
-                genomeName = tids[aligned_reads_per_genome[0]['tid']]
-                for clustered_read in clustered_reads:
-                    clustered_read['genomeName'] = genomeName      
-                all_clustered_reads += clustered_reads
-        print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
-        return DataFrame(all_clustered_reads)
-
 class Bowtie2(Tool):
     """
     Application Controller for Bowtie2.
@@ -510,30 +453,36 @@ class Bowtie2(Tool):
         Parameters:
         -----------
         - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
-        - fastq_file: the absolute path for the fastq file containing the reads (as a String)
-        - no_parsing (default: False): if True, the function returns the absolute path of the SAM file without parsing it
+        - fastq_file: the full path for the fastq file containing the reads (as a String)
+        - no_parsing (default: False): if True, the function returns the full path of the SAM file without parsing it
 
         Returns:
         --------
-        The absolute path of the SAM file or a pandas DataFrame describing the reads. The columns are:
+        The full path of the SAM file or a pandas DataFrame describing the reads. The columns are:
         - genomicStart (an int)
         - genomicEnd (an int)
         - genomicStrand ('+' or '-')
         - genomeName (a String)
+
+        Once done, the full path to the directory containing the index plus the prefix of the index files is recorded in an attribute named index_path:
+        bowtie2 = Bowtie2()
+        bowtie2.align(....)
+        print bowtie2.index_path
         """
 
+        random_name = utils.generate_random_name(7)
         fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')        
-        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
         fasta_file = open(fasta_file_name, 'w')
         fasta_file.write(to_fasta(target_molecules))
         fasta_file.close()
         
-        db_path = self.cache_dir+"/bowtie_db_"+utils.generate_random_name(7)
+        self.index_path = self.cache_dir+"/"+random_name
         result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
 
-        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, db_path))
-        print "bowtie2 %s -q \"%s\" -S %s"%(db_path, fastq_file, result_file)
-        commands.getoutput("bowtie2 %s -q \"%s\" -S %s"%(db_path, fastq_file, result_file))
+        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+        print "bowtie2 %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file)
+        commands.getoutput("bowtie2 %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
 
         if no_parsing:
@@ -551,18 +500,18 @@ class Bowtie2(Tool):
 
         Returns:
         --------
-        The absolute path of the directory containing the index files
+        The full path to the directory containing the index plus the prefix of the index files
         """
-
-        index_path = self.cache_dir+"/index_"+utils.generate_random_name(7)
-        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        random_name = utils.generate_random_name(7)
+        self.index_path = self.cache_dir+"/"+random_name
+        fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
         fasta_file = open(fasta_file_name, 'w')
         fasta_file.write(to_fasta(target_molecules))
         fasta_file.close()
-        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, index_path))
+        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
         print "Index files produced successfully!!"
 
-        return index_path
+        return self.index_path
 
 
 class Clustalw(Tool):
@@ -1699,7 +1648,7 @@ class Samtools(Tool):
 
         Parameters:
         ----------
-        sam_file: the absolute path of the SAM file
+        sam_file: the full path of the SAM file
 
         """
         path = self.sam_file.split('.sam')[0]
@@ -2054,7 +2003,7 @@ class Snoscan(Tool):
         else:
             return DataFrame()
 
-class Tophat(Tool):
+class Tophat(Bowtie2):
     """
     Application Controller for Tophat.
     """
@@ -2063,22 +2012,36 @@ class Tophat(Tool):
         Tool.__init__(self, cache_dir)
         self.find_executable("tophat")
 
-    def align(self, target_molecules, fastq_file, bowtie2_index = None):
+    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True):
         """
         Align reads to target molecules
 
         Parameters:
         -----------
         - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
-        - fastq_file: the absolute path for the fastq file containing the reads (as a String)
-        - bowtie2_index: the absolute path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
+        - fastq_file: the full path for the fastq file containing the reads (as a String)
+        - bowtie2_index: the full path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
 
+        Returns:
+        --------
+        The full path of the SAM file or a pandas DataFrame describing the reads. The columns are:
+        - genomicStart (an int)
+        - genomicEnd (an int)
+        - genomicStrand ('+' or '-')
+        - genomeName (a String)
         """
 
-        if not bowtie_index:
+        if not bowtie2_index:
             bowtie2_index = Bowtie2(cache_dir = cache_dir).build_index(target_molecules)
 
-        output = commands.getoutput("tophat %s %s"%(bowtie2_index, fastq_file))
+        output_dir = self.cache_dir+'/'+utils.generate_random_name(7)
+        commands.getoutput("tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
+        print "tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file)
 
-        print output
+        result_file = output_dir+'/accepted_hits.sam'
+
+        if no_parsing:
+            return result_file
+
+        return self.parse_sam(result_file, target_molecules)
 
