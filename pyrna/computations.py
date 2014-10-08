@@ -2032,7 +2032,7 @@ class Tophat(Bowtie2):
         """
 
         if not bowtie2_index:
-            bowtie2_index = Bowtie2(cache_dir = cache_dir).build_index(target_molecules)
+            bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
 
         output_dir = self.cache_dir+'/'+utils.generate_random_name(7)
         commands.getoutput("tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
