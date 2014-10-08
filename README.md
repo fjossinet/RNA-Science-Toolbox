@@ -14,65 +14,44 @@ PyRNA allows you to:
 
 To learn more about PyRNA, check the [PyRNA Cookbook](http://goo.gl/q20VoF)
 
-PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...). It has been developed with MacOSX and tested on MacOSX 10.8 and Scientific Linux 5.8 (python 2.7, gcc 4.1 or 4.2).
+PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...).
 
-In its current state, PyRNA is able to handle the following algorithms:
+In its current state, PyRNA is able to handle several algorithms:
 
 * [Blast](ftp://ftp.ncbi.nlm.nih.gov/blast/)
 * [Blastr](http://goo.gl/lKCR1u)
 * [Bowtie](http://goo.gl/nmXKH)
 * [Clustalw](http://goo.gl/Z9FRV)
-* [CONTRAfold*](http://goo.gl/4BCI7)
+* [CONTRAfold](http://goo.gl/4BCI7)
 * [Gotohscan](http://goo.gl/2atKpi) 
 * [Infernal](http://goo.gl/SxLHJO)
 * [Mlocarna](http://goo.gl/AIGKrl)
-* [RNA Vienna Package (RNAfold*, RNAplot*)](http://goo.gl/7frDgF)
+* [RNA Vienna Package (RNAfold, RNAplot)](http://goo.gl/7frDgF)
 * [RNAMotif](http://goo.gl/MDdOQ2)
-* [RNAVIEW*](http://goo.gl/c5o19v)
+* [RNAVIEW](http://goo.gl/c5o19v)
 * [snoGPS](http://goo.gl/66pnrF)
 * [SnoReport](http://goo.gl/pq3qXu)
 * [Snoscan](http://goo.gl/P5EQiH)
-
-The algorithms highlighted with a * can be used directly from my own server (arn-ibmc.in2p3.fr), without any installation. You just have to configure your Python scripts properly (see "Create secondary structures from algorithms" in [this IPython notebook](http://goo.gl/WHpfWh)).
+* more to come....
 
 You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as they happen.
 
-#Dependencies
-
-To be able to use 99% of all PyRNA functionalities, you will only need two Python dependencies:
-
-* [Pandas](http://pandas.pydata.org/): the data structures from pandas are used to describe RNA data,
-* [PyMongo](http://goo.gl/z8qQSh): a Python distribution containing tools for working with MongoDB
-
-If you want to handle NGS data, you will also need to install [pysam](https://code.google.com/p/pysam/), a Python interface for the SAM/BAM sequence alignment and mapping format.
-
-A first option is to install and use a "scientific" Python distribution like [Canopy](https://www.enthought.com/products/canopy/) or [Anaconda](https://store.continuum.io/cshop/anaconda/). They provide access to numerous pre-installed scientific packages. 
-
-A second option is to install the dependencies yourself for your Python distribution. I recommend you to first install the command [easy_install](http://pythonhosted.org/distribute/easy_install.html). Then you can type:
-
-* sudo easy_install pandas
-* sudo easy_install pymongo
-* sudo easy_install pysam
-
 #Quick Start
 
-* if you don't have it, install the command [easy_install](http://pythonhosted.org/distribute/easy_install.html)
-* install the Python dependencies Pandas, PyMongo and pysam (if you plan to handle NGS data):
-    * sudo easy_install pandas
-    * sudo easy_install pymongo
-    * sudo easy_install pysam
-* in a UNIX shell, type:
+* install [Vagrant](https://www.vagrantup.com/) and [Virtualbox](https://www.virtualbox.org/) on your computer. These tools will allow you to launch a fully configured Linux as a virtual machine. 
+
+* in a UNIX shell, recover the last version of PyRNA by typing:
 
         $ git clone https://github.com/fjossinet/PyRNA.git
 
-* in the configuration file of your shell (.bashrc for example), add the following lines:
+* in the PyRNA directory, type:
 
-    * export PYRNA_HOME=the_full_path_of_your_pyrna_location
-    * export PYTHONPATH=$PYTHONPATH:$PYRNA_HOME
-    * export PATH=$PATH:$PYRNA_HOME/pyrna:$PYRNA_HOME/files/scripts/python:$PYRNA_HOME/files/scripts/shell:$PYRNA_HOME/files/scripts/grid_tasks:
+        $ vagrant up
+        $ vagrant ssh        
 
-* reload your shell,
-* type:
+This will launch and log you into a fully configured virtual machine.
+
+* from the shell of the virtual machine, type:
 
         $ pyrna_tests.py
 
@@ -111,19 +90,12 @@ You should get an output like:
         6            c     (     )    13    34
         [...]
 
-#Local installation of the RNA algorithms
+Congratulations, you're ready to develop your own Python scripts with PyRNA. 
 
-To increase the speed of your computations and/or to avoid to flood my own server, i recommend you to install the RNA algorithms locally, on your own computer. You can download and install the algorithms yourself or you can use the script "install_algorithms.sh" provided with PyRNA (and located in files/scripts/shell). This script should simplify the installation process, but this is without any guarantee. To be able to run this script efficiently, you will need to have compilation tools installed (gcc, g++ and make). You don't need to install all of the algorithms listed above. It will depend on the classes you will import from the module pyrna.computations in your scripts. Once PyRNA installed successfully (see the Quickstart section above):
+Since the PyRNA directory is a shared folder between your computer and the fully configured virtual machine, we recommended you to:
 
-* in a terminal, type:
-
-        $ install_algorithms.sh your_RNA_algorithms_location
-
-* once done, in the configuration file of your shell (.bashrc for example), add the following line:
-
-    * source your_RNA_algorithms_location/setmyenv
-
-* reload your shell.
+* keep your Python scripts in the directory files/scripts/python provided with PyRNA,
+* run your Python scripts from the shell of the virtual machine.
 
 #The PyRNA modules
 
