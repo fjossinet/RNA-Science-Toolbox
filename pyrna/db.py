@@ -2,6 +2,30 @@ import os, shutil, subprocess, re, urllib, urllib2
 from pandas import DataFrame
 from pyrna.features import RNA
 import parsers, utils
+from pymongo import MongoClient
+
+class charnDB:
+    """
+    A class to connect to a charnDB instance (which is based on MongoDB)
+    """
+
+    def __init__(self, host = "localhost", port = 27017):
+        self.client = MongoClient(host, port)
+
+    def list_databases(self):
+        """
+        Return a list of String corresponding to the databases available.
+        """
+        return self.client.database_names()
+
+    def get_database(self, database):
+        return self.client[database]
+
+    def disconnect(self):
+        """
+        Close the connection to the database
+        """
+        self.client.disconnect()    
 
 class PDBQuery:
     """
@@ -20,8 +44,7 @@ class PDBQuery:
         self.contains_protein = contains_protein
         self.contains_dna = contains_dna
         self.contains_hybrid = contains_hybrid
-        self.experimental_method = experimental_method
-        
+        self.experimental_method = experimental_method       
 
 class PDB:
     """

@@ -972,6 +972,353 @@ class Contrafold(Tool):
             rnas, base_pairs = parsers.parse_vienna(output)
             return base_pairs[0]
 
+class Cufflinks(Tool):
+    """
+    Application Controller for Cufflinks.
+    """
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("cufflinks")
+
+    def __cmp(self, dict1, dict2):
+        """
+        Comparison function for the sort() method of a list.
+
+        first sorting: by growing genome name
+        second sorting: by growing start
+        third sorting: by decreasing end
+        fourth and fifth sorting: by class: 1-gene, 2-mRNA or other, 3-CDS
+        """
+        if dict1['genomeName'] > dict2['genomeName']:
+            return 1
+        elif dict1['genomeName'] < dict2['genomeName']:
+            return -1
+        else:
+            if dict1['start'] > dict2['start']:
+                return 1
+            elif dict1['start'] < dict2['start']:
+                return -1
+            else:
+                if dict1['end'] > dict2['end']:
+                    return -1
+                elif dict1['end'] < dict2['end']:
+                    return 1
+                else:
+                    if dict1['class'] == 'gene' and dict2['class'] != 'gene':
+                        return -1
+                    elif dict1['class'] != 'gene' and dict2['class'] == 'gene':
+                        return 1
+                    else:
+                        if dict1['class'] != 'CDS' and dict2['class'] == 'CDS':
+                            return -1
+                        elif dict1['class'] == 'CDS' and dict2['class'] != 'CDS':
+                            return 1
+                        else:
+                            return 0
+
+    def predict_genes(self, db_name, bam_file, db_host = "localhost", db_port = 27017):
+        """
+        Method that runs the Cufflinks program with RABT assembly option
+
+        Parameters:
+        ----------
+        - db_name: the name of the database containing the gene annotations to be used as a reference (needed to characterize the new genes for example) 
+        - bam_file: the full path of a BAM sorted file
+        - db_host : the host for the MongoDB containing the gene annotations
+        - db_port : the port for the MongoDB containing the gene annotations
+        """
+        
+        data_str = self.__mongo_to_gff3(db_name, db_host, db_port)
+
+        gff_file = utils.generate_random_name(7)+'.gff'
+        fh = open('%s/%s'%(self.cache_dir, gff_file), 'w')
+        fh.write(data_str)
+        fh.close()
+
+        commands.getoutput("cd %s ; cufflinks -g %s %s"%(self.cache_dir, gff_file, bam_file))
+        df = self.__parse_output()
+        return df
+
+    def __mongo_to_gff3(self, db_name, db_host = "localhost", db_port = 27017):
+        """
+        Converts annotations from a Mongo database into gff3 data as Cufflinks like to see them. More precisely, this means that Cufflinks needs:
+        - parent-child relation gene, mRNA, CDS, exons, introns
+        - if introns are in phase 0, 1 or 2
+
+        Parameters:
+        ----------
+        - db_name: database name
+        - db_host: database host
+        - db_port: database port
+
+        Returns:
+        -------
+        The gff3 data as a String.
+        """
+        from pyrna.db import charnDB
+        charnDB = charnDB(db_host, db_port)
+        db = charnDB.get_database(db_name)
+        
+        ##RETRIEVING annotations from the database 
+        annotation_list = []
+        intron_list = []
+        for annotation in db['annotations'].find({'source': {'$regex': '^db:ncbi:.+$'}}): #on the server 'charn'
+            annotation_dict = {'genomeName': annotation['genomeName'],
+                       'source': annotation['source'],
+                       'class': annotation['class'],
+                       'start': annotation['genomicPositions'][0],#Integer
+                       'end': annotation['genomicPositions'][-1],#Integer
+                       'score': str(annotation.get('score', '.')),#String
+                       'genomicStrand': annotation['genomicStrand'],
+                       'name': annotation.get('product', annotation.get('locus_tag', 'unknown'))
+                       }
+            if annotation['class'] != 'intron':
+                annotation_list.append(annotation_dict)
+            else:
+                intron_list.append(annotation_dict)
+        charnDB.disconnect()
+
+        ##SORTING annotations
+        annotation_list.sort(self.__cmp)
+
+        if intron_list:
+            print "Total number of introns in the database %s: %i"%(db_name, len(intron_list))
+            intron_list.sort(self.__cmp)
+            intron_counter = 0
+        else:
+            print "No intron in the database %s"%db_name
+
+        ##GFF3 formatting
+        gene = -1
+        rna = -1
+        exon = -1
+        cds = -1
+        data = "##gff-version 3\n"
+        for annotation in annotation_list:
+            chain = "%s\t%s\t%s\t%i\t%i\t%s\t%s\t.\t"%(annotation['genomeName'], annotation['source'], annotation['class'], annotation['start'], annotation['end'], annotation['score'], annotation['genomicStrand'])
+            if annotation['class'] == 'gene':
+                gene += 1
+                gene_parent = "gene%s"%gene
+                data += chain+"ID=%s;Name=%s\n"%(gene_parent, annotation['name'])
+            elif annotation['class'] in ['mRNA','tRNA','rRNA','ncRNA']:
+                rna += 1
+                rna_parent = "rna%s"%rna
+                data += chain+"ID=%s;Name=%s;Parent=%s\n"%(rna_parent, annotation['name'], gene_parent)
+                retained_introns = []
+                if intron_list:#list that discharges progressively
+                    introns_copy = intron_list[:]
+                    j = 0
+                    for i in range (0, len(introns_copy)):
+                        intron = introns_copy[i]
+                        if intron['genomeName'] == annotation['genomeName'] and intron['genomicStrand'] == annotation['genomicStrand']:
+                            if intron['start'] > annotation['start'] and intron['end'] < annotation['end']:
+                                intron_counter += 1
+                                retained_introns.append(intron)
+                                intron_list.pop(i-j)
+                                j += 1
+                                if not intron_list:
+                                    print "Processing of all intron data (%i introns): done"%intron_counter
+                if retained_introns:
+                    exon_coord = []
+                    for i in range(0, len(retained_introns)):
+                        if i == 0:
+                            exon_coord.append((annotation['start'], retained_introns[i]['start'] -1))
+                        if i > 0:
+                            exon_coord.append((retained_introns[i-1]['end'] +1, retained_introns[i]['start'] -1))
+                        if i == len(retained_introns)-1:
+                            exon_coord.append((retained_introns[i]['end'] +1, annotation['end']))
+                    if annotation['genomicStrand'] == '-':
+                        exon_coord.reverse()
+                    for coordinates in exon_coord:
+                        exon += 1
+                        data += "%s\t%s\texon\t%i\t%i\t%s\t%s\t.\tID=id%s;Parent=%s\n"%(annotation['genomeName'], annotation['source'], coordinates[0], coordinates[1], annotation['score'], annotation['genomicStrand'], exon, rna_parent)
+                    cds += 1
+                    for i in range(0, len(exon_coord)):
+                        coordinates = exon_coord[i]
+                        exon_len = (coordinates[1] - coordinates[0])+1
+                        if i == 0:
+                            exon1_len = exon_len
+                            phase = 0
+                        elif 0 < i <= len(exon_coord)-1:
+                            exon2_len = exon_len
+                            if exon1_len%3 == 0:
+                                phase = 0
+                            elif exon1_len%3 == 1:
+                                phase = 2
+                            elif exon1_len%3 == 2:
+                                phase = 1
+                            exon1_len = exon1_len + exon2_len
+                        if i == len(exon_coord)-1:
+                            if exon1_len%3 != 0:
+                                print "Warning: the RNA on genome %s at coordinates [%i,%i] has a length (%i) that is not a multiple of 3"%(annotation['genomeName'],annotation['start'],annotation['end'],exon1_len)
+                                sys.exit()
+                        data += "%s\t%s\tCDS\t%i\t%i\t%s\t%s\t%i\tID=cds%s;Parent=%s\n"%(annotation['genomeName'], annotation['source'], coordinates[0], coordinates[1], annotation['score'], annotation['genomicStrand'], phase, cds, rna_parent)
+                else:
+                    exon += 1
+                    data += "%s\t%s\texon\t%i\t%i\t%s\t%s\t.\tID=id%s;Parent=%s\n"%(annotation['genomeName'], annotation['source'], annotation['start'], annotation['end'], annotation['score'], annotation['genomicStrand'], exon, rna_parent)
+                    cds += 1
+                    data += "%s\t%s\tCDS\t%i\t%i\t%s\t%s\t0\tID=cds%s;Parent=%s\n"%(annotation['genomeName'], annotation['source'], annotation['start'], annotation['end'], annotation['score'], annotation['genomicStrand'], cds, rna_parent)
+
+        return data
+
+    def __parse_output(self):
+        """
+        Method that parses the Cufflinks output file 'isoforms.fpkm_tracking'
+
+        Returns:
+        --------
+        A pandas DataFrame describing all the Cufflinks genes. The columns are:
+        - gene_names: list of gene names or '-'
+        - genome
+        - genomicPositions (Remark: coordinate start in the isoforms.fpkm_tracking file is incorrect (-1))
+        - coverage
+        - score: FPKM (Fragments Per Kilobase of exon per Million fragments mapped)
+        - status: four different gene types are possible: 'expressed' or 'unexpressed' or 'isoform' or 'novel'
+        """
+        fh = open("%s/isoforms.fpkm_tracking"%self.cache_dir, 'r')
+        lines = fh.readlines()
+        transcripts = []
+        print "Total number of genes in the Cufflinks output (file isoforms.fpkm_tracking): %i"%len(lines[1:])
+        for line in lines[1:]:#first line contains the description of columns
+            tokens = line[:-1].split('\t')
+            locus = tokens[6].split(':')
+            coordinates = locus[1].split('-')
+            transcript = {
+                    'tracking_id': tokens[0],#provisional key to be deleted
+                    'gene_id': tokens[3],#provisional key to be deleted
+                    'gene_names': tokens[4],
+                    'genome': locus[0],
+                    'genomicPositions': [int(coordinates[0])+1,int(coordinates[1])],
+                    'coverage': float(tokens[8]),
+                    'score': float(tokens[9])
+                    }
+            if not transcripts:
+                transcripts.append([transcript])
+            else:
+                if transcripts[-1][0]['gene_id'] == transcript['gene_id']:
+                    transcripts[-1].append(transcript)
+                else:
+                    transcripts.append([transcript])
+
+        fh.close()
+        total_genes = []#list that will contain total number of annotated genes (expressed or not), isoforms and novel genes
+        for liste in transcripts:
+            if len(liste) > 1:#isoform and its corresponding gene(s) that are referenced with the same CUFF gene_id (transcript which can overlap one or several genes)
+                names = []
+                iso = []
+                for transcript in liste:
+                    if transcript['tracking_id'].startswith('CUFF.'):
+                        iso.append(transcript)
+                    else:
+                        names.append(transcript['gene_names'])
+                        if transcript['coverage'] != 0:
+                            transcript['class'] = 'expressed'
+                        else:
+                            transcript['class'] = 'unexpressed'
+                        del transcript['gene_id']
+                        del transcript['tracking_id']
+                        total_genes.append(transcript)
+                if iso:
+                    for transcript in iso:
+                        transcript['gene_names'] = ','.join(names)
+                        transcript['class'] = 'isoform'
+                        del transcript['gene_id']
+                        del transcript['tracking_id']
+                        total_genes.append(transcript)
+            else:
+                transcript = liste[0]
+                if transcript['tracking_id'].startswith('CUFF.'):#novel gene
+                    transcript['class'] = 'novel'
+                else:#other genes expressed or not (neither isoform nor novel gene)
+                    if transcript['coverage'] != 0:
+                        transcript['class'] = 'expressed'
+                    else:
+                        transcript['class'] = 'unexpressed'
+                del transcript['gene_id']
+                del transcript['tracking_id']
+                total_genes.append(transcript)
+
+        return DataFrame(total_genes)
+
+class Gmorse(Tool):
+    """
+    Application Controller for Gmorse.
+    """
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+        self.find_executable("extractNonMappedReads")
+        self.find_executable("coverage")
+        self.find_executable("build_covtigs")
+        self.find_executable("gmorse")
+        self.cache_dir += "/gmorse_%s"%utils.generate_random_name(7)
+        os.makedirs(self.cache_dir)
+
+    def extract_unmapped_reads(self, aligned_reads_file, fastq_file):
+        print "extractNonMappedReads %s %s"%(aligned_reads_file, fastq_file)
+        output = commands.getoutput("extractNonMappedReads %s %s"%(aligned_reads_file, fastq_file))
+        unmapped_reads_file = self.cache_dir+'/unmapped_reads.fa'
+        with open(unmapped_reads_file, 'w') as f:
+            f.write (output)
+        return unmapped_reads_file
+
+    def calculate_depth_coverage(self, aligned_reads_file):
+        print "coverage %s"%(aligned_reads_file)
+        output = commands.getoutput("coverage %s"%(aligned_reads_file))
+        depth_coverage_file = self.cache_dir+'/depth_coverage'
+        with open(depth_coverage_file, 'w') as f:
+            f.write (output)
+        return depth_coverage_file
+
+    def build_covtigs(self, depth_coverage_file, depth_treshold):
+        print "build_covtigs %s %i"%(depth_coverage_file, depth_treshold)
+        output = commands.getoutput("build_covtigs %s %i"%(depth_coverage_file, depth_treshold))
+        covtigs_file = self.cache_dir+'/covtigs'
+        with open(covtigs_file, 'w') as f:
+            f.write (output)
+        return covtigs_file
+
+    def make_model(self, unmapped_reads_file, covtigs_file, target_molecules):
+        scaffolds_file = self.cache_dir+'/scaffolds.fa'
+        output_gene_models = self.cache_dir+'/gene_model'
+        extended_covtigs = self.cache_dir+'/extended_covtigs'
+        validated_junctions = self.cache_dir+'/validated_junctions'
+        with open(scaffolds_file, 'w') as f:
+            f.write (to_fasta(target_molecules))
+        print "gmorse -r %s -c %s -f %s -G %s -C %s -J %s"%(unmapped_reads_file, covtigs_file, scaffolds_file, output_gene_models, extended_covtigs, validated_junctions)
+        commands.getoutput("gmorse -r %s -c %s -f %s -G %s -C %s -J %s"%(unmapped_reads_file, covtigs_file, scaffolds_file, output_gene_models, extended_covtigs, validated_junctions))
+        o = open(output_gene_models)
+        model = o.read()
+        o.close()
+        return self.parse_model(model)
+
+    def parse_model(self, model):
+        """
+        Parameters:
+        -----------
+        - output: the Gmorse output as a String.
+
+        Returns:
+        -----------
+        A pandas DataFrame describing the Gmorse gene models. The columns are:
+        - the genome name
+        - the class of the annotaton (UTR, exon, CDS, mRNA)
+        - the genomic strand ('+' or '-')
+        - the genomic positions
+        """
+        hits = []
+        lines = model.split('\n')
+        lines = lines[1:-1]
+        for line in lines:
+            tokens = re.split('\t', line)
+            hit = {
+                "genome": tokens[0],
+                "class": tokens[2],
+                "genomicPositions": [int(tokens[3]), int(tokens[4])],
+                "genomicStrand": tokens[6]
+            }
+            hits.append(hit)
+        return DataFrame(hits)
+
 class Gotohscan(Tool):
     """
     Application Controller for GotohScan.
@@ -1644,12 +1991,15 @@ class Samtools(Tool):
 
     def sort_and_index(self):
         """
-        Sort and index a SAM file.
+        Sort and index a SAM file. 
 
         Parameters:
         ----------
         sam_file: the full path of the SAM file
 
+        Returns:
+        --------
+        the full path of the indexed and sorted BAM file
         """
         path = self.sam_file.split('.sam')[0]
         commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
@@ -1658,6 +2008,7 @@ class Samtools(Tool):
         print "Sorted BAM file done"
         commands.getoutput("samtools index %s.sorted.bam"%path)
         print "Indexed BAM file done"
+        return "%s.sorted.bam"%path
 
     def count(self, chromosome_name, start, end, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
         path = self.sam_file.split('.sam')[0]
@@ -2035,10 +2386,14 @@ class Tophat(Bowtie2):
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
 
         output_dir = self.cache_dir+'/'+utils.generate_random_name(7)
-        commands.getoutput("tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
         print "tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file)
+        commands.getoutput("tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
 
-        result_file = output_dir+'/accepted_hits.sam'
+        result_file = None
+        if no_convert_bam:
+            result_file = output_dir+'/accepted_hits.sam'
+        else:
+            result_file = output_dir+'/accepted_hits.bam'
 
         if no_parsing:
             return result_file
