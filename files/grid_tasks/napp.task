@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+"""
+This task re-implements the NAPP (Nucleic Acid Phylogenetic Profiling) strategy from D. Gautheret's lab.
+"""
+
+import os, sys
+from pymongo import Connection
+from pyrna.task import Task
+from pyrna.features import Location, Block
+
+class NAPPTask(Task):
+
+    def __init__(self, db_name, db_host = "localhost", db_port = 27017, endPoint = None):
+        Task.__init__(self, db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endPoint)
+
+        self.sequences_to_blast = []
+
+        for genome in self.db['genomes'].find(timeout = False):
+            print genome['name']
+            genome_location = Location(start = 1, end = len(genome['sequence']))
+            print "%i CDS"%self.db['annotations'].find({'genome':genome['_id']+"@genomes", 'class': 'CDS'}).count()
+            cds_locations = []
+            for annotation in self.db['annotations'].find({'genome':genome['_id']+"@genomes", 'class': 'CDS'}, timeout = False):
+                if not annotation.has_key('source'):
+                    pass
+                elif annotation['source'].startswith("file:"):
+                    cds_locations.append(Location(start = annotation['genomicPositions'][0], end = annotation['genomicPositions'][1]))
+                    self.sequences_to_blast.append({
+                        'genomeName': genome['name'],
+                        'genomicPositions': annotation['genomicPositions']
+                    })
+
+            intergenic_locations = genome_location.remove_locations(cds_locations) #we compute all the intergenic regions
+
+            for block in intergenic_locations.blocks:
+                #for each intergenic region, we produce windows of 50 nts with an overlap of 25 nts 
+                for i in range(block.start, block.end, 25):
+                    self.sequences_to_blast.append({
+                        'genomeName': genome['name'],
+                        'genomicPositions': [i,  block.end if i+50-1 > block.end else i+50-1 ]
+                    })
+
+            print len(self.sequences_to_blast)
+
+    def getTotalJobsToSubmit(self, data):
+        pass
+
+    def getScriptContent(self, job_id):
+        pass
+
+    def storeData(self):
+        pass
+
+    def doTheJob(self, job_id = 1):
+        c = Connection()
+        db_names = c.database_names()
+
+
+
+if __name__ == '__main__':
+    job_id = None
+    db_name = None
+    db_host = "localhost"
+    db_port = 27017
+    endpoint = None
+    check = False
+    python_abs_path = None
+    algorithms_abs_path = None
+
+    if "-id" in sys.argv:
+        job_id = int(sys.argv[sys.argv.index("-id")+1])
+    if "-db" in sys.argv:
+        db_name = sys.argv[sys.argv.index("-db")+1]
+    if "-h" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-h")+1]
+    if "-p" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '1':
+        endpoint = "https://sbgwms1.in2p3.fr:7443/glite_wms_wmproxy_server"
+    elif "-e" in sys.argv and sys.argv[sys.argv.index("-e")+1] == '2':
+        endpoint = "https://sbgwms2.in2p3.fr:7443/glite_wms_wmproxy_server"
+    if "-algorithms" in sys.argv:
+        algorithms_abs_path = sys.argv[sys.argv.index("-algorithms")+1].strip()
+    if "-python" in sys.argv:
+        python_abs_path = sys.argv[sys.argv.index("-python")+1].strip()
+
+    check = "-check" in sys.argv
+
+    if not db_name or not python_abs_path or not algorithms_abs_path:
+        print "Usage: napp.task -db db_name -algorithms algorithms_abs_path -python python_abs_path [-h database_host] [-p database_port] [-e glite_end_point]"
+        sys.exit(1)
+    
+    task = NAPPTask(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint)
+
+    if check:
+        task.getTotalJobsToSubmit(None)
+        if job_id:
+            task.getScriptContent(job_id)
+    elif job_id:
+        task.doTheJob(job_id)
+    else:
+        if not endpoint:
+            print "Usage: napp.task -db db_name -algorithms algorithms_abs_path -python python_abs_path [-h database_host] [-p database_port] [-e glite_end_point]" 
+            sys.exit()    
+        else:
+            outputDir = os.getenv("HOME")+"/tmp/jobs_%s_on_%s"%(os.path.basename(__file__), db_name)
+            if os.path.exists(outputDir):
+                print "%s already exists"%outputDir
+                sys.exit()
+            task.submitJobs(os.path.basename(__file__))
