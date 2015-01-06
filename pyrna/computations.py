@@ -1,11 +1,10 @@
-import os, commands, re, shutil, sys, urllib
+import os, commands, re, shutil, sys, urllib, subprocess, time, fcntl, urllib, urllib2
 from string import maketrans
 from pandas import DataFrame
 import parsers, utils
 from features import RNA, SecondaryStructure, TertiaryStructure
 from parsers import base_pairs_to_secondary_structure, parse_bn, to_fasta, to_pdb
 from distutils.spawn import find_executable
-import urllib, urllib2
 
 def get_api_key(rest_server): 
     response = urllib.urlopen("http://%s/api/get_key"%rest_server)
@@ -13,8 +12,9 @@ def get_api_key(rest_server):
     return api_key
 
 class Tool:
-    def __init__(self, cache_dir):
+    def __init__(self, cache_dir, user_defined_options = []):
         self.cache_dir = cache_dir
+        self.user_defined_options = user_defined_options
 
     def find_executable(self, executable):
         if not find_executable(executable):
@@ -2001,17 +2001,26 @@ class Samtools(Tool):
         --------
         the full path of the indexed and sorted BAM file
         """
-        path = self.sam_file.split('.sam')[0]
-        commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
-        print "BAM file done"
-        commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
-        print "Sorted BAM file done"
-        commands.getoutput("samtools index %s.sorted.bam"%path)
-        print "Indexed BAM file done"
+        path = os.path.realpath(self.sam_file).split('.sam')[0]
+        if not os.path.exists("%s.bam"%path):
+            commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
+            print "BAM file done"
+        else:
+            print "BAM file already done" 
+        if not os.path.exists("%s.sorted.bam"%(path)):   
+            commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
+            print "Sorted BAM file done"
+        else:
+            print "Sorted BAM file already done"
+        if not os.path.exists("%s.sorted.bam.bai"%(path)):
+            commands.getoutput("samtools index %s.sorted.bam"%path)
+            print "Indexed BAM file done"
+        else:
+            print "Indexed BAM file already done"
         return "%s.sorted.bam"%path
 
     def count(self, chromosome_name, start, end, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
-        path = self.sam_file.split('.sam')[0]
+        path = os.path.realpath(self.sam_file).split('.sam')[0]
         sorted_bam_file = "%s.sorted.bam"%path 
         restrict_to = ""
         if restrict_to_plus_strand:
@@ -2021,7 +2030,7 @@ class Samtools(Tool):
         query = "%s"%chromosome_name
         if start and end:
             query = "%s:%i-%i"%(query, start, end)
-        return int(commands.getoutput("samtools view %s -c %s %s"%(restrict_to, sorted_bam_file, query)))       
+        return int(commands.getoutput("samtools view %s -c %s %s"%(restrict_to, sorted_bam_file, query)))
 
 class SnoGPS(Tool):
     """
@@ -2359,8 +2368,8 @@ class Tophat(Bowtie2):
     Application Controller for Tophat.
     """
     
-    def __init__(self, cache_dir="/tmp"):
-        Tool.__init__(self, cache_dir)
+    def __init__(self, cache_dir="/tmp", user_defined_options = []):
+        Tool.__init__(self, cache_dir, user_defined_options)
         self.find_executable("tophat")
 
     def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True):
@@ -2386,8 +2395,8 @@ class Tophat(Bowtie2):
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
 
         output_dir = self.cache_dir+'/'+utils.generate_random_name(7)
-        print "tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file)
-        commands.getoutput("tophat %s -o %s %s %s"%("--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
+        print "tophat %s %s -o %s %s %s"%(' '.join(self.user_defined_options), "--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file)
+        commands.getoutput("tophat %s %s -o %s %s %s"%(' '.join(self.user_defined_options), "--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
 
         result_file = None
         if no_convert_bam:

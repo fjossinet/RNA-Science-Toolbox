@@ -493,7 +493,6 @@ def read_counts_to_tsv(file_name, sam_file, chromosome_name, start, end, step = 
     samtools = Samtools(sam_file = sam_file)
     with open(file_name, 'w') as tsv_file: 
         for i in range(start, end+1, step):
-            print i
             if step != 1:
                 tsv_file.write("%i-%i\t%i\n"%(i, i+step-1, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))
             else:
@@ -620,7 +619,7 @@ def parse_genbank(genbank_data):
                 for qualifier in qualifiers:
                     feature[qualifier['type']] = qualifier['content']
                 features.append(feature)
-        elif len(tokens) == 3 and re.findall('\.\.>?[0-9]+', tokens[2]):
+        elif len(tokens) == 3 and re.findall('\.\.>?[0-9]+', tokens[2]) and not tokens[1].startswith('/'): #Last condition is due to the fact that in NC_004354.4 i have found lines like /gene_synonym="BcDNA:GH10432; chrX:3706836..3706970;
             #new feature
             #we store the previous one (if any)
             if feature_type and not feature_type == "source" and not feature_type == "intron":
@@ -705,7 +704,7 @@ def parse_genbank(genbank_data):
             qualifiers = []
             feature_type = tokens[1].strip()
             location = tokens[2].strip()
-        elif not qualifer_type and not qualifier_content and len(tokens) == 2 and re.findall('\.\.',tokens[1]): #still the content of the current location
+        elif not qualifer_type and not qualifier_content and len(tokens) == 2 and re.findall('\.\.',tokens[1]) : #still the content of the current location.
             location += tokens[1].strip()
         elif re.findall('^\s+/.+=', line): # a new qualifier /bla_bla=
             if qualifer_type and qualifier_content:
@@ -1173,6 +1172,7 @@ def parse_bn(bn):
     ------
     a pandas Dataframe listing the base pairs. Returns an empty Dataframe if no base-pairs are found.
     """
+
     i = 0
     lastSquarredPairedPos = []
     lastRoundedPairedPos = []
@@ -1353,7 +1353,7 @@ def parse_sam(sam_file):
     Returns:
     ------
     a tuple containing:
-    - a list of aligned reads (each read is described as a dict like: {'tid':int, 'genomicStart':int, 'genomicEnd':int} )
+    - a list of aligned reads (each read is described as a dict like: {'tid':int, 'genomicStart':int, 'genomicEnd':int, 'genomicStrand':['+', '-', '?']} )
     - the total number of reads described in the SAM file
     - a dictionary providing the correspondance between the name of the genomic sequences and the tids available in the SAM file
     """
