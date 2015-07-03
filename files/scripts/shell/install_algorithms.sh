@@ -27,7 +27,7 @@ else
 	if [ ! -e $DEST ]
 	then
 		echo "I cannot create $DEST"
-		exit -1	
+		exit -1
 	fi
 fi
 
@@ -117,7 +117,7 @@ else
 		else
     		RESULT=$RESULT"Infernal\tNO\n"
 	fi
-	
+
 	echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/infernal/bin' >> "$DEST/setmyenv"
 fi
 
@@ -148,7 +148,7 @@ else
 		else
     		RESULT=$RESULT"RNAVIEW\t\tNO\n"
 	fi
-	
+
 	mv ../RNAVIEW.tar.gz "$DEST"/tmp
 
 	echo 'export RNAVIEW=$PYRNA_ALGORITHMS/RNAVIEW/' >> "$DEST/setmyenv"
@@ -161,7 +161,7 @@ cd "$DEST"
 
 if [ -d ViennaRNA/bin ]
 then
-    RESULT=$RESULT"RNAdistance\tALREADY INSTALLED\n"
+  RESULT=$RESULT"RNAdistance\tALREADY INSTALLED\n"
 	RESULT=$RESULT"RNAfold\t\tALREADY INSTALLED\n"
 	RESULT=$RESULT"RNAplot\t\tALREADY INSTALLED\n"
 else
@@ -170,25 +170,25 @@ else
 	echo "Please wait..."
 
 	echo -e "\nInstallation of the Vienna RNA Package (http://www.tbi.univie.ac.at/RNA/)\n">> $DEST/installation.log
-	
-	$FETCHER ViennaRNA-1.8.5.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/ViennaRNA-1.8.5.tar.gz" >> $DEST/installation.log 2>&1
 
-	tar -xzf ViennaRNA-1.8.5.tar.gz
-	cd ViennaRNA-1.8.5
+	$FETCHER ViennaRNA-2.1.8.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/ViennaRNA-2.1.8.tar.gz" >> $DEST/installation.log 2>&1
+
+	tar -xzf ViennaRNA-2.1.8.tar.gz
+	cd ViennaRNA-2.1.8
 	./configure --prefix="$DEST"/ViennaRNA >> $DEST/installation.log 2>&1
 	make clean > /dev/null 2>&1
     make >> $DEST/installation.log 2>&1
 	make install >> $DEST/installation.log 2>&1
-	
+
 	mv Utils/b2ct $DEST/ViennaRNA/bin
 
 	if [ -d $DEST/ViennaRNA/bin ]
 	then
-    	RESULT=$RESULT"RNAdistance\tYES\n"
+    RESULT=$RESULT"RNAdistance\tYES\n"
 		RESULT=$RESULT"RNAfold\t\tYES\n"
 		RESULT=$RESULT"RNAplot\t\tYES\n"
 	else
-    	RESULT=$RESULT"RNAdistance\tNO\n"
+    RESULT=$RESULT"RNAdistance\tNO\n"
 		RESULT=$RESULT"RNAfold\t\tNO\n"
 		RESULT=$RESULT"RNAplot\t\tNO\n"
 	fi
@@ -204,7 +204,7 @@ if [ -f contrafold/src/contrafold ]
 then
     RESULT=$RESULT"Contrafold\tALREADY INSTALLED\n"
 else
-	
+
 	echo "Installation of Contrafold (http://contra.stanford.edu/contrafold/)"
 	echo "Please wait..."
 
@@ -222,7 +222,7 @@ else
 	else
     	RESULT=$RESULT"Contrafold\tNO\n"
 	fi
-	
+
 	mv ../../contrafold.tar.gz "$DEST"/tmp
 
 	echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/contrafold/src/' >> "$DEST/setmyenv"
@@ -231,6 +231,8 @@ fi
 
 ################# LOCARNA ##########################
 
+#this tool needs the installation of the VIENNA RNA package
+
 cd "$DEST"
 
 if [ -d locarna/bin ]
@@ -238,16 +240,16 @@ then
     RESULT=$RESULT"Locarna\t\tALREADY INSTALLED\n"
 else
 	cd tmp
-	
+
 	echo "Installation of Locarna (http://www.bioinf.uni-freiburg.de/Software/LocARNA/)"
 	echo "Please wait..."
 
 	echo -e "\nInstallation of Locarna (http://www.bioinf.uni-freiburg.de/Software/LocARNA/)\n" >> $DEST/installation.log
 
-	$FETCHER locarna-1.7.2.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/locarna-1.7.2.tar.gz" >> $DEST/installation.log 2>&1
+	$FETCHER locarna-1.8.1.tar "http://dl.dropbox.com/u/3753967/algorithms/locarna-1.8.1.tar" >> $DEST/installation.log 2>&1
 
-	tar -xzf locarna-1.7.2.tar.gz
-	cd locarna-1.7.2/
+	tar -xf locarna-1.8.1.tar
+	cd locarna-1.8.1/
 	./configure --prefix="$DEST"/locarna --with-vrna="$DEST"/ViennaRNA/ --without-perl --without-forester --without-kinfold >> $DEST/installation.log 2>&1
 	make >> $DEST/installation.log 2>&1
 	make install >> $DEST/installation.log 2>&1
@@ -298,7 +300,7 @@ if [ -d blast-2.2.26/bin ]
 then
     RESULT=$RESULT"Blast\t\tALREADY INSTALLED\n"
 else
-	
+
 	echo "Installation of Blast... (ftp://ftp.ncbi.nlm.nih.gov/blast/)"
 	echo "Please wait..."
 
@@ -336,12 +338,12 @@ if [ -d blastR_package_V2.2 ]
 then
     RESULT=$RESULT"BlastR\t\tALREADY INSTALLED\n"
 else
-    
+
     echo "Installation of BlastR... (http://www.tcoffee.org/Projects/blastr/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of BlastR... (http://www.tcoffee.org/Projects/blastr/)\n" >> $DEST/installation.log
-   
+
     $FETCHER blastR_package_V2.2.tar.gz "http://dl.dropboxusercontent.com/u/3753967/algorithms/blastR_package_V2.2.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf blastR_package_V2.2.tar.gz >> $DEST/installation.log 2>&1
     mv blastR_package_V2.2.tar.gz tmp/
@@ -367,19 +369,19 @@ then
 else
 
 	cd tmp
-	
+
 	echo "Installation of Clustalw... (http://www.clustal.org/)"
 	echo "Please wait..."
 
 	echo -e "\nInstallation of Clustalw... (http://www.clustal.org/)\n" >> $DEST/installation.log
-	
+
     $FETCHER clustalw-2.1.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/clustalw-2.1.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf clustalw-2.1.tar.gz >> $DEST/installation.log 2>&1
     cd clustalw-2.1
     ./configure --prefix="$DEST"/clustalw >> $DEST/installation.log 2>&1
 	make >> $DEST/installation.log 2>&1
 	make install >> $DEST/installation.log 2>&1
-                
+
 	if [ -d $DEST/clustalw/bin/ ]
 	then
     	RESULT=$RESULT"Clustalw\tYES\n"
@@ -393,6 +395,8 @@ fi
 
 ################# SAMTOOLS ##########################
 
+## this tool needs the installation of the libraries zlib1g-dev and libncurses5-dev
+
 cd "$DEST"
 
 if [ -f samtools/samtools ]
@@ -401,20 +405,19 @@ then
 else
 
 	cd tmp
-	
+
 	echo "Installation of SAMtools... (http://samtools.sourceforge.net/)"
 	echo "Please wait..."
 
 	echo -e "\nInstallation of SAMtools... (http://samtools.sourceforge.net/)\n" >> $DEST/installation.log
-	
-    $FETCHER samtools-0.1.18.tar.bz2 "http://dl.dropbox.com/u/3753967/algorithms/samtools-0.1.18.tar.bz2" >> $DEST/installation.log 2>&1
-    bunzip2 -d samtools-0.1.18.tar.bz2 >> $DEST/installation.log 2>&1
+
+    $FETCHER samtools-0.1.18.tar "http://dl.dropbox.com/u/3753967/algorithms/samtools-0.1.18.tar" >> $DEST/installation.log 2>&1
     tar -xvf samtools-0.1.18.tar >> $DEST/installation.log 2>&1
     cd samtools-0.1.18/
 	make >> $DEST/installation.log 2>&1
 	cd ..
 	mv samtools-0.1.18 ../samtools
-                
+
 	if [ -f $DEST/samtools/samtools ]
 	then
     	RESULT=$RESULT"SAMtools\tYES\n"
@@ -436,19 +439,19 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of Bowtie2... (http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)"
     echo "Please wait..."
 
     echo -e "\nInstallation of Bowtie2... (http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)\n" >> $DEST/installation.log
-    
-    $FETCHER bowtie2-2.2.2-source.zip "https://dl.dropboxusercontent.com/u/3753967/algorithms/bowtie2-2.2.2-source.zip" >> $DEST/installation.log 2>&1
-    unzip bowtie2-2.2.2-source.zip >> $DEST/installation.log 2>&1
+
+    $FETCHER bowtie2-2.2.2.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/bowtie2-2.2.2.tar.gz" >> $DEST/installation.log 2>&1
+    tar -xzvf bowtie2-2.2.2.tar.gz >> $DEST/installation.log 2>&1
     cd bowtie2-2.2.2/
     make >> $DEST/installation.log 2>&1
     cd ..
     mv bowtie2-2.2.2 ../bowtie2-2.2.2
-                
+
     if [ -f $DEST/bowtie2-2.2.2/bowtie2 ]
     then
         RESULT=$RESULT"Bowtie2\tYES\n"
@@ -470,12 +473,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of GotohScan... (http://www.bioinf.uni-leipzig.de/Software/GotohScan/README)"
     echo "Please wait..."
 
     echo -e "\nInstallation of GotohScan... (http://www.bioinf.uni-leipzig.de/Software/GotohScan/README)\n" >> $DEST/installation.log
-    
+
     $FETCHER GotohScan_2.0-alpha.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/GotohScan_2.0-alpha.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf GotohScan_2.0-alpha.tar.gz >> $DEST/installation.log 2>&1
     cd GotohScan_2.0-alpha/
@@ -512,7 +515,7 @@ else
     echo "Please wait..."
 
     echo -e "\nInstallation of BCheck... (http://rna.tbi.univie.ac.at/bcheck/)\n" >> $DEST/installation.log
-    
+
     #the Bcheck recovered from Dropbox has been modified to not check the rnabob and Infernal version
     $FETCHER Bcheck-0.6.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/Bcheck-0.6.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf Bcheck-0.6.tar.gz >> $DEST/installation.log 2>&1
@@ -540,12 +543,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of RNABOB... (http://selab.janelia.org/software.html)"
     echo "Please wait..."
 
     echo -e "\nInstallation of RNABOB... (http://selab.janelia.org/software.html)\n" >> $DEST/installation.log
-    
+
     $FETCHER rnabob.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/rnabob.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf rnabob.tar.gz >> $DEST/installation.log 2>&1
     cd rnabob-2.2.1/
@@ -574,12 +577,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of snoReport... (http://www.bioinf.uni-leipzig.de/Software/snoReport/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of snoReport... (http://www.bioinf.uni-leipzig.de/Software/snoReport/)\n" >> $DEST/installation.log
-    
+
     $FETCHER SnoReport1.0.tgz "http://dl.dropboxusercontent.com/u/3753967/algorithms/SnoReport1.0.tgz" >> $DEST/installation.log 2>&1
     tar -xzvf SnoReport1.0.tgz >> $DEST/installation.log 2>&1
     cd SnoReport1.0/
@@ -610,12 +613,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of Snoscan... (http://lowelab.ucsc.edu/snoscan/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of Snoscan... (http://lowelab.ucsc.edu/snoscan/)\n" >> $DEST/installation.log
-    
+
     $FETCHER snoscan.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/snoscan.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf snoscan.tar.gz >> $DEST/installation.log 2>&1
     cd snoscan-0.9b/squid-1.5j
@@ -645,12 +648,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of SnoGPS... (http://lowelab.ucsc.edu/snoGPS/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of SnoGPS... (http://lowelab.ucsc.edu/snoGPS/)\n" >> $DEST/installation.log
-    
+
     $FETCHER snoGPS-0.2.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/snoGPS-0.2.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf snoGPS-0.2.tar.gz >> $DEST/installation.log 2>&1
     cd snoGPS-0.2/src
@@ -670,6 +673,8 @@ fi
 
 ################# RNAMOTIF ##########################
 
+## This program needs the installation of the tools flex and bison
+
 cd "$DEST"
 
 if [ -f rnamotif-3.0.7/src/rnamotif ]
@@ -678,12 +683,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of RNAMotif... (http://casegroup.rutgers.edu/casegr-sh-2.5.html)"
     echo "Please wait..."
 
     echo -e "\nInstallation of RNAMotif... (http://casegroup.rutgers.edu/casegr-sh-2.5.html)\n" >> $DEST/installation.log
-    
+
     $FETCHER rnamotif-3.0.7.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/rnamotif-3.0.7.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf rnamotif-3.0.7.tar.gz >> $DEST/installation.log 2>&1
     cd rnamotif-3.0.7
@@ -711,12 +716,12 @@ then
 else
 
     cd tmp
-    
+
     echo "Installation of MUSCLE... (http://www.drive5.com/muscle/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of MUSCLE... (http://www.drive5.com/muscle/)\n" >> $DEST/installation.log
-    
+
     $FETCHER muscle3.8.31_src.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/muscle3.8.31_src.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf muscle3.8.31_src.tar.gz >> $DEST/installation.log 2>&1
     cd muscle3.8.31/src
@@ -744,12 +749,12 @@ then
 else
 
 	cd tmp
-    
+
     echo "Installation of RNAz... (http://www.tbi.univie.ac.at/~wash/RNAz/)"
     echo "Please wait..."
 
     echo -e "\nInstallation of RNAz... (http://www.tbi.univie.ac.at/~wash/RNAz/)\n" >> $DEST/installation.log
-    
+
     $FETCHER RNAz-2.1.tar.gz "https://dl.dropboxusercontent.com/u/3753967/algorithms/RNAz-2.1.tar.gz" >> $DEST/installation.log 2>&1
     tar -xzvf RNAz-2.1.tar.gz >> $DEST/installation.log 2>&1
 
@@ -771,6 +776,49 @@ else
     fi
 
     echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/RNAz-2.1/rnaz/' >> "$DEST/setmyenv"
+fi
+
+################# tRNAscan-SE ##########################
+
+cd "$DEST"
+
+if [ -f tRNAscan-SE-1.3.1 ]
+then
+    RESULT=$RESULT"tRNAscan-SE\tALREADY INSTALLED\n"
+else
+
+	cd tmp
+
+    echo "Installation of tRNAscan-SE... (http://lowelab.ucsc.edu/tRNAscan-SE/)"
+    echo "Please wait..."
+
+    echo -e "\nInstallation of tRNAscan-SE... (http://lowelab.ucsc.edu/tRNAscan-SE/)\n" >> $DEST/installation.log
+
+    $FETCHER tRNAscan-SE-1.3.1.tar "https://dl.dropboxusercontent.com/u/3753967/algorithms/tRNAscan-SE-1.3.1.tar" >> $DEST/installation.log 2>&1
+    tar -xvf tRNAscan-SE-1.3.1.tar >> $DEST/installation.log 2>&1
+
+    cd tRNAscan-SE-1.3.1
+
+    #edition of the makefile
+
+    sed "s,\$(HOME),$DEST/tRNAscan-SE-1.3.1," Makefile > Makefile2
+
+    mv Makefile2 Makefile
+
+    make >> $DEST/installation.log 2>&1
+
+    make install
+
+    export PERL5LIB=$DEST/tRNAscan-SE-1.3.1/bin/:$PERL5LIB
+
+    if [ -f $DEST/tRNAscan-SE-1.3.1/bin/tRNAscan-SE ]
+    then
+        RESULT=$RESULT"tRNAscan-SE\tYES\n"
+    else
+        RESULT=$RESULT"tRNAscan-SE\tNO\n"
+    fi
+
+    echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/tRNAscan-SE-1.3.1/bin/' >> "$DEST/setmyenv"
 fi
 
 ######## END OF INSTALLATION #########################

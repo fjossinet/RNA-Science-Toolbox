@@ -6,7 +6,7 @@ from features import RNA, SecondaryStructure, TertiaryStructure
 from parsers import base_pairs_to_secondary_structure, parse_bn, to_fasta, to_pdb
 from distutils.spawn import find_executable
 
-def get_api_key(rest_server): 
+def get_api_key(rest_server):
     response = urllib.urlopen("http://%s/api/get_key"%rest_server)
     api_key = str(response.read())
     return api_key
@@ -18,7 +18,7 @@ class Tool:
 
     def find_executable(self, executable):
         if not find_executable(executable):
-            raise Exception("%s is not available in your PATH"%executable)   
+            raise Exception("%s is not available in your PATH"%executable)
 
     def download_file(self, uri):
         """
@@ -44,7 +44,7 @@ class Tool:
         elif uri.startswith("file://"):
             shutil.copy(uri.split('file://')[1], self.cache_dir)
         else:
-            print "Error: your URI must start with 'file://', 'http://' or 'https://'" #if the given path start with /Users/, URI must start with file:///Users/ 
+            print "Error: your URI must start with 'file://', 'http://' or 'https://'" #if the given path start with /Users/, URI must start with file:///Users/
             sys.exit(1)
         return file_name
 
@@ -138,7 +138,7 @@ class Bcheck(Tool):
 
     def check(self, target_molecules):
         """
-        Scan the target molecules for RnaseP hits 
+        Scan the target molecules for RnaseP hits
 
         Parameters:
         -----------
@@ -148,7 +148,7 @@ class Bcheck(Tool):
         --------
         A pandas DataFrame describing all the hits. The columns are:
         - e_value
-        - score 
+        - score
         - target_strand ('+' or '-')
         - target_positions
         - target_name
@@ -159,7 +159,7 @@ class Bcheck(Tool):
 
         with open(fileName, 'w') as f:
             f.write(parsers.to_fasta(target_molecules))
-        
+
         hits = []
         output = commands.getoutput("Bcheck -f %s"%fileName)
 
@@ -186,7 +186,7 @@ class Bcheck(Tool):
                             hit['sequence'] = target_molecule.get_complement()[start-1:end][::-1]
                 hits.append(hit)
 
-        return DataFrame(hits) 
+        return DataFrame(hits)
 
 class Blast(Tool):
     def __init__(self, target_molecules, cache_dir="/tmp"):
@@ -206,7 +206,7 @@ class Blast(Tool):
 
         Parameters:
         ---------
-        is_nucleotide (default: True): state if the target molecules are nucleotides or proteins  
+        is_nucleotide (default: True): state if the target molecules are nucleotides or proteins
         """
         path = self.cache_dir+"/"+utils.generate_random_name(7)
         os.mkdir(path)
@@ -222,7 +222,7 @@ class Blast(Tool):
 
         Parameters:
         ---------
-        - output_file: the blast output content as a String 
+        - output_file: the blast output content as a String
 
         Returns:
         --------
@@ -259,7 +259,7 @@ class Blast(Tool):
             elif line.startswith("Score ="):
                 if len(query_positions) and len(subject_positions) : # we have a previous hit to store
                     if not subject_plus_strand:
-                        subject_positions = subject_positions[::-1]     
+                        subject_positions = subject_positions[::-1]
                     for m in self.target_molecules:
                         if m.name == sequence_name:
                             if subject_plus_strand:
@@ -268,13 +268,13 @@ class Blast(Tool):
                                 sequence = m.get_complement()[subject_positions[0][0]-1:subject_positions[-1][1]][::-1]
                             hits.append({
                                 "name": query_name,
-                                "target_name":sequence_name, 
-                                "target_positions":[(subject_positions[0][0],subject_positions[-1][1])], 
-                                "target_strand":'+' if subject_plus_strand else '-', 
-                                "query_positions":[(query_positions[0][0],query_positions[-1][1])], 
-                                "query_strand":'+' if query_plus_strand else '-', 
-                                "e_value":float(evalue), 
-                                "sequence":sequence, 
+                                "target_name":sequence_name,
+                                "target_positions":[(subject_positions[0][0],subject_positions[-1][1])],
+                                "target_strand":'+' if subject_plus_strand else '-',
+                                "query_positions":[(query_positions[0][0],query_positions[-1][1])],
+                                "query_strand":'+' if query_plus_strand else '-',
+                                "e_value":float(evalue),
+                                "sequence":sequence,
                                 "source": source,
                                 "organism": m.organism
                             })
@@ -317,13 +317,13 @@ class Blast(Tool):
                         sequence = m.get_complement()[subject_positions[0][0]-1:subject_positions[-1][1]][::-1]
                     hits.append({
                         "name": query_name,
-                        "target_name":sequence_name, 
-                        "target_positions":[(subject_positions[0][0],subject_positions[-1][1])], 
-                        "target_strand":'+' if subject_plus_strand else '-', 
-                        "query_positions":[(query_positions[0][0],query_positions[-1][1])], 
-                        "query_strand":'+' if query_plus_strand else '-', 
-                        "e_value":float(evalue), 
-                        "sequence":sequence, 
+                        "target_name":sequence_name,
+                        "target_positions":[(subject_positions[0][0],subject_positions[-1][1])],
+                        "target_strand":'+' if subject_plus_strand else '-',
+                        "query_positions":[(query_positions[0][0],query_positions[-1][1])],
+                        "query_strand":'+' if query_plus_strand else '-',
+                        "e_value":float(evalue),
+                        "sequence":sequence,
                         "source": source,
                         "organism": m.organism
                     })
@@ -378,7 +378,7 @@ class Blastr(Blast):
 
     def format_db(self):
         """
-        Dump the target_molecules into a fasta file and format them into a Blast database.  
+        Dump the target_molecules into a fasta file and format them into a Blast database.
         """
         path = self.cache_dir+"/"+utils.generate_random_name(7)
         os.mkdir(path)
@@ -416,7 +416,7 @@ class Bowtie2(Tool):
     def parse_sam(self, sam_file, target_molecules):
         """
         Parse a SAM file and returns aligned reads.
-        
+
         Returns:
         --------
         A pandas DataFrame describing the reads. The columns are:
@@ -424,7 +424,7 @@ class Bowtie2(Tool):
         - genomicEnd (an int)
         - genomicStrand ('+' or '-')
         - genomeName (a String)
-        """ 
+        """
 
         aligned_reads, total_reads, tids  = parsers.parse_sam(sam_file)
         reads = []
@@ -444,7 +444,7 @@ class Bowtie2(Tool):
                     'genomicStrand': aligned_read['genomicStrand']
                 })
         print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
-        return DataFrame(reads)   
+        return DataFrame(reads)
 
     def align(self, target_molecules, fastq_file, no_parsing = False):
         """
@@ -452,7 +452,7 @@ class Bowtie2(Tool):
 
         Parameters:
         -----------
-        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
+        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
         - fastq_file: the full path for the fastq file containing the reads (as a String)
         - no_parsing (default: False): if True, the function returns the full path of the SAM file without parsing it
 
@@ -471,12 +471,12 @@ class Bowtie2(Tool):
         """
 
         random_name = utils.generate_random_name(7)
-        fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')        
+        fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')
         fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
         fasta_file = open(fasta_file_name, 'w')
         fasta_file.write(to_fasta(target_molecules))
         fasta_file.close()
-        
+
         self.index_path = self.cache_dir+"/"+random_name
         result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
 
@@ -493,7 +493,7 @@ class Bowtie2(Tool):
     def build_index(self, target_molecules):
         """
         Build a new index for the target molecules
-        
+
         Parameters:
         -----------
         - target_molecules: the genomic sequences to be used for the index (an array of Molecule objects, see pyrna.features)
@@ -531,15 +531,15 @@ class Clustalw(Tool):
         - molecules: the molecules to align (as a list of Molecule objects, see pyrna.features)
 
         Returns:
-        -------- 
+        --------
         the clustalw output as a String and an array of aligned molecules
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
 
         with open(fileName, 'w') as f:
             f.write(parsers.to_fasta(molecules))
-        
-        commands.getoutput("clustalw2 -infile=%s"%fileName) 
+
+        commands.getoutput("clustalw2 -infile=%s"%fileName)
 
         with open(fileName.split('.fasta')[0]+".aln") as output_file:
             data = output_file.read()
@@ -607,10 +607,10 @@ class Cmalign(Tool):
             stockholm_file = open("%s/%s.stk"%(path,rfam_id), 'w')
         else:
             stockholm_file = open("%s/%s.stk"%(path, utils.generate_random_name(7)), 'w')
-        
+
         stockholm_file.write(stockholm_content)
         stockholm_file.close()
-        
+
         output = None
 
         cm_file = None
@@ -620,14 +620,14 @@ class Cmalign(Tool):
 
             with open(cm_file, 'w') as f:
                 f.write(cm_content)
-        
+
         if self.local_mode:
             output = commands.getoutput("cmalign -l --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
         else:
             output = commands.getoutput("cmalign --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
         shutil.rmtree(path)
         if rfam_id:
-            output = "#=GF AC "+rfam_id+"\n"+output   
+            output = "#=GF AC "+rfam_id+"\n"+output
         return parsers.parse_stockholm(output)
 
 class Cmbuild(Tool):
@@ -655,7 +655,7 @@ class Cmbuild(Tool):
 
         with open(stockholm_file, 'w') as f:
             f.write(stockholm_content)
-        
+
         commands.getoutput("cmbuild %s %s "%(cm_file, stockholm_file))
 
         cm_content = None
@@ -690,11 +690,11 @@ class Cmcalibrate(Tool):
             f.write(cm_content)
 
         commands.getoutput("cmcalibrate %s"%cm_file)
-        
+
         with open(cm_file) as f:
             cm_content = f.read()
 
-        return cm_content   
+        return cm_content
 
 class Cmsearch(Tool):
     """
@@ -737,7 +737,7 @@ class Cmsearch(Tool):
 
             with open(fileName, 'w') as f:
                 f.write(parsers.to_fasta(molecules))
-            
+
             cmFile = self.cache_dir+'/'+utils.generate_random_name(7)+'.cm'
 
             with open(cmFile, 'w') as f:
@@ -893,13 +893,13 @@ class Cmsearch(Tool):
                                 target_positions = target_positions[::-1]
                                 sequence = m.get_complement()[target_positions[0][0]-1:target_positions[-1][1]][::-1]
                             hit = {
-                                "cm_file": cm_file, 
-                                "RFAM_family": rfam_family_id, 
+                                "cm_file": cm_file,
+                                "RFAM_family": rfam_family_id,
                                 "target_name": sequence_name,
                                 "target_positions": target_positions,
                                 "sequence": sequence,
                                 "query_positions": query_positions,
-                                "target_strand":'+' if plus_strand else '-', 
+                                "target_strand":'+' if plus_strand else '-',
                                 "source": source,
                                 "organism": m.organism
                             }
@@ -938,7 +938,7 @@ class Contrafold(Tool):
         Parameters:
         ---------
         - molecule: a pyrna.features.Molecule object (RNA or DNA)
-        - raw_output (default: False): if True, the function returns the raw output instead of a pandas DataFrame 
+        - raw_output (default: False): if True, the function returns the raw output instead of a pandas DataFrame
 
         Returns:
         -------
@@ -1022,12 +1022,12 @@ class Cufflinks(Tool):
 
         Parameters:
         ----------
-        - db_name: the name of the database containing the gene annotations to be used as a reference (needed to characterize the new genes for example) 
+        - db_name: the name of the database containing the gene annotations to be used as a reference (needed to characterize the new genes for example)
         - bam_file: the full path of a BAM sorted file
         - db_host : the host for the MongoDB containing the gene annotations
         - db_port : the port for the MongoDB containing the gene annotations
         """
-        
+
         data_str = self.__mongo_to_gff3(db_name, db_host, db_port)
 
         gff_file = utils.generate_random_name(7)+'.gff'
@@ -1058,8 +1058,8 @@ class Cufflinks(Tool):
         from pyrna.db import charnDB
         charnDB = charnDB(db_host, db_port)
         db = charnDB.get_database(db_name)
-        
-        ##RETRIEVING annotations from the database 
+
+        ##RETRIEVING annotations from the database
         annotation_list = []
         intron_list = []
         for annotation in db['annotations'].find({'source': {'$regex': '^db:ncbi:.+$'}}): #on the server 'charn'
@@ -1326,7 +1326,7 @@ class Gotohscan(Tool):
 
     def __init__(self, cache_dir="/tmp"):
         Tool.__init__(self, cache_dir)
-        self.find_executable("GotohScan2a") 
+        self.find_executable("GotohScan2a")
 
     def scan(self, query_molecule, target_molecules, evalue = 1e-3):
         """
@@ -1368,7 +1368,7 @@ class Gotohscan(Tool):
                 end = int(tokens[-4])
                 hit = {
                     'e_value': float(tokens[-3]),
-                    'score' : float(tokens[-2]), 
+                    'score' : float(tokens[-2]),
                     'target_positions': [start, end] if tokens[-1] == '+' else [end, start],
                     'target_strand': tokens[-1]
                 }
@@ -1382,7 +1382,7 @@ class Gotohscan(Tool):
                             hit['sequence'] = target_molecule.get_complement()[end-1:start][::-1]
                 hits.append(hit)
 
-        return DataFrame(hits)    
+        return DataFrame(hits)
 
 class Mlocarna(Tool):
 
@@ -1392,7 +1392,7 @@ class Mlocarna(Tool):
 
     def __init__(self, cache_dir="/tmp"):
         Tool.__init__(self, cache_dir)
-        self.find_executable("mlocarna") 
+        self.find_executable("mlocarna")
 
     def align(self, molecules):
         """
@@ -1409,7 +1409,7 @@ class Mlocarna(Tool):
         consensus2D = None
 
         for molecule in molecules:
-            aligned_molecules[molecule.name] = ""    
+            aligned_molecules[molecule.name] = ""
 
         for line in output.split('\n'):
             tokens = re.split('\s+', line)
@@ -1432,7 +1432,7 @@ class RnaAlifold(Tool):
 
     def __init__(self, cache_dir="/tmp"):
         Tool.__init__(self, cache_dir)
-        self.find_executable("RNAalifold") 
+        self.find_executable("RNAalifold")
 
     def align(self, alignment):
         """
@@ -1456,7 +1456,7 @@ class Rnafold(Tool):
         self.api_key = api_key
         self.rest_server = rest_server
         if not self.rest_server:
-            self.find_executable("RNAfold") 
+            self.find_executable("RNAfold")
 
     def fold(self, molecule, constraints = None, raw_output = False):
         """
@@ -1464,7 +1464,7 @@ class Rnafold(Tool):
         -----------
         - molecule: a pyrna.features.Molecule object (RNA or DNA)
         - constraints: a string defining the constraints. See the RNAfold documentation for the notation to be used.
-        - raw_output (default: False): if True, the method returns the raw output instead of the pandas Dataframe. 
+        - raw_output (default: False): if True, the method returns the raw output instead of the pandas Dataframe.
 
         Returns:
         --------
@@ -1495,14 +1495,14 @@ class Rnafold(Tool):
                 output = commands.getoutput("cd %s ; RNAfold -noPS -noLP < %s"%(self.cache_dir, fileName)).strip()
         if raw_output:
             return output
-        vienna_data = "" 
+        vienna_data = ""
         for line in output.split('\n'):
             if re.match('^[\.()]+', line):
                 vienna_data += line.split(' ')[0] #we remove the stability value
             elif not line.startswith("Warning"): #sometimes, the output ends with a line like "Warning from traverse_loop. Loop 1 has crossed regions"
                 vienna_data += line+"\n"
         rnas, base_pairs = parsers.parse_vienna(vienna_data)
-        return base_pairs[0] 
+        return base_pairs[0]
 
 class Rnainverse(Tool):
     """
@@ -1522,7 +1522,7 @@ class Rnainverse(Tool):
         - molecule: the starting molecule. Any Characters other than "AUGC" will be treated as wild cards and replaced by a random character
         - repeats:
 
-        Returns: 
+        Returns:
         --------
         an array of RNA molecules
 
@@ -1558,7 +1558,7 @@ class RNAMotif(Tool):
         -----------
         - target_molecules:
         - descriptor_file:
-        - rna_class (default: None): optional argument 
+        - rna_class (default: None): optional argument
 
         Returns:
         --------
@@ -1591,9 +1591,9 @@ class RNAMotif(Tool):
                 if lines[i+1].startswith(defline):
                     tokens = re.split('\s+', lines[i+1])
                     if len(tokens) < 6: #the command could produce a segmentation fault. So we need to be sure that the line describing a hit is complete. We need at least 6 tokens to have a "full" line describing the hit. Limitation: the sequence for this hit cound be truncated.
-                        break    
+                        break
                     hit = {
-                        'source': 'tool:rnamotif:NA', 
+                        'source': 'tool:rnamotif:NA',
                         'score': float(tokens[1])
                     }
                     hit['class'] = rna_class
@@ -1633,12 +1633,12 @@ class RNAMotif(Tool):
                         while j != len(bracket_list):
                             chain += bracket_list[j]*length_list[j]
                             j += 1
-                    hit['bracket_notation'] = chain 
+                    hit['bracket_notation'] = chain
                     hits.append(hit)
                     target_molecule = None
         if not flag:
             raise Exception("No RNAMotif output")
-            
+
         if len(hits):
             return DataFrame(hits, columns = ['source', 'score', 'class', 'name', 'target_positions', 'target_name', 'target_strand', 'sequence', 'bracket_notation'])
         else:
@@ -1667,11 +1667,11 @@ class Rnaplfold(Tool):
         - span: allow only pairs (i,j) with j-i<=span
         - width: length of the regions
         - free_energies (default: False): if True, the method returns free energies, else switch to probabilities
-        - raw_output (default: False): if True, the method returns the raw output instead of the pandas Dataframe. 
+        - raw_output (default: False): if True, the method returns the raw output instead of the pandas Dataframe.
 
         Returns:
         --------
-        a pandas DataFrame reporting the mean probability that regions of length 1 to width are unpaired for a sequence. The index of the Dataframe lists the Molecule positions (from A to molecule's length) and the columns list the length of the region (from 1 to width).   
+        a pandas DataFrame reporting the mean probability that regions of length 1 to width are unpaired for a sequence. The index of the Dataframe lists the Molecule positions (from A to molecule's length) and the columns list the length of the region (from 1 to width).
         """
 
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
@@ -1708,7 +1708,7 @@ class Rnaplfold(Tool):
                     tokens = [float(x) if x != "NA" else np.nan for x in tokens]
                     for pos in range(0,len(tokens)):
                         row[columns[pos]] = tokens[pos]
-                    data.append(row)   
+                    data.append(row)
                 elif len(line) and line.startswith("#i$"):
                     columns = [int(x) for x in line.split("l=")[1].split('\t')]
             return DataFrame(data, index = index, columns = columns)
@@ -1761,7 +1761,7 @@ class Rnaplot(Tool):
 
             for f in os.listdir(path):
                 if f.endswith('.svg'):
-                    with open("%s/%s"%(path, f)) as svg_file: 
+                    with open("%s/%s"%(path, f)) as svg_file:
                         output = svg_file.read()
 
         if raw_output:
@@ -1796,15 +1796,15 @@ class Rnasubopt(Tool):
         Parameters:
         ---------
         - molecule: a Molecule object (see pyrna.features)
-        - range (default: None): calculate suboptimal structures within range kcal/mol of the mfe. 
-        - random_sample (default: None): instead of producing all suboptimals in an energy range, produce a random sample of n suboptimal structures. 
+        - range (default: None): calculate suboptimal structures within range kcal/mol of the mfe.
+        - random_sample (default: None): instead of producing all suboptimals in an energy range, produce a random sample of n suboptimal structures.
 
         Returns:
         --------
         all the suboptimal secondary structures as a list of pandas DataFrames. Each pandas Dataframe contains a list of base-pairs.
         """
         fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        
+
         with open(fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta([molecule], single_line=True))
 
@@ -1834,10 +1834,10 @@ class Rnaview(Tool):
         - tertiary_structure (default: None): a TertiaryStructure object (see pyrna.features)
         - pdb_content (default: None): the content of a PDB file
         - canonical_only (default: False): if set to True, the helices will be made exclusively with canonical base-pairs: AU c(), GC c() or GU c().
-        - raw_output (default: False): if set to True, the method returns the raw RNAML result produced with RNAVIEW . 
+        - raw_output (default: False): if set to True, the method returns the raw RNAML result produced with RNAVIEW .
         """
         if not tertiary_structure and not pdb_content:
-            raise Exception("No data provided")    
+            raise Exception("No data provided")
         if self.rest_server:
             values = {
                 '3d' : pdb_content if pdb_content else to_pdb(tertiary_structure, export_numbering_system = True),
@@ -1857,8 +1857,8 @@ class Rnaview(Tool):
                 else:
                     pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
 
-            commands.getoutput("rnaview -p %s"%(pdb_file_name))
-            
+            print commands.getoutput("rnaview -p %s"%(pdb_file_name))
+
             xml_file_name = pdb_file_name+".xml"
             xml_content = ""
             if os.path.exists(xml_file_name):
@@ -1867,7 +1867,7 @@ class Rnaview(Tool):
             else:
                 raise Exception("No file %s"%xml_file_name)
         if raw_output:
-            return xml_content   
+            return xml_content
         else:
             import xml.etree.ElementTree as ET
             rnaml_tree = ET.fromstring(xml_content)
@@ -1875,7 +1875,7 @@ class Rnaview(Tool):
             molecule = rnaml_tree.find('molecule')
 
             rna = RNA(name = tertiary_structure.rna.name, sequence = re.sub('\s+','',molecule.find('sequence').find('seq-data').text))
-            
+
             secondary_structure = SecondaryStructure(rna)
             secondary_structure.source='tool:rnaview:N.A.'
             new_3D = None
@@ -1884,25 +1884,20 @@ class Rnaview(Tool):
                 new_3D = TertiaryStructure(rna)
                 new_3D.source = "tool:rnaview:N.A."
                 numbering_system = re.sub('\s{2,}', ' ', molecule.find('sequence').find('numbering-table').text).strip().split(' ')
-                previous_absolute_position = 0
-                missing_residues = 0
                 #the strategy is the following:
                 #- the numbering-table in the XML output stores the labels of the 3D residues used by RNAVIEW
                 #- for each residue label, we recover its absolute position in the numbering system of the initial 3D
-                #- we're keeping track of the number of missing residues
-                #- in the new 3D, the new absolute position = the original absolute position - the missing residues
-                #- in the new 3D, the numbering-system link the residue label to its new absolute position
-                #print tertiary_structure.numbering_system
+                residue_absPos = 1
                 for residue_label in numbering_system:
-                    absolute_position = int(tertiary_structure.numbering_system[residue_label]) #we get the absolute position in the initial 3D according to the residue label in the numbering table
-                    missing_residues += (absolute_position-previous_absolute_position-1)
-                    new_3D.residues[absolute_position-missing_residues] = tertiary_structure.residues[absolute_position] #in the new tertiary structure, the new absPos is the previous one minus the missing residues
-                    new_3D.numbering_system[residue_label] = absolute_position-missing_residues
-                    previous_absolute_position = absolute_position
-            else: #no problem, then we can substitute the RNA of the 2D for the RNA of the 3D 
+                    for absPos, label in tertiary_structure.numbering_system.items():
+                        if label == residue_label:
+                            new_3D.residues[residue_absPos] = tertiary_structure.residues[int(absPos)]
+                            break
+                    residue_absPos += 1
+            else: #no problem, then we can substitute the RNA of the 2D for the RNA of the 3D
                 secondary_structure.rna = tertiary_structure.rna
 
-            if not canonical_only:       
+            if not canonical_only:
 
                 for helix in molecule.find('structure').find('model').find('str-annotation').findall('helix'):
                     secondary_structure.add_helix(helix.get('id'), int(helix.find('base-id-5p').find('base-id').find('position').text), int(helix.find('base-id-3p').find('base-id').find('position').text), int(helix.find('length').text));
@@ -1934,7 +1929,7 @@ class Rnaview(Tool):
                         edge2 = '!'
 
                     secondary_structure.add_base_pair(base_pair.find('bond-orientation').text.lower(), edge1, edge2, int(base_pair.find('base-id-5p').find('base-id').find('position').text), int(base_pair.find('base-id-3p').find('base-id').find('position').text));
-            
+
             else:
                 canonical_bps = []
                 non_canonical_bps = []
@@ -1967,12 +1962,12 @@ class Rnaview(Tool):
                     residue2 = secondary_structure.rna.sequence[pos2-1]
 
                     canonical_bps.append([orientation, edge1, edge2, pos1, pos2]) if utils.is_canonical(residue1, residue2, orientation, edge1, edge2) else non_canonical_bps.append([orientation, edge1, edge2, pos1, pos2])
-                 
+
                 secondary_structure = base_pairs_to_secondary_structure(secondary_structure.rna, DataFrame(canonical_bps, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2']))
 
                 for bp in non_canonical_bps: #the non-canonical interactions are tertiary ones
                     secondary_structure.add_tertiary_interaction(bp[0], bp[1], bp[2], bp[3], bp[4])
-            
+
             secondary_structure.find_single_strands()
 
             if new_3D:
@@ -1991,7 +1986,7 @@ class Samtools(Tool):
 
     def sort_and_index(self):
         """
-        Sort and index a SAM file. 
+        Sort and index a SAM file.
 
         Parameters:
         ----------
@@ -2006,8 +2001,8 @@ class Samtools(Tool):
             commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
             print "BAM file done"
         else:
-            print "BAM file already done" 
-        if not os.path.exists("%s.sorted.bam"%(path)):   
+            print "BAM file already done"
+        if not os.path.exists("%s.sorted.bam"%(path)):
             commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
             print "Sorted BAM file done"
         else:
@@ -2021,12 +2016,12 @@ class Samtools(Tool):
 
     def count(self, chromosome_name, start, end, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
         path = os.path.realpath(self.sam_file).split('.sam')[0]
-        sorted_bam_file = "%s.sorted.bam"%path 
+        sorted_bam_file = "%s.sorted.bam"%path
         restrict_to = ""
         if restrict_to_plus_strand:
             restrict_to = '-F 16'
         if  restrict_to_minus_strand:
-            restrict_to = '-f 16'       
+            restrict_to = '-f 16'
         query = "%s"%chromosome_name
         if start and end:
             query = "%s:%i-%i"%(query, start, end)
@@ -2049,7 +2044,7 @@ class SnoGPS(Tool):
         - target_molecules:
         - scores_table_file:
         - targets_file:
-        - descriptor_file: 
+        - descriptor_file:
 
         Returns:
         --------
@@ -2222,13 +2217,13 @@ class Snoreport(Tool):
         hits = []
         lines = output.split('\n')
         if not lines[0].startswith('>'):
-            raise Exception("No Snoreport output")        
+            raise Exception("No Snoreport output")
         for i in range(0, len(lines)) :
             line = lines[i]
             if line.startswith('CD') or line.startswith('HACA'):
                 words = line.split()
                 hit = {
-                'source': 'tool:snoreport:NA', 
+                'source': 'tool:snoreport:NA',
                 'score': float(words[2]),
                 'target_strand': words[-1],
                 'target_name': molecule.name, #or words[-2]
@@ -2243,7 +2238,7 @@ class Snoreport(Tool):
                     j2 = len(molecule) - int(words[-4].split(':')[-1])
                     hit['target_positions'] = [i2+1, j2]
                     hit['sequence'] = molecule.get_complement()[i2:j2][::-1]
-                #hit['bracket_notation'] = parsers.parse_bn(lines[i-1]) #Panda DataFrame object cannot be encoded by pymongo 
+                #hit['bracket_notation'] = parsers.parse_bn(lines[i-1]) #Panda DataFrame object cannot be encoded by pymongo
                 hit['bracket_notation'] = lines[i-1]
                 cross_notation = lines[i-2]
                 i3 = cross_notation.find('x')
@@ -2276,7 +2271,7 @@ class Snoscan(Tool):
         ---------
         - target_molecules: a list of Molecule objects (see pyrna.features)
         - meth_sites_file: full path of the methylation file
-        - r_rna_file: full path of the file describing the target RNA sequence 
+        - r_rna_file: full path of the file describing the target RNA sequence
 
         Returns:
         --------
@@ -2297,7 +2292,7 @@ class Snoscan(Tool):
         """
         flag = False
         fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        
+
         with open(fasta_file_name, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta(target_molecules))
 
@@ -2337,7 +2332,7 @@ class Snoscan(Tool):
                 if tokens[6][1:-1] != '-' and tokens[6][1:-1] != 'Undet':
                     hit['name'] = tokens[6][1:-1]
                 else:
-                    hit['name'] = "Undefined"    
+                    hit['name'] = "Undefined"
             elif target_molecule and 'C-D box dist:' in line:
                 pattern = re.compile('\((\d+)-(\d+)\)\s+C-D box dist:\s+(\d+) bp')
                 match = pattern.search(line)
@@ -2359,15 +2354,80 @@ class Snoscan(Tool):
         if not flag:
             raise Exception("No Snoscan output")
         if len(hits):
-            return DataFrame(hits, columns = ['source', 'class', 'target_name', 'organism', 'score', 'target_positions', 'target_strand', 'sequence', 'target_rRNA', 'name', 'C-box', 'D-box', 'guide_sequence'])       
+            return DataFrame(hits, columns = ['source', 'class', 'target_name', 'organism', 'score', 'target_positions', 'target_strand', 'sequence', 'target_rRNA', 'name', 'C-box', 'D-box', 'guide_sequence'])
         else:
             return DataFrame()
+
+class TrnaScanSE(Tool):
+    """
+    Application Controller for tRNAscan-SE.
+    """
+    def __init__(self, cache_dir="/tmp"):
+        Tool.__init__(self, cache_dir)
+
+    def scan(self, target_molecules):
+        """
+        Launch a search with tRNAscan-SE
+
+        Args:
+        - target_molecules
+
+        Returns:
+        A pandas DataFrame describing all the tRNAscan-SE hits. The column are:
+        - source
+        - score
+        - class (= RNA class)
+        - name (=class if unknown)
+        - target_positions
+        - target_name
+        - target_strand ('+' or '-')
+        - sequence (the hit primary sequence)
+        - tRNA type
+        - anticodon
+        """
+        fasta_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        fasta_file = open(fasta_file_name, 'w')
+        fasta_file.write(to_fasta(target_molecules))
+        fasta_file.close()
+
+        output = commands.getoutput("tRNAscan-SE %s"%fasta_file_name)
+        hits=[]
+        target_molecule = None
+        for target_molecule in target_molecules:
+            molecule_name = target_molecule.name.split(" ")[0]
+            for line in output.split('\n'):
+                if line.startswith(molecule_name):
+                    tokens = re.split('\s+', line)
+                    hit = {
+                        'source': 'tool:tRNAscan-SE:NA',
+                        'score': float(tokens[8]),
+                        'class' : 'Gene, tRNA',
+                        'target_name': molecule_name,
+                        'tRNA_type': tokens[4],
+                        'anticodon': tokens[5]
+                    }
+                    hit['name'] = hit['class']
+                    target_positions = [int(tokens[2]), int(tokens[3])]
+                    if target_positions[0] < target_positions[1]:
+                        hit['target_strand'] = "+"
+                        hit['target_positions'] = target_positions
+                        hit['sequence'] = target_molecule.sequence[hit['target_positions'][0]:hit['target_positions'][1]]
+                    elif target_positions[0] > target_positions[1]:
+                        hit['target_strand'] = "-"
+                        hit['target_positions'] = target_positions[::-1]
+                        hit['sequence'] = target_molecule.get_complement()[hit['target_positions'][0]:hit['target_positions'][1]][::-1]
+                    else:
+                        print "Error: hit with incorrect target positions"
+                        print "##########\n" + line + "\n##########"
+                    hits.append(hit)
+        target_molecule = None
+        return DataFrame(hits)
 
 class Tophat(Bowtie2):
     """
     Application Controller for Tophat.
     """
-    
+
     def __init__(self, cache_dir="/tmp", user_defined_options = []):
         Tool.__init__(self, cache_dir, user_defined_options)
         self.find_executable("tophat")
@@ -2378,7 +2438,7 @@ class Tophat(Bowtie2):
 
         Parameters:
         -----------
-        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features) 
+        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
         - fastq_file: the full path for the fastq file containing the reads (as a String)
         - bowtie2_index: the full path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
 
@@ -2408,4 +2468,3 @@ class Tophat(Bowtie2):
             return result_file
 
         return self.parse_sam(result_file, target_molecules)
-

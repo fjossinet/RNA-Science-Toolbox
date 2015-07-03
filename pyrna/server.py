@@ -19,7 +19,6 @@ mongodb = None
 logs_db = None
 enabled_algorithms = []
 
-
 @app.route("/webservices")
 @app.route('/api/')
 @app.route("/")
