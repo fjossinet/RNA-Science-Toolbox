@@ -1490,9 +1490,9 @@ class Rnafold(Tool):
                     fasta_file.write("\n"+constraints)
 
             if constraints:
-                output = commands.getoutput("cd %s ; RNAfold -noPS -noLP -C < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("cd %s ; RNAfold -C < %s"%(self.cache_dir, fileName)).strip()
             else:
-                output = commands.getoutput("cd %s ; RNAfold -noPS -noLP < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("cd %s ; RNAfold < %s"%(self.cache_dir, fileName)).strip()
         if raw_output:
             return output
         vienna_data = ""
@@ -1808,7 +1808,7 @@ class Rnasubopt(Tool):
         with open(fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta([molecule], single_line=True))
 
-        output = commands.getoutput("cd %s ; RNAsubopt -noLP %s %s < %s"%(self.cache_dir, "-e %i"%range if range else "" ,  "-p %i"%random_sample if random_sample else "", fileName)).strip()
+        output = commands.getoutput("cd %s ; RNAsubopt %s %s < %s"%(self.cache_dir, "-e %i"%range if range else "" ,  "-p %i"%random_sample if random_sample else "", fileName)).strip()
         secondary_structures = []
         for line in output.split('\n'):
             tokens = line.split(' ')
