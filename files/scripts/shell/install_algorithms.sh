@@ -210,11 +210,12 @@ else
 
 	echo -e "\nInstallation of Contrafold (http://contra.stanford.edu/contrafold/)\n" >> $DEST/installation.log
 
-	$FETCHER contrafold.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/contrafold_v2_02.tar.gz" >> $DEST/installation.log 2>&1
+	$FETCHER contrafold.tar.gz "http://dl.dropbox.com/u/3753967/algorithms/contrafold.tar.gz" >> $DEST/installation.log 2>&1
 
 	tar -xzf contrafold.tar.gz
-	cd contrafold/src
-	make >> $DEST/installation.log 2>&1
+  #problem to compile contrafold. For now, the dropbox provides a precompiled version for linux.
+	#cd contrafold/src
+	#make >> $DEST/installation.log 2>&1
 
 	if [ -f $DEST/contrafold/src/contrafold ]
 	then
@@ -223,7 +224,7 @@ else
     	RESULT=$RESULT"Contrafold\tNO\n"
 	fi
 
-	mv ../../contrafold.tar.gz "$DEST"/tmp
+	mv contrafold.tar.gz "$DEST"/tmp
 
 	echo 'export PATH=$PATH:$PYRNA_ALGORITHMS/contrafold/src/' >> "$DEST/setmyenv"
 

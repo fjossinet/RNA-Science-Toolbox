@@ -1,548 +1,592 @@
 #!/usr/bin/env python
 
-from flask import Flask, request, Response, render_template, redirect, url_for, jsonify, abort
+import ujson, sys, datetime, os, random, string
+
+from pyrna.features import RNA
 from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt, RnaAlifold
 from pyrna.db import PDB
 from pyrna import parsers
 from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw
-from pyrna.features import RNA
-import ujson, sys, datetime, shutil, re, os, random, string, shlex
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from pandas import DataFrame, isnull
-from werkzeug import secure_filename
 from subprocess import Popen
 
-app = Flask(__name__)
+import tornado.httpserver
+import tornado.ioloop
+import tornado.options
+import tornado.web
+import tornado.websocket
+from tornado.escape import json_encode
 
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard')
+pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard/pages')
+
+app = None
+web_sockets = []
 mongodb = None
 logs_db = None
-enabled_algorithms = []
-
-@app.route("/webservices")
-@app.route('/api/')
-@app.route("/")
-def webservices():
-    return render_template('webservices.html')
-
-#here starts the low-level webservices: webservices to avoid to install RNA algorithms on the client computer to be able to use PyRNA
-
-@app.route('/api/get_key', methods=['GET'])
-def get_key():
-    secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
-    ip = request.remote_addr
-    record = logs_db['user_keys'].find_one({'ip': ip})
-    if record:
-        record['key'] = secret_key
-        logs_db['user_keys'].save(record)
-    else:
-        logs_db['user_keys'].insert({
-            'ip': ip,
-            'date': str(datetime.datetime.now()),
-            'key': secret_key
-            })
-    return secret_key
+enabled_algorithms = ['rnafold', 'rnaplot', 'contrafold', 'rnaview']
 
 def is_registered_user(secret_key):
     return logs_db['user_keys'].find_one({'key': secret_key}) != None
 
-@app.route('/api/computations/rnafold', methods=['POST'])
-def rnafold():
-    log = {
-        '_id': str(ObjectId()),
-        'path': request.path,
-        'tool': 'rnafold',
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
-
-    logs_db['webservices'].insert(log)
-
-    name = None
-    sequence = None
-    constraints = None
-    api_key = None
-    if 'name' in request.form: 
-        name = request.form['name']
-    if 'sequence' in request.form:
-        sequence = request.form['sequence']
-    if 'constraints' in request.form:
-        constraints = request.form['constraints']
-    if 'api_key' in request.form:
-        api_key = request.form['api_key']
-
-    if not is_registered_user(api_key) or not 'rnafold' in enabled_algorithms:
-        return abort(401)
-
-    return Rnafold().fold(RNA(name=name, sequence=sequence), constraints, raw_output = True)
-
-@app.route('/api/computations/rnaplot', methods=['POST'])
-def rnaplot():
-    log = {
-        '_id': str(ObjectId()),
-        'path': request.path,
-        'tool': 'rnaplot',
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
-
-    logs_db['webservices'].insert(log)
-
-    secondary_structure = None
-    api_key = None
-    if 'secondary_structure' in request.form: 
-        secondary_structure = request.form['secondary_structure']
-    if 'api_key' in request.form:
-        api_key = request.form['api_key']
-
-    if not is_registered_user(api_key) or not 'rnaplot' in enabled_algorithms:
-        return abort(401)
-
-    rnas, secondary_structures = parse_vienna(secondary_structure)
-
-    return Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True)
-
-@app.route('/api/computations/contrafold', methods=['POST'])
-def contrafold():
-    log = {
-        '_id': str(ObjectId()),
-        'path': request.path,
-        'tool': 'contrafold',
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
-
-    logs_db['webservices'].insert(log)
-
-    name = None
-    sequence = None
-    constraints = None
-    api_key = None
-    if 'name' in request.form: 
-        name = request.form['name']
-    if 'sequence' in request.form:
-        sequence = request.form['sequence']
-    if 'api_key' in request.form:
-        api_key = request.form['api_key']
-
-    if not is_registered_user(api_key) or not 'contrafold' in enabled_algorithms:
-        return abort(401)
-
-    return Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True)
-
-@app.route('/api/computations/rnaview', methods=['POST'])
-def rnaview():
-    log = {
-        '_id': str(ObjectId()),
-        'path': request.path,
-        'tool': 'rnaview',
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
-
-    logs_db['webservices'].insert(log)
-
-    tertiary_structure = None
-    canonical_only = False
-    api_key = None
-    
-    if '3d' in request.form:
-        tertiary_structure = request.form['3d']
-    if 'canonical_only' in request.form:
-        canonical_only = request.form['canonical_only'] == 'true'
-    if 'api_key' in request.form:
-        api_key = request.form['api_key']
-
-    if not is_registered_user(api_key) or not 'rnaview' in enabled_algorithms:
-        return abort(401)
-
-    return Rnaview().annotate(pdb_content = tertiary_structure, canonical_only = canonical_only, raw_output = True)
-
-#here starts the high-level webservices
-
-@app.route('/api/compute/2d', methods=['GET', 'POST'])
-def compute_2d():
-    data = None
-    tool = None
-    version = 1
-    pdbid = None
-    output = None
-    if request.method == 'POST':
-        if 'data' in request.form:
-            data = request.form['data']
-        if 'tool' in request.form:
-            tool = request.form['tool']
-        if 'output' in request.form:
-            output = request.form['output']
-        if 'version' in request.form:
-            version = request.form['version']
-        if 'pdbid' in request.form:
-            pdbid = request.form['pdbid'] 
-    else:
-        if 'data' in request.args:
-            data = request.args.get('data', None)
-        if 'tool' in request.args:
-            tool = request.args.get('tool', None)
-        if 'output' in request.args:
-            output = request.args.get('output', None)
-        if 'version' in request.args:
-            version = request.args.get('version', 1)
-        if 'pdbid' in request.args:
-            pdbid = request.args.get('pdbid', None)
-    result = None
-
-    log = {
-        'path': request.path,
-        'tool': tool,
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
-
-    logs_db['webservices'].insert(log)
-
-    if data and data.startswith('>'): #2D prediction
-        rnas = parse_fasta(data)
-        result = []
-        if len(rnas) == 1: #single molecule prediction (MFE,...)
-            rna = rnas[0]
-            secondary_structures = []
-            if tool == 'rnafold':
-                secondary_structures.append(base_pairs_to_secondary_structure(rna, Rnafold().fold(rna)))
-            elif tool == 'contrafold':
-                secondary_structures.append(base_pairs_to_secondary_structure(rna, Contrafold().fold(rna)))
-            elif tool == 'rnasubopt':
-                random_sample = 20
-                if request.method == 'POST':
-                    random_sample = int(request.form['random_sample'])
-                else:
-                    random_sample = int(request.args.get('random_sample', 20))    
-                for _result in Rnasubopt().fold(rna, random_sample = random_sample):
-                    secondary_structures.append(base_pairs_to_secondary_structure(rna, _result))
-            for ss in secondary_structures:
-                _result = {
-                    '_id': ss._id,
-                    'name': ss.name,
-                    'source': ss.source,
-                    'rna': {
-                        'name': ss.rna.name,
-                        'sequence': ss.rna.sequence,
-                        'source': ss.rna.source,
-                        '_id': ss.rna._id
-                    }    
-                }
-
-                helices_descr = []
-                for helix in ss.helices:
-                    helix_desc = {
-                        'name': helix['name'],
-                        'location': {'ends': helix['location']} if version == 1 else helix['location']
-                    }
-                    if helix.has_key('interactions'):
-                        interactions_descr = []
-                        for interaction in helix['interactions']:
-                            interactions_descr.append({
-                                'orientation': interaction['orientation'],
-                                'edge1': interaction['edge1'],
-                                'edge2': interaction['edge2'],
-                                'location': {'ends': interaction['location']} if version == 1 else interaction['location']
-                            })
-                        helix_desc['interactions'] = interactions_descr   
-                    
-                    helices_descr.append(helix_desc)
-
-                _result['helices'] = helices_descr
-
-                single_strands_descr = []
-                for single_strand in ss.single_strands:
-                    single_strands_descr.append({
-                        'name': single_strand['name'],
-                        'location': {'ends': single_strand['location']} if version == 1 else single_strand['location']
-                    })
-
-                _result['singleStrands'] = single_strands_descr 
-
-                tertiary_interactions_descr = []
-                for tertiary_interaction in ss.tertiary_interactions:
-                    tertiary_interactions_descr.append({
-                        'orientation': tertiary_interaction['orientation'],
-                        'edge1': tertiary_interaction['edge1'],
-                        'edge2': tertiary_interaction['edge2'],
-                        'location': {'ends': tertiary_interaction['location']} if version == 1 else tertiary_interaction['location']
-                    })
-
-                _result['tertiaryInteractions'] = tertiary_interactions_descr
-                result.append(_result) 
-        elif len(rnas) >= 2: #structural alignment
-            if tool == 'mlocarna':
-                aligned_molecules, consensus2D = Mlocarna().align(rnas)
-                return Response(to_clustalw(consensus2D, aligned_molecules), mimetype='application/txt')
-
-        if tool == 'rnafold' or tool == 'contrafold':
-            return Response(ujson.dumps(result[0]), mimetype='application/json')
+#to write messsages to websockets outside of the WebSocketHandler class
+def wsSend(message):
+    for ws in web_sockets:
+        if not ws.ws_connection.stream.socket:
+            print "Web socket does not exist anymore!!!"
+            web_sockets.remove(ws)
         else:
-            return Response(ujson.dumps(result), mimetype='application/json')
-    elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
-        return Response(RnaAlifold().align(data), mimetype='application/txt')
-    elif tool == 'rnaview': #3D annotation
-        rnaview = Rnaview()
+            ws.write_message(message)
 
-        if output == 'rnaml':
-            if pdbid:
-                return Response(rnaview.annotate(pdb_content = PDB().get_entry(pdbid), raw_output = True), mimetype='application/txt')
-            elif data:
-                return Response(rnaview.annotate(pdb_content = data, raw_output = True), mimetype='application/txt')
-            
+class IndexHandler(tornado.web.RequestHandler):
+    def get(self):
+        if not os.path.exists(static_dir):
+            self.write("RNA WebServices running...")
         else:
-            if pdbid:
-                tertiary_structures = parse_pdb(PDB().get_entry(pdbid))
-            elif data:
-                tertiary_structures = parse_pdb(data)
+            self.render('index.html')
 
+##########################################################
+# Here starts the low-level webservices:
+# webservices to avoid to install RNA algorithms on the
+# client computer to be able to use PyRNA.
+##########################################################
+
+#webservice to generate and register an api key (needed to call webservices from python scripts or ipython sessions)
+class APIKeyHandler(tornado.web.RequestHandler):
+    def get(self):
+        secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
+        remote_ip = self.request.remote_ip
+        record = logs_db['user_keys'].find_one({'ip': remote_ip})
+        if record:
+            record['key'] = secret_key
+            logs_db['user_keys'].save(record)
+        else:
+            logs_db['user_keys'].insert({
+                '_id': str(ObjectId()),
+                'ip': remote_ip,
+                'date': datetime.datetime.now(),
+                'key': secret_key
+                })
+        self.write(secret_key)
+
+#webservice to run RNAfold
+class RNAfoldHandler(tornado.web.RequestHandler):
+    def post(self):
+        log = {
+            '_id': str(ObjectId()),
+            'path': self.request.uri,
+            'tool': 'rnafold',
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        name = self.get_argument('name', default = None)
+        sequence = self.get_argument('sequence', default = None)
+        constraints = self.get_argument('constraints', default = None)
+        api_key = self.get_argument('api_key', default = None)
+
+        if not is_registered_user(api_key) or not 'rnafold' in enabled_algorithms:
+            self.send_error(status_code=401)
+        else:
+            self.write(Rnafold().fold(RNA(name=name, sequence=sequence), constraints, raw_output = True))
+
+#webservice to run RNAplot
+class RNAplotHandler(tornado.web.RequestHandler):
+    def post(self):
+        log = {
+            '_id': str(ObjectId()),
+            'path': self.request.uri,
+            'tool': 'rnaplot',
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        secondary_structure = self.get_argument('secondary_structure', default = None)
+        api_key = self.get_argument('api_key', default = None)
+
+        if not is_registered_user(api_key) or not 'rnaplot' in enabled_algorithms:
+            self.send_error(status_code=401)
+        else:
+            rnas, secondary_structures = parse_vienna(secondary_structure)
+            self.write(Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True))
+
+#webservice to run Contrafold
+class ContrafoldHandler(tornado.web.RequestHandler):
+    def post(self):
+        log = {
+            '_id': str(ObjectId()),
+            'path': self.request.uri,
+            'tool': 'contrafold',
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        name = self.get_argument('name', default = None)
+        sequence = self.get_argument('sequence', default = None)
+        constraints = self.get_argument('constraints', default = None)
+        api_key = self.get_argument('api_key', default = None)
+
+        if not is_registered_user(api_key) or not 'contrafold' in enabled_algorithms:
+            self.send_error(status_code=401)
+        else:
+            self.write(Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True))
+
+#webservice to run RNAVIEW
+class RnaviewHandler(tornado.web.RequestHandler):
+    def post(self):
+        log = {
+            '_id': str(ObjectId()),
+            'path': self.request.uri,
+            'tool': 'rnaview',
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        tertiary_structure = self.get_argument('3d', default = None)
+        canonical_only = self.get_argument('canonical_only', default = None)
+        api_key = self.get_argument('api_key', default = None)
+
+        if not is_registered_user(api_key) or not 'rnaview' in enabled_algorithms:
+            self.send_error(status_code=401)
+        else:
+            self.write(Rnaview().annotate(pdb_content = tertiary_structure, canonical_only = canonical_only, raw_output = True))
+
+##########################################################
+# Here starts the high-level webservices...
+##########################################################
+
+class Compute2dHandler(tornado.web.RequestHandler):
+
+    def get(self):
+        self.post(self)
+
+    def post(self):
+        data = self.get_argument('data', default = None)
+        tool = self.get_argument('tool', default = None)
+        version = self.get_argument('version', default = 1)
+        pdbid =  self.get_argument('pdbid', default = None)
+        output = None
+        result = None
+
+        log = {
+            'path': self.request.uri,
+            'tool': tool,
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        if data and data.startswith('>'): #2D prediction
+            rnas = parse_fasta(data)
             result = []
-
-            for ts in tertiary_structures:
-
-                (ss, ts) = rnaview.annotate(ts, canonical_only = False)
-
-                ss.find_junctions()
-
-                _2D_descr = {
-                    '_id': ss._id,
-                    'name': ss.name,
-                    'source': ss.source,
-                    'rna': {
-                        'name': ss.rna.name,
-                        'sequence': ss.rna.sequence,
-                        'source': ss.rna.source,
-                        '_id': ss.rna._id
-                    }    
-                }
-
-                helices_descr = []
-                for helix in ss.helices:
-                    helix_desc = {
-                        'name': helix['name'],
-                        'location': {'ends': helix['location']} if version == 1 else helix['location']
+            if len(rnas) == 1: #single molecule prediction (MFE,...)
+                rna = rnas[0]
+                secondary_structures = []
+                if tool == 'rnafold':
+                    secondary_structures.append(base_pairs_to_secondary_structure(rna, Rnafold().fold(rna)))
+                elif tool == 'contrafold':
+                    secondary_structures.append(base_pairs_to_secondary_structure(rna, Contrafold().fold(rna)))
+                elif tool == 'rnasubopt':
+                    random_sample = int(self.get_argument('random_sample', default = 20))
+                    for _result in Rnasubopt().fold(rna, random_sample = random_sample):
+                        secondary_structures.append(base_pairs_to_secondary_structure(rna, _result))
+                for ss in secondary_structures:
+                    _result = {
+                        '_id': ss._id,
+                        'name': ss.name,
+                        'source': ss.source,
+                        'rna': {
+                            'name': ss.rna.name,
+                            'sequence': ss.rna.sequence,
+                            'source': ss.rna.source,
+                            '_id': ss.rna._id
+                        }
                     }
-                    if helix.has_key('interactions'):
-                        interactions_descr = []
-                        for interaction in helix['interactions']:
-                            interactions_descr.append({
-                                'orientation': interaction['orientation'],
-                                'edge1': interaction['edge1'],
-                                'edge2': interaction['edge2'],
-                                'location': {'ends': interaction['location']} if version == 1 else interaction['location']
-                            })
-                        helix_desc['interactions'] = interactions_descr   
-                    
-                    helices_descr.append(helix_desc)
 
-                _2D_descr['helices'] = helices_descr
+                    helices_descr = []
+                    for helix in ss.helices:
+                        helix_desc = {
+                            'name': helix['name'],
+                            'location': {'ends': helix['location']} if version == 1 else helix['location']
+                        }
+                        if helix.has_key('interactions'):
+                            interactions_descr = []
+                            for interaction in helix['interactions']:
+                                interactions_descr.append({
+                                    'orientation': interaction['orientation'],
+                                    'edge1': interaction['edge1'],
+                                    'edge2': interaction['edge2'],
+                                    'location': {'ends': interaction['location']} if version == 1 else interaction['location']
+                                })
+                            helix_desc['interactions'] = interactions_descr
 
-                single_strands_descr = []
-                for single_strand in ss.single_strands:
-                    single_strands_descr.append({
-                        'name': single_strand['name'],
-                        'location': {'ends': single_strand['location']} if version == 1 else single_strand['location']
-                    })
+                        helices_descr.append(helix_desc)
 
-                _2D_descr['singleStrands'] = single_strands_descr
+                    _result['helices'] = helices_descr
 
-                tertiary_interactions_descr = []
-                for tertiary_interaction in ss.tertiary_interactions:
-                    tertiary_interactions_descr.append({
-                        'orientation': tertiary_interaction['orientation'],
-                        'edge1': tertiary_interaction['edge1'],
-                        'edge2': tertiary_interaction['edge2'],
-                        'location': {'ends': tertiary_interaction['location']} if version == 1 else tertiary_interaction['location']
-                    })
-
-                _2D_descr['tertiaryInteractions'] = tertiary_interactions_descr
-
-                junctions_descr = []
-
-                for junction in ss.junctions:
-                    junctions_descr.append({
-                        'description': junction['description'],
-                        'location': junction['location']
-                    })
-
-
-                _2D_descr['junctions'] = junctions_descr 
-
-                _3D_descr = {
-                    '_id': ts._id,
-                    'name': ts.name,
-                    'source': ts.source,
-                    'rna': {
-                        'name': ts.rna.name,
-                        'sequence': ts.rna.sequence,
-                        'source': ts.rna.source,
-                        '_id': ts.rna._id
-                    }     
-                }
-
-                residues_descr = {}
-                keys=[]
-                for k in ts.residues:
-                    keys.append(k)
-
-                keys.sort() #the absolute position are sorted
-
-                for key in keys:
-                    atoms = ts.residues[key]['atoms']
-                    
-                    atoms_descr = []
-
-                    for atom in atoms:
-                        atoms_descr.append({
-                            'name': atom['name'],
-                            'coords': atom['coords']
+                    single_strands_descr = []
+                    for single_strand in ss.single_strands:
+                        single_strands_descr.append({
+                            'name': single_strand['name'],
+                            'location': {'ends': single_strand['location']} if version == 1 else single_strand['location']
                         })
-                    residues_descr[str(key)] = {
-                        'atoms': atoms_descr
+
+                    _result['singleStrands'] = single_strands_descr
+
+                    tertiary_interactions_descr = []
+                    for tertiary_interaction in ss.tertiary_interactions:
+                        tertiary_interactions_descr.append({
+                            'orientation': tertiary_interaction['orientation'],
+                            'edge1': tertiary_interaction['edge1'],
+                            'edge2': tertiary_interaction['edge2'],
+                            'location': {'ends': tertiary_interaction['location']} if version == 1 else tertiary_interaction['location']
+                        })
+
+                    _result['tertiaryInteractions'] = tertiary_interactions_descr
+                    result.append(_result)
+            elif len(rnas) >= 2: #structural alignment
+                if tool == 'mlocarna':
+                    aligned_molecules, consensus2D = Mlocarna().align(rnas)
+                    self.write(to_clustalw(consensus2D, aligned_molecules))
+
+            if tool == 'rnafold' or tool == 'contrafold':
+                self.write(json_encode(result[0]))
+            else:
+                self.write(json_encode(result))
+        elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
+            self.write(RnaAlifold().align(data))
+        elif tool == 'rnaview': #3D annotation
+            rnaview = Rnaview()
+
+            if output == 'rnaml':
+                if pdbid:
+                    self.write(rnaview.annotate(pdb_content = PDB().get_entry(pdbid), raw_output = True))
+                elif data:
+                    self.write(rnaview.annotate(pdb_content = data, raw_output = True))
+
+            else:
+                if pdbid:
+                    tertiary_structures = parse_pdb(PDB().get_entry(pdbid))
+                elif data:
+                    tertiary_structures = parse_pdb(data)
+
+                result = []
+
+                for ts in tertiary_structures:
+
+                    (ss, ts) = rnaview.annotate(ts, canonical_only = False)
+
+                    ss.find_junctions()
+
+                    _2D_descr = {
+                        '_id': ss._id,
+                        'name': ss.name,
+                        'source': ss.source,
+                        'rna': {
+                            'name': ss.rna.name,
+                            'sequence': ss.rna.sequence,
+                            'source': ss.rna.source,
+                            '_id': ss.rna._id
+                        }
                     }
 
-                _3D_descr['residues'] = residues_descr
+                    helices_descr = []
+                    for helix in ss.helices:
+                        helix_desc = {
+                            'name': helix['name'],
+                            'location': {'ends': helix['location']} if version == 1 else helix['location']
+                        }
+                        if helix.has_key('interactions'):
+                            interactions_descr = []
+                            for interaction in helix['interactions']:
+                                interactions_descr.append({
+                                    'orientation': interaction['orientation'],
+                                    'edge1': interaction['edge1'],
+                                    'edge2': interaction['edge2'],
+                                    'location': {'ends': interaction['location']} if version == 1 else interaction['location']
+                                })
+                            helix_desc['interactions'] = interactions_descr
+
+                        helices_descr.append(helix_desc)
+
+                    _2D_descr['helices'] = helices_descr
+
+                    single_strands_descr = []
+                    for single_strand in ss.single_strands:
+                        single_strands_descr.append({
+                            'name': single_strand['name'],
+                            'location': {'ends': single_strand['location']} if version == 1 else single_strand['location']
+                        })
+
+                    _2D_descr['singleStrands'] = single_strands_descr
+
+                    tertiary_interactions_descr = []
+                    for tertiary_interaction in ss.tertiary_interactions:
+                        tertiary_interactions_descr.append({
+                            'orientation': tertiary_interaction['orientation'],
+                            'edge1': tertiary_interaction['edge1'],
+                            'edge2': tertiary_interaction['edge2'],
+                            'location': {'ends': tertiary_interaction['location']} if version == 1 else tertiary_interaction['location']
+                        })
+
+                    _2D_descr['tertiaryInteractions'] = tertiary_interactions_descr
+
+                    junctions_descr = []
+
+                    for junction in ss.junctions:
+                        junctions_descr.append({
+                            'description': junction['description'],
+                            'location': junction['location']
+                        })
 
 
-                result.append({"2D": _2D_descr, "3D": _3D_descr})
+                    _2D_descr['junctions'] = junctions_descr
 
-            return Response(ujson.dumps(result), mimetype='application/json')
+                    _3D_descr = {
+                        '_id': ts._id,
+                        'name': ts.name,
+                        'source': ts.source,
+                        'rna': {
+                            'name': ts.rna.name,
+                            'sequence': ts.rna.sequence,
+                            'source': ts.rna.source,
+                            '_id': ts.rna._id
+                        }
+                    }
 
-@app.route('/api/compute/2dplot', methods=['GET', 'POST'])
-def plot_2d():
-    if request.method == 'POST':
-        if 'data' in request.form:
-            vienna_data = request.form['data']
-    else:
-        if 'data' in request.args:
-            vienna_data = request.args.get('data', None)
+                    residues_descr = {}
+                    keys=[]
+                    for k in ts.residues:
+                        keys.append(k)
 
-    log = {
-        'path': request.path,
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
+                    keys.sort() #the absolute position are sorted
 
-    logs_db['webservices'].insert(log)
+                    for key in keys:
+                        atoms = ts.residues[key]['atoms']
 
-    rnas, base_pairs = parse_vienna(vienna_data)
-    rnaplot = Rnaplot()
-    plot =  rnaplot.plot(base_pairs[0], rnas[0])
-    coords = []
-    for (index, row) in plot.iterrows():
-        coords.append([row['x'], row['y']])
-    return Response(ujson.dumps(coords), mimetype='application/json')
+                        atoms_descr = []
 
-@app.route('/api/pdb', methods=['GET', 'POST'])
-def pdb():
-    result = None
-    collection = None
-    query = None
-    count = False
-    id = None
-    if request.method == 'POST':
-        if 'coll' in request.form:
-            collection = request.form['coll']
-        if 'query' in request.form:
-            query = request.form['query']
-        if 'id' in request.form:
-            id = request.form['id']
-        if 'count' in request.form:
-            count = True
-    else:
-        if 'coll' in request.args:
-            collection = request.args.get('coll', None)
-        if 'query' in request.args:
-            query = request.args.get('query', None)
-        if 'id' in request.args:
-            id = request.args.get('id', None)
-        if 'count' in request.args:
-            count = True
-    
-    log = {
-        'path': request.path,
-        'collection': collection,
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
+                        for atom in atoms:
+                            atoms_descr.append({
+                                'name': atom['name'],
+                                'coords': atom['coords']
+                            })
+                        residues_descr[str(key)] = {
+                            'atoms': atoms_descr
+                        }
 
-    logs_db['webservices'].insert(log)
+                    _3D_descr['residues'] = residues_descr
 
-    db = mongodb['PDB']
 
-    if collection and query:
-        import simplejson
-        result = list(db[collection].find(simplejson.loads(str(query))))
-        if count:
-            result = '{"count":%i}'%len(result)
-    elif collection and id:
-        result = db[collection].find_one({'_id':id})
-    elif collection:
-        result = list(db[collection].find())
-        if count:
-            result = '{"count":%i}'%len(result)
-    return Response(ujson.dumps(result), mimetype='application/json')
+                    result.append({"2D": _2D_descr, "3D": _3D_descr})
 
-@app.route('/api/rna3dhub', methods=['GET', 'POST'])
-def rna3dhub():
-    result = None
-    collection = None
-    query = None
-    count = False
-    id = None
-    if request.method == 'POST':
-        if 'coll' in request.form:
-            collection = request.form['coll']
-        if 'query' in request.form:
-            query = request.form['query']
-        if 'id' in request.form:
-            id = request.form['id']
-        if 'count' in request.form:
-            count = True
-    else:
-        if 'coll' in request.args:
-            collection = request.args.get('coll', None)
-        if 'query' in request.args:
-            query = request.args.get('query', None)
-        if 'id' in request.args:
-            id = request.args.get('id', None)
-        if 'count' in request.args:
-            count = True
-    
-    log = {
-        '_id': str(ObjectId()),
-        'path': request.path,
-        'collection': collection,
-        'ip': request.remote_addr,
-        'method': request.method,
-        'date': str(datetime.datetime.now())
-    }
+                self.write(json_encode(result))
 
-    logs_db['webservices'].insert(log)
+class Compute2dplotHandler(tornado.web.RequestHandler):
 
-    db = mongodb['RNA3DHub']
+    def get(self):
+        self.post(self)
 
-    if collection and query:
-        import simplejson
-        result = list(db[collection].find(simplejson.loads(str(query))))
-        if count:
-            result = '{"count":%i}'%len(result)
-    elif collection and id:
-        result = db[collection].find_one({'_id':id})
-    elif collection:
-        result = list(db[collection].find())
-        if count:
-            result = '{"count":%i}'%len(result)
-    return Response(ujson.dumps(result), mimetype='application/json')
+    def post(self):
+        vienna_data = self.get_argument('data', default = None)
+
+        log = {
+            'path': self.request.uri,
+            'ip': self.request.remote_ip,
+            'tool': 'rnaplot',
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        rnas, base_pairs = parse_vienna(vienna_data)
+        rnaplot = Rnaplot()
+        plot =  rnaplot.plot(base_pairs[0], rnas[0])
+        coords = []
+        for (index, row) in plot.iterrows():
+            coords.append([row['x'], row['y']])
+        self.write(json_encode(coords))
+
+class PDBHandler (tornado.web.RequestHandler):
+
+    def get(self):
+        self.post(self)
+
+    def post(self):
+        result = None
+        collection = self.get_argument('coll', default = None)
+        query = self.get_argument('query', default = None)
+        id = self.get_argument('id', default = None)
+        count = self.get_argument('count', default = False)
+
+        log = {
+            'path': self.request.uri,
+            'collection': collection,
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        db = mongodb['PDB']
+
+        if collection and query:
+            result = list(db[collection].find(ujson.loads(str(query))))
+            if count:
+                result = '{"count":%i}'%len(result)
+        elif collection and id:
+            result = db[collection].find_one({'_id':id})
+        elif collection:
+            result = list(db[collection].find())
+            if count:
+                result = '{"count":%i}'%len(result)
+        self.write(json_encode(result))
+
+class RNA3DHubHandler (tornado.web.RequestHandler):
+
+    def get(self):
+        self.post(self)
+
+    def post(self):
+        result = None
+        collection = self.get_argument('coll', default = None)
+        query = self.get_argument('query', default = None)
+        id = self.get_argument('id', default = None)
+        count = self.get_argument('count', default = False)
+
+        log = {
+            'path': self.request.uri,
+            'collection': collection,
+            'ip': self.request.remote_ip,
+            'method': self.request.method,
+            'date': datetime.datetime.now()
+        }
+
+        logs_db['webservices'].insert(log)
+
+        db = mongodb['RNA3DHub']
+
+        if collection and query:
+            result = list(db[collection].find(ujson.loads(str(query))))
+            if count:
+                result = '{"count":%i}'%len(result)
+        elif collection and id:
+            result = db[collection].find_one({'_id':id})
+        elif collection:
+            result = list(db[collection].find())
+            if count:
+                result = '{"count":%i}'%len(result)
+
+        self.write(json_encode(result))
+
+class WebSocketHandler(tornado.websocket.WebSocketHandler):
+
+    def open(self, *args):
+        if self not in web_sockets:
+            web_sockets.append(self)
+        self.write_message({'head': 'hello'})
+        print "New client connected"
+
+    def on_message(self, message):
+        message = ujson.loads(message)
+        if message['header'] == 'webservices usage':
+            db = mongodb['logs']
+            now = datetime.datetime.now()
+            data = []
+            for i in xrange(1, 24):
+                counts = {'y': "-%ih"%
+                i}
+                time_range = {
+                    "$gt": now - datetime.timedelta(hours = i),
+                    "$lte": now - datetime.timedelta(hours = i-1)
+                    }
+                counts['RNAfold'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'rnafold'
+                }).count()
+
+                counts['RNAsubopt'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'rnasubopt'
+                }).count()
+
+                counts['RNAalifold'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'rnaalifold'
+                }).count()
+
+                counts['Contrafold'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'contrafold'
+                }).count()
+
+                counts['RNAplot'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'rnaplot'
+                }).count()
+
+                counts['Mlocarna'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'mlocarna'
+                }).count()
+
+                counts['RNAVIEW'] = db['webservices'].find({
+                    "date": time_range,
+                    "tool": 'rnaview'
+                }).count()
+
+                data.append(counts)
+            answer = {
+                'header': 'webservices usage',
+                'data': data
+                }
+            self.write_message(answer, binary = False)
+
+    def on_close(self):
+        if self in web_sockets:
+            web_sockets.remove(self)
+        print "Client disconnected"
+
+class Application(tornado.web.Application):
+    def __init__(self):
+
+        handlers = [
+            (r'/', IndexHandler),
+            (r'/websocket', WebSocketHandler),
+            (r'/api/get_key', APIKeyHandler),
+            (r'/api/computations/rnafold', RNAfoldHandler),
+            (r'/api/computations/rnaplot', RNAplotHandler),
+            (r'/api/computations/contrafold', ContrafoldHandler),
+            (r'/api/computations/rnaview', RnaviewHandler),
+            (r'/api/compute/2d', Compute2dHandler),
+            (r'/api/compute/2dplot', Compute2dplotHandler),
+            (r'/api/pdb', PDBHandler),
+            (r'/api/rna3dhub', RNA3DHubHandler)
+        ]
+
+        settings = {
+            'template_path': pages_dir,
+            'static_path': static_dir
+        }
+
+        tornado.web.Application.__init__(self, handlers, **settings)
 
 if __name__ == '__main__':
     webserver_host = "localhost"
@@ -571,14 +615,10 @@ if __name__ == '__main__':
         print 'Usage: ./server.py [-wh webserver_host (default: %s)] [-wp webserver_port (default: %i)] [-mh mongodb_host (default: %s)] [-mp mongodb_port (default: %i)] [-conf configuration_file] '%(webserver_host, webserver_port, mongodb_host, mongodb_port)
         sys.exit(-1)
 
-    app.debug = True
-
-    #app.run(host = webserver_host, port = webserver_port)
-    from tornado.wsgi import WSGIContainer
-    from tornado.httpserver import HTTPServer
-    from tornado.ioloop import IOLoop
-
-    http_server = HTTPServer(WSGIContainer(app))
-    http_server.listen(webserver_port)
+    tornado.options.parse_command_line()
+    app = Application()
+    server = tornado.httpserver.HTTPServer(app)
+    server.listen(webserver_port)
     print "http://%s:%i/ is ready"%(webserver_host, webserver_port)
-    IOLoop.instance().start()
+    main_loop = tornado.ioloop.IOLoop.instance()
+    main_loop.start()
