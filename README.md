@@ -6,7 +6,7 @@ PyRNA allows you to:
 * parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
     * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
     * "PyRNA objects": defined in the module pyrna.features.
-* compute RNA data from RNA algorithms (see list below) and convert them into Pandas data structures and PyRNA objects, 
+* compute RNA data from RNA algorithms (see list below) and convert them into Pandas data structures and PyRNA objects,
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
 * deploy some functionalities as REST Web services.
 
@@ -23,7 +23,7 @@ In its current state, PyRNA is able to handle several algorithms:
 * [Bowtie](http://goo.gl/nmXKH)
 * [Clustalw](http://goo.gl/Z9FRV)
 * [CONTRAfold](http://goo.gl/4BCI7)
-* [Gotohscan](http://goo.gl/2atKpi) 
+* [Gotohscan](http://goo.gl/2atKpi)
 * [Infernal](http://goo.gl/SxLHJO)
 * [Mlocarna](http://goo.gl/AIGKrl)
 * [RNA Vienna Package (RNAfold, RNAplot)](http://goo.gl/7frDgF)
@@ -38,7 +38,7 @@ You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as 
 
 #Quick Start
 
-* install [Vagrant](https://www.vagrantup.com/) and [Virtualbox](https://www.virtualbox.org/) on your computer. These tools will allow you to launch a fully configured Linux as a virtual machine. 
+* install [Vagrant](https://www.vagrantup.com/) and [Virtualbox](https://www.virtualbox.org/) on your computer. These tools will allow you to launch a fully configured Linux as a virtual machine.
 
 * in a UNIX shell, recover the last version of PyRNA by typing:
 
@@ -47,7 +47,7 @@ You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as 
 * in the PyRNA directory, type:
 
         $ vagrant up
-        $ vagrant ssh        
+        $ vagrant ssh
 
 This will launch and log you into a fully configured virtual machine.
 
@@ -90,7 +90,7 @@ You should get an output like:
         6            c     (     )    13    34
         [...]
 
-Congratulations, you're ready to develop your own Python scripts with PyRNA. 
+Congratulations, you're ready to develop your own Python scripts with PyRNA.
 
 Since the PyRNA directory is a shared folder between your computer and the fully configured virtual machine, we recommended you to:
 
@@ -117,21 +117,20 @@ PyRNA provides several scripts in the files directory:
 
 #The PyRNA REST Server
 
-PyRNA provides you the ability to deploy some functionalities as REST Web services. This allows you to install and configure PyRNA on a server of your local network and to allow other computers to connect it. You will need to install: 
+PyRNA provides you the ability to deploy some functionalities as REST Web services. This allows you to install and configure PyRNA on a server of your local network and to allow other computers to connect it. You will need to install:
 
 * [MongoDB](http://www.mongodb.org/): a NoSQL database,
 * [PyMongo](http://api.mongodb.org/python/current/): a Python dependency providing an easy way to connect MongoDB databases,
 * [Tornado](http://www.tornadoweb.org/): a Python web framework and asynchronous networking library,
-* [Flask](http://flask.pocoo.org/): a Python microframework,
 * [ujson](https://pypi.python.org/pypi/ujson): a Python dependency to load/dump JSON data,
 
-Once everything installed, launch your MongoDB and type: 
+Once everything installed, launch your MongoDB and type:
 
-    $ ./server.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)] [-conf configuration_file] 
+    $ ./server.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)] [-conf configuration_file]
 
 The configuration file allows you to define which algorithms are enabled for remote computations. A sample configuration is provided with PyRNA (named pyrna.conf).
 
-Examples: 
+Examples:
 
     $ ./server.py
 
