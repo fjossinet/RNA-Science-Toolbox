@@ -46,6 +46,10 @@ class IndexHandler(tornado.web.RequestHandler):
         else:
             self.render('index.html')
 
+class ServerHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render('server.html')
+
 ##########################################################
 # Here starts the low-level webservices:
 # webservices to avoid to install RNA algorithms on the
@@ -568,7 +572,7 @@ class Application(tornado.web.Application):
 
         handlers = [
             (r'/', IndexHandler),
-            (r'/index.html', IndexHandler),
+            (r'/server', ServerHandler),
             (r'/websocket', WebSocketHandler),
             (r'/api/get_key', APIKeyHandler),
             (r'/api/computations/rnafold', RNAfoldHandler),
@@ -583,7 +587,8 @@ class Application(tornado.web.Application):
 
         settings = {
             'template_path': pages_dir,
-            'static_path': static_dir
+            'static_path': static_dir,
+            'debug': True
         }
 
         tornado.web.Application.__init__(self, handlers, **settings)

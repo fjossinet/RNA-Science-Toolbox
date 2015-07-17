@@ -22,7 +22,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine.
-  config.vm.network "forwarded_port", guest: 8080, host: 8080 #PyRNA server
+  config.vm.network "forwarded_port", guest: 8080, host: 8080 #Tornado server
   config.vm.network "forwarded_port", guest: 8888, host: 8888 #ipython netbook server
 
   # Create a private network, which allows host-only access to the machine

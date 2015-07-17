@@ -1,7 +1,11 @@
-PyRNA -- Produce and Mine RNA Data with Python
-=================================================
+RNA Science Toolbox -- A virtual environment to do RNA science
+===============================================================
 
-PyRNA allows you to:
+The RNA Science Toolbox provides a Python API (PyRNA) and a fully configured virtual machine (described in the Vagrantfile) to do RNA science. This virtual environment allows you to:
+* write your own Python scripts based on PyRNA,
+* deploy the PyRNA API as Web services to be consumed from graphical tool like [Assemble2](http://www.bioinformatics.org/assemble/).
+
+The PyRNA API allows you to:
 
 * parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
     * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
@@ -10,31 +14,18 @@ PyRNA allows you to:
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
 * deploy some functionalities as REST Web services.
 
-[Assemble2](http://www.bioinformatics.org/assemble/) is an example of Java graphical client consuming PyRNA Web services.
+In its current state, PyRNA is able to handle several algorithms like:
 
-To learn more about PyRNA, check the [PyRNA Cookbook](http://goo.gl/q20VoF)
-
-PyRNA has been designed to be used on a UNIX system (Linux, MacOSX,...).
-
-In its current state, PyRNA is able to handle several algorithms:
-
-* [Blast](ftp://ftp.ncbi.nlm.nih.gov/blast/)
+* [The RNA Vienna Package](http://goo.gl/7frDgF)
 * [Blastr](http://goo.gl/lKCR1u)
-* [Bowtie](http://goo.gl/nmXKH)
-* [Clustalw](http://goo.gl/Z9FRV)
 * [CONTRAfold](http://goo.gl/4BCI7)
-* [Gotohscan](http://goo.gl/2atKpi)
 * [Infernal](http://goo.gl/SxLHJO)
 * [Mlocarna](http://goo.gl/AIGKrl)
-* [RNA Vienna Package (RNAfold, RNAplot)](http://goo.gl/7frDgF)
 * [RNAMotif](http://goo.gl/MDdOQ2)
 * [RNAVIEW](http://goo.gl/c5o19v)
-* [snoGPS](http://goo.gl/66pnrF)
-* [SnoReport](http://goo.gl/pq3qXu)
-* [Snoscan](http://goo.gl/P5EQiH)
-* more to come....
+* ....
 
-You can [follow me on twitter](https://twitter.com/fjossinet) to get updates as they happen.
+You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
 #Quick Start
 
@@ -90,50 +81,17 @@ You should get an output like:
         6            c     (     )    13    34
         [...]
 
-Congratulations, you're ready to develop your own Python scripts with PyRNA.
+Congratulations, you're ready to .
 
 Since the PyRNA directory is a shared folder between your computer and the fully configured virtual machine, we recommended you to:
 
 * keep your Python scripts in the directory files/scripts/python provided with PyRNA,
 * run your Python scripts from the shell of the virtual machine.
 
-#The PyRNA modules
+#The PyRNA Server
 
-* features.py: classes to model the RNA concepts used by PyRNA (a.k.a. "PyRNA objects"),
-* parsers.py: functions to parse and convert RNA data,
-* computations.py: classes to wrap RNA algorithms,
-* db.py: classes to connect public databases,
-* server.py: executable script to launch the embedded REST server
-
-The modules task.py and glite.py allow to design, submit and manage grid jobs using the [gLite](http://glite.web.cern.ch/glite/) middleware. As a "basic user", you should not care about them.
-
-#The PyRNA scripts
-
-PyRNA provides several scripts in the files directory:
-
-* scripts/python: examples of Python scripts using PyRNA
-* scripts/shell: shell scripts  
-* grid_tasks: Python scripts that parallelize some "large" tasks (genomic annotation for example). As a "basic user", you should not care about them.
-
-#The PyRNA REST Server
-
-PyRNA provides you the ability to deploy some functionalities as REST Web services. This allows you to install and configure PyRNA on a server of your local network and to allow other computers to connect it. You will need to install:
-
-* [MongoDB](http://www.mongodb.org/): a NoSQL database,
-* [PyMongo](http://api.mongodb.org/python/current/): a Python dependency providing an easy way to connect MongoDB databases,
-* [Tornado](http://www.tornadoweb.org/): a Python web framework and asynchronous networking library,
-* [ujson](https://pypi.python.org/pypi/ujson): a Python dependency to load/dump JSON data,
-
-Once everything installed, launch your MongoDB and type:
-
-    $ ./server.py [-wh webserver_host (default: localhost)] [-wp webserver_port (default: 8080)] [-mh mongodb_host (default: localhost)] [-mp mongodb_port (default: 27017)] [-conf configuration_file]
-
-The configuration file allows you to define which algorithms are enabled for remote computations. A sample configuration is provided with PyRNA (named pyrna.conf).
-
-Examples:
+PyRNA provides you the ability to deploy its functionalities as REST Web services over a local network. From the command-line of the virtual machine, type:
 
     $ ./server.py
 
-    $ ./server.py -wh my_host_name -wp 80
-
-    $ ./server.py -wh my_host_name -wp 80 -conf $PYRNA_HOME/pyrna.conf
+By default, the server runs on http://localhost:8080. Point a Web browser to this address to have a look at the website functionalities. The server provides graphical Web pages and Web services. The Web services can be consumed from dedicated tools like [Assemble2](http://www.bioinformatics.org/assemble/)
