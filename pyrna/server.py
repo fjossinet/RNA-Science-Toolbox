@@ -16,7 +16,7 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.websocket
-from tornado.escape import json_encode
+from tornado.escape import json_encode, native_str
 
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard')
 pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard/pages')
@@ -259,15 +259,14 @@ class Compute2dHandler(tornado.web.RequestHandler):
 
                     _result['tertiaryInteractions'] = tertiary_interactions_descr
                     result.append(_result)
+                if tool == 'rnafold' or tool == 'contrafold':
+                    self.write(json_encode(result[0]))
+                else:
+                    self.write(json_encode(result))
             elif len(rnas) >= 2: #structural alignment
                 if tool == 'mlocarna':
                     aligned_molecules, consensus2D = Mlocarna().align(rnas)
                     self.write(to_clustalw(consensus2D, aligned_molecules))
-
-            if tool == 'rnafold' or tool == 'contrafold':
-                self.write(json_encode(result[0]))
-            else:
-                self.write(json_encode(result))
         elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
             self.write(RnaAlifold().align(data))
         elif tool == 'rnaview': #3D annotation
@@ -569,6 +568,7 @@ class Application(tornado.web.Application):
 
         handlers = [
             (r'/', IndexHandler),
+            (r'/index.html', IndexHandler),
             (r'/websocket', WebSocketHandler),
             (r'/api/get_key', APIKeyHandler),
             (r'/api/computations/rnafold', RNAfoldHandler),

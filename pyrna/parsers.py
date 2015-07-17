@@ -72,7 +72,7 @@ def secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = Fal
                     'orientation': 'c',
                     'edge1': '(',
                     'edge2': ')'
-                })    
+                })
 
 
     if keep_tertiaries:
@@ -83,7 +83,7 @@ def secondary_structure_to_base_pairs(secondary_structure, keep_tertiaries = Fal
                 'orientation': interaction['orientation'],
                 'edge1': interaction['edge1'],
                 'edge2': interaction['edge2']
-            })         
+            })
 
     return DataFrame(base_pairs)
 
@@ -150,7 +150,7 @@ def base_pairs_to_secondary_structure(rna, base_pairs):
                     non_canonical_secondary_interactions.append((orientation, edge1, edge2, pos1, pos2))
                 if not utils.is_canonical(rna[next_pos1-1], rna[next_pos2-1], next_orientation, next_edge1, next_edge2):
                     non_canonical_secondary_interactions.append((next_orientation, next_edge1, next_edge2, next_pos1, next_pos2))
-                        
+
         else:
             if new_helix:
                 ss.add_helix("H"+str(helix_count), helix_start, helix_end, helix_length)
@@ -252,8 +252,8 @@ def to_ct(base_pairs, rna):
                 lines.append("%i\t%s\t%i\t%i\t%i\t%i"%(molecular_pos, rna.sequence[molecular_pos-1], molecular_pos-1, molecular_pos+1, bps['pos1'], molecular_pos))
         else:
             lines.append("%i\t%s\t%i\t%i\t0\t%i"%(molecular_pos, rna.sequence[molecular_pos-1], molecular_pos-1, molecular_pos+1, molecular_pos))
-        
-    return '\n'.join(lines)    
+
+    return '\n'.join(lines)
 
 def to_fasta(molecules, single_line=False):
     """
@@ -289,7 +289,7 @@ def to_vienna(base_pairs, molecules, single_line=False):
     """
     if len(base_pairs) != 1 and len(molecules) != len(base_pairs):
         raise Exception("You need to provide either a single Dataframe or as many Dataframes as Molecule objects")
-    
+
     if single_line:
         lines =[]
         if len(base_pairs) == 1:
@@ -301,7 +301,7 @@ def to_vienna(base_pairs, molecules, single_line=False):
             for i in range(0, len(molecules)):
                 lines.append(">"+molecules[i].name)
                 lines.append(molecules[i].sequence)
-                lines.append(to_bn(base_pairs[i], len(molecules[i])))       
+                lines.append(to_bn(base_pairs[i], len(molecules[i])))
         return '\n'.join(lines)
     else:
         if len(base_pairs) == 1:
@@ -342,7 +342,7 @@ def to_vienna(base_pairs, molecules, single_line=False):
 
 def to_stockholm(base_pairs, molecules, rfam_accession_number = None, family_id = None):
     """
-    Convert a list of base pairs and a list of Molecule objects into Stockholm data. 
+    Convert a list of base pairs and a list of Molecule objects into Stockholm data.
 
     Parameters:
     ---------
@@ -378,18 +378,18 @@ def to_stockholm(base_pairs, molecules, rfam_accession_number = None, family_id 
 
 def to_clustalw(base_pairs, molecules, curate = False):
     """
-    Convert a list of base pairs and a list of Molecule objects into Clustalw data. 
+    Convert a list of base pairs and a list of Molecule objects into Clustalw data.
     Parameters:
     ---------
     - base_pairs: a pandas Dataframe listing the base-pairs. This can be a consensus 2D.
     - molecules: an list of Molecule objects (gapped or ungapped) (see pyrna.features)
     - curate (default: False): remove the columns filled with gaps
-    
+
     Returns:
     ------
     the clustalw data as a String. The name of the molecules will be non-redundant and will not contain any spaces characters.
     """
-    
+
     sequence_lines = []
     bn = to_bn(base_pairs, len(molecules[0]))
     c = 0
@@ -397,7 +397,7 @@ def to_clustalw(base_pairs, molecules, curate = False):
     while c < len(molecules[0]):
         names = []
         for molecule in molecules:
-            if gaps_positions == None: #and not "if not gaps_positions:". The intersection of gap positions could lead to an empty set (no columns to remove in the alignment). And then, such condition would become true and we will restart with a list of positions corresponding to those of the next molecule processed!! 
+            if gaps_positions == None: #and not "if not gaps_positions:". The intersection of gap positions could lead to an empty set (no columns to remove in the alignment). And then, such condition would become true and we will restart with a list of positions corresponding to those of the next molecule processed!!
                 gaps_positions = set(molecule.get_gaps_positions())
             else: #we search the same gap positions
                 gaps_positions = gaps_positions.intersection(molecule.get_gaps_positions())
@@ -468,7 +468,7 @@ def to_bn(base_pairs, length):
     ---------
     - base_pairs: a pandas Dataframe listing the base pairs.
     - length: the length of the molecule linked to the secondary structure. This is mandatory, since the base_pairs parameter describes only paired positions in the sequence.
-    
+
     Returns:
     ------
     the bracket notation as a String
@@ -491,12 +491,12 @@ def to_bn(base_pairs, length):
 def read_counts_to_tsv(file_name, sam_file, chromosome_name, start, end, step = 1, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
     from pyrna.computations import Samtools
     samtools = Samtools(sam_file = sam_file)
-    with open(file_name, 'w') as tsv_file: 
+    with open(file_name, 'w') as tsv_file:
         for i in range(start, end+1, step):
             if step != 1:
                 tsv_file.write("%i-%i\t%i\n"%(i, i+step-1, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))
             else:
-                tsv_file.write("%i\t%i\n"%(i, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))     
+                tsv_file.write("%i\t%i\n"%(i, samtools.count(chromosome_name, i, i+step-1, restrict_to_plus_strand, restrict_to_minus_strand)))
 
 def parse_genbank(genbank_data):
     """
@@ -990,7 +990,7 @@ def parse_rnaml(rnaml_data, canonical_only = False):
     ---------
      - rnaml_data: the RNAML data as a String
      - canonical_only (default: False): if True, the helices will be made exclusively with canonical base-pairs: AU c( ), GC c( ) or GU c( ).
-    
+
     Returns:
     ------
     a list of SecondaryStructure objects (see pyrna.features)
@@ -1002,10 +1002,10 @@ def parse_rnaml(rnaml_data, canonical_only = False):
     for molecule in rnaml_tree.findall('molecule'):
 
         rna = RNA(name = molecule.get('id'), sequence = re.sub('\s+','', molecule.find('sequence').find('seq-data').text))
-        
+
         secondary_structure = SecondaryStructure(rna)
 
-        if not canonical_only:       
+        if not canonical_only:
 
             for helix in molecule.find('structure').find('model').find('str-annotation').findall('helix'):
                 secondary_structure.add_helix(helix.get('id'), int(helix.find('base-id-5p').find('base-id').find('position').text), int(helix.find('base-id-3p').find('base-id').find('position').text), int(helix.find('length').text));
@@ -1037,7 +1037,7 @@ def parse_rnaml(rnaml_data, canonical_only = False):
                     edge2 = '!'
 
                 secondary_structure.add_base_pair(base_pair.find('bond-orientation').text.upper(), edge1, edge2, int(base_pair.find('base-id-5p').find('base-id').find('position').text), int(base_pair.find('base-id-3p').find('base-id').find('position').text));
-        
+
         else:
             canonical_bps = []
             non_canonical_bps = []
@@ -1070,7 +1070,7 @@ def parse_rnaml(rnaml_data, canonical_only = False):
                 residue2 = secondary_structure.rna.sequence[pos2-1]
 
                 canonical_bps.append([orientation, edge1, edge2, pos1, pos2]) if utils.is_canonical(residue1, residue2, orientation, edge1, edge2) else non_canonical_bps.append([orientation, edge1, edge2, pos1, pos2])
-             
+
             secondary_structure = base_pairs_to_secondary_structure(secondary_structure.rna, DataFrame(canonical_bps, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2']))
 
             for bp in non_canonical_bps: #the non-canonical interactions are tertiary ones
@@ -1163,7 +1163,7 @@ def parse_vienna(vienna_data):
 def parse_bn(bn):
     """
     Parse a bracket notation. The function supports characters like '(', ')', '[', ']', '{' and '}'
-    
+
     Parameters:
     ---------
      - bn: the bracket notation as a String
@@ -1210,7 +1210,7 @@ def parse_clustalw(clustalw_data):
 
     Returns:
     ------
-    a tuple containing: 
+    a tuple containing:
     - a list of gapped or ungapped RNA objects
     - a pandas Dataframe listing the paired positions of consensus secondary structure)
     """
@@ -1224,15 +1224,15 @@ def parse_clustalw(clustalw_data):
             bn = line.split('\t')[1]
         elif len(line) and not line.startswith('#'):
             tokens = line.split('\t')
-            alignedSequences[tokens[0]] = alignedSequences.get(tokens[0], "") + tokens[1] 
+            alignedSequences[tokens[0]] = alignedSequences.get(tokens[0], "") + tokens[1]
 
     rnas = []
-    
+
     for key in alignedSequences:
         rna = RNA(name=key, sequence=alignedSequences[key])
         rnas.append(rna)
 
-    return rnas, parse_bn(bn)   
+    return rnas, parse_bn(bn)
 
 def parse_stockholm(stockholm_data):
     """
@@ -1244,7 +1244,7 @@ def parse_stockholm(stockholm_data):
 
     Returns:
     ------
-    a tuple containing: 
+    a tuple containing:
     - a list of gapped or ungapped RNA objects
     - a dict of organism names (keys)  and accession numbers/start-end (values)
     -a pandas Dataframe listing the paired positions of consensus secondary structure)
@@ -1411,7 +1411,7 @@ def parse_sam(sam_file):
             elif alignedread.flag == 16:
                 read['genomicStrand'] = '-'
             else:
-                read['genomicStrand'] = '?'   
+                read['genomicStrand'] = '?'
             reads[alignedread.rname-1].append(read)
     sam_file_content.close()
     return reads, total_read_nb, tid_dic
