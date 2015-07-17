@@ -92,6 +92,6 @@ Since the PyRNA directory is a shared folder between your computer and the fully
 
 PyRNA provides you the ability to deploy its functionalities as REST Web services over a local network. From the command-line of the virtual machine, type:
 
-    $ ./server.py
+    $ server.py
 
 By default, the server runs on http://localhost:8080. Point a Web browser to this address to have a look at the website functionalities. The server provides graphical Web pages and Web services. The Web services can be consumed from dedicated tools like [Assemble2](http://www.bioinformatics.org/assemble/)
