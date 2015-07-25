@@ -18,8 +18,8 @@ import tornado.web
 import tornado.websocket
 from tornado.escape import json_encode, native_str
 
-static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard')
-pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../dashboard/pages')
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../website')
+pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../website/pages')
 
 app = None
 websockets = []

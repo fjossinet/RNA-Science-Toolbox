@@ -1,33 +1,23 @@
 {
   "name": "RNA Science Toolbox website",
-  "version": "0.0.1",
+  "version": "0.0.0",
+  "homepage": "http://fjossinet.github.io/RNA-Science-Toolbox/",
+  "description": "The website for the RNA Science Toolbox",
   "authors": [
-    "David Miller"
+    "Fabrice Jossinet"
   ],
-  "description": "A free, open source, Bootstrap admin theme created by Start Bootstrap",
-  "keywords": [
-    "bootstrap",
-    "theme"
-  ],
-  "license": "Apache",
+  "license": "MIT",
   "ignore": [
     "**/.*",
     "node_modules",
     "bower_components",
     "test",
-    "tests",
-    "pages",
-    "index.html",
-    "/js"
-  ],
-  "main": [
-    "dist/css/sb-admin-2.css",
-    "dist/js/sb-admin-2.js"
+    "tests"
   ],
   "dependencies": {
     "bootstrap": "~3.3.1",
     "font-awesome": "~4.2.0",
     "metisMenu": "~1.1.3",
-    "morrisjs": "~0.5.1",
+    "morrisjs": "~0.5.1"
   }
 }
