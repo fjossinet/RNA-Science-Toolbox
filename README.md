@@ -3,7 +3,7 @@ RNA Science Toolbox -- A virtual environment to do RNA science
 
 The RNA Science Toolbox provides a Python API (PyRNA) and a fully configured virtual machine (described in the Vagrantfile) to do RNA science. This virtual environment allows you to:
 * write your own Python scripts based on PyRNA,
-* deploy the PyRNA API as Web services to be consumed from graphical tool like [Assemble2](http://www.bioinformatics.org/assemble/).
+* deploy a Web server providing documentations, tutorials, interactive notebooks, user accounts and Web services.
 
 The PyRNA API allows you to:
 
@@ -14,7 +14,7 @@ The PyRNA API allows you to:
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
 * deploy some functionalities as REST Web services.
 
-In its current state, PyRNA is able to handle several algorithms like:
+In its current state, PyRNA is able to handle an ever-increasing number of (mainly) RNA algorithms like:
 
 * [The RNA Vienna Package](http://goo.gl/7frDgF)
 * [Blastr](http://goo.gl/lKCR1u)
@@ -81,17 +81,17 @@ You should get an output like:
         6            c     (     )    13    34
         [...]
 
-Congratulations, you're ready to .
+Congratulations, you're ready to do some RNA Science!
 
 Since the PyRNA directory is a shared folder between your computer and the fully configured virtual machine, we recommended you to:
 
 * keep your Python scripts in the directory files/scripts/python provided with PyRNA,
 * run your Python scripts from the shell of the virtual machine.
 
-#The PyRNA Server
+#The Web Server
 
-PyRNA provides you the ability to deploy its functionalities as REST Web services over a local network. From the command-line of the virtual machine, type:
+PyRNA gives you the ability to deploy its functionalities as REST Web services over a local network. From the command-line of the virtual machine, type:
 
     $ server.py
 
-By default, the server runs on http://localhost:8080. Point a Web browser to this address to have a look at the website functionalities. The server provides graphical Web pages and Web services. The Web services can be consumed from dedicated tools like [Assemble2](http://www.bioinformatics.org/assemble/)
+By default, the server runs on http://localhost:8080. Point a Web browser to this address to have a look at the website functionalities. This web server provides documentations, tutorials, interactive notebooks, user accounts and Web services. The Web services can be consumed from dedicated tools like [Assemble2](http://www.bioinformatics.org/assemble/)

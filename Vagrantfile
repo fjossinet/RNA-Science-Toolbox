@@ -67,6 +67,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #   cf.am_policy_hub = true
   #   # cf.run_file = "motd.cf"
   # end
+
+  config.vm.provision "shell", path: "provision.sh"
+
   #
   # You can also configure and bootstrap a client to an existing
   # policy server:
