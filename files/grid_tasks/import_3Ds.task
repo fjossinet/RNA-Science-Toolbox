@@ -36,13 +36,13 @@ class Import3Ds(Task):
 
     def getScriptContent(self, job_id):
         scriptContent = "./files/grid_tasks/import_3Ds.task -db \""+self.db_name+"\ -rna3dhub "+ 'Y' if self.rna3dHub else 'N' +" -h "+self.client.host+" -p "+str(self.client.port)+" -id "+str(job_id)
-        
+
         print scriptContent
-        
+
         return scriptContent
 
     def storeData(self):
-        print "No data to store..."         
+        print "No data to store..."
 
     def doTheJob(self, job_id = 1):
         pdb = PDB()
@@ -51,13 +51,13 @@ class Import3Ds(Task):
         start = (job_id-1)*self.structuresPerJob+1
         end = (job_id-1)*self.structuresPerJob+1+self.structuresPerJob-1
 
-        if self.rna3dHub: 
+        if self.rna3dHub:
 
             clusters = self.rna3dHub.get_clusters()
 
             if end > len(clusters):
                 end = len(clusters)
-            
+
             for cluster in clusters['pdb-ids'][start:end]:
                 if self.db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%cluster[0]}):
                     continue
@@ -97,7 +97,7 @@ class Import3Ds(Task):
                         self.save(ss, ts, pdb_id)
 
                     except Exception, e:
-                        print e
+                            print e
                         print "No annotation for %s"%pdb_id
 
     def save(self, secondary_structure, tertiary_structure, pdbId):
@@ -118,7 +118,7 @@ class Import3Ds(Task):
                     '_id': secondary_structure.rna._id,
                     'source': secondary_structure.rna.source,
                     'name': secondary_structure.rna.name,
-                    'sequence': secondary_structure.rna.sequence, 
+                    'sequence': secondary_structure.rna.sequence,
                 }
                 if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
                     self.db['ncRNAs'].insert(ncRNA)
@@ -127,7 +127,7 @@ class Import3Ds(Task):
                     '_id': secondary_structure.rna._id,
                     'source': secondary_structure.rna.source,
                     'name': secondary_structure.rna.name,
-                    'sequence': secondary_structure.rna.sequence, 
+                    'sequence': secondary_structure.rna.sequence,
                 }
                 if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
                     self.db['ncRNAs'].insert(ncRNA)
@@ -135,7 +135,7 @@ class Import3Ds(Task):
                     '_id': tertiary_structure.rna._id,
                     'source': tertiary_structure.rna.source,
                     'name': tertiary_structure.rna.name,
-                    'sequence': tertiary_structure.rna.sequence, 
+                    'sequence': tertiary_structure.rna.sequence,
                 }
                 if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
                     self.db['ncRNAs'].insert(ncRNA)
@@ -146,7 +146,7 @@ class Import3Ds(Task):
                 '_id': secondary_structure._id,
                 'source': secondary_structure.source,
                 'name': secondary_structure.name,
-                'rna': secondary_structure.rna._id+"@ncRNAs"    
+                'rna': secondary_structure.rna._id+"@ncRNAs"
             }
 
             helices_descr = []
@@ -164,8 +164,8 @@ class Import3Ds(Task):
                             'edge2': interaction['edge2'],
                             'location': interaction['location']
                         })
-                    helix_desc['interactions'] = interactions_descr   
-                
+                    helix_desc['interactions'] = interactions_descr
+
                 helices_descr.append(helix_desc)
 
             ss_descr['helices'] = helices_descr
@@ -177,7 +177,7 @@ class Import3Ds(Task):
                     'location': single_strand['location']
                 })
 
-            ss_descr['singleStrands'] = single_strands_descr 
+            ss_descr['singleStrands'] = single_strands_descr
 
             tertiary_interactions_descr = []
             for tertiary_interaction in secondary_structure.tertiary_interactions:
@@ -188,7 +188,7 @@ class Import3Ds(Task):
                     'location': tertiary_interaction['location']
                 })
 
-            ss_descr['tertiaryInteractions'] = tertiary_interactions_descr   
+            ss_descr['tertiaryInteractions'] = tertiary_interactions_descr
 
             self.db['secondaryStructures'].insert(ss_descr)
 
@@ -196,7 +196,7 @@ class Import3Ds(Task):
             '_id': tertiary_structure.rna._id,
             'source': tertiary_structure.rna.source,
             'name': tertiary_structure.rna.name,
-            'sequence': tertiary_structure.rna.sequence, 
+            'sequence': tertiary_structure.rna.sequence,
         }
         if not self.db['ncRNAs'].find_one({'_id':ncRNA['_id']}):
             self.db['ncRNAs'].insert(ncRNA)
@@ -206,7 +206,7 @@ class Import3Ds(Task):
             'source': tertiary_structure.source,
             'name': tertiary_structure.name,
             'rna': tertiary_structure.rna._id+"@ncRNAs",
-            'numbering-system': tertiary_structure.numbering_system    
+            'numbering-system': tertiary_structure.numbering_system
         }
 
         residues_descr = {}
@@ -218,7 +218,7 @@ class Import3Ds(Task):
 
         for key in keys:
             atoms = tertiary_structure.residues[key]['atoms']
-            
+
             atoms_descr = []
 
             for atom in atoms:
@@ -239,20 +239,20 @@ class Import3Ds(Task):
 
                 for junction in secondary_structure.junctions:
                     junction_descr = {
-                        '_id': str(ObjectId()), 
-                        'molecule': secondary_structure.rna._id+"@ncRNAs", 
+                        '_id': str(ObjectId()),
+                        'molecule': secondary_structure.rna._id+"@ncRNAs",
                         'tertiary-structure': {
-                            'id':tertiary_structure._id+'@tertiaryStructures', 
+                            'id':tertiary_structure._id+'@tertiaryStructures',
                             'source': tertiary_structure.source
                         },
                         'description': junction['description'],
                         'location': junction['location']
                     }
                     computation['outputs'].append(junction_descr['_id']+"@junctions")
-                    
+
                     self.db['junctions'].insert(junction_descr)
 
-                self.db['computations'].insert(computation)    
+                self.db['computations'].insert(computation)
 
 if __name__ == '__main__':
     job_id = None
@@ -290,7 +290,7 @@ if __name__ == '__main__':
     else:
         db_name = "PDB"
         if canonical_only:
-            db_name += "_canonical_only"       
+            db_name += "_canonical_only"
 
     task = Import3Ds(db_name = db_name, db_host = db_host, db_port = db_port, endPoint = endpoint, rna3dhub = rna3dhub, canonical_only = canonical_only, annotate = annotate)
 
@@ -305,4 +305,4 @@ if __name__ == '__main__':
         if os.path.exists(outputDir):
             print "%s already exists"%outputDir
             sys.exit()
-        task.submitJobs(os.path.basename(__file__)) 
+        task.submitJobs(os.path.basename(__file__))

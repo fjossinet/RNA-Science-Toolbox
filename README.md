@@ -17,7 +17,6 @@ The PyRNA API allows you to:
 In its current state, PyRNA is able to handle an ever-increasing number of (mainly) RNA algorithms like:
 
 * [The RNA Vienna Package](http://goo.gl/7frDgF)
-* [Blastr](http://goo.gl/lKCR1u)
 * [CONTRAfold](http://goo.gl/4BCI7)
 * [Infernal](http://goo.gl/SxLHJO)
 * [Mlocarna](http://goo.gl/AIGKrl)

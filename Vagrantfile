@@ -10,10 +10,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # please see the online documentation at vagrantup.com.
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "fjossinet/pyrna"
-  config.vm.hostname = "pyrna"
+  config.vm.box = "puphpet/ubuntu1404-x64"
+  config.vm.hostname = "RnaSciToolbox"
 
-  config.vm.box_version = ">= 0.1.2"
+  #config.vm.box_version = ">= 0.1.2"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -68,7 +68,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #   # cf.run_file = "motd.cf"
   # end
 
-  config.vm.provision "shell", path: "provision.sh"
+  config.vm.provision "shell", path: "conf/provision.sh"
 
   #
   # You can also configure and bootstrap a client to an existing
