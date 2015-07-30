@@ -462,7 +462,7 @@ def PDB(limit = 5000):
         print "Bye!"
         sys.exit()
     local('mongo PDB --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate -canonical_only -l %i"%limit)
+    local("import_3Ds.py -annotate -l %i"%limit)
 
 @task
 def RNA3DHub(limit = 5000):
@@ -474,7 +474,7 @@ def RNA3DHub(limit = 5000):
         print "Bye!"
         sys.exit()
     local('mongo RNA3DHub --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate -canonical_only -rna3dhub -l %i"%limit)
+    local("import_3Ds.py -annotate -rna3dhub -l %i"%limit)
 
 @task
 def website():

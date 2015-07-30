@@ -6,7 +6,7 @@ from operator import itemgetter
 
 class Block:
     """
-    A continuous range of molecular positions, with a single start and end point. 
+    A continuous range of molecular positions, with a single start and end point.
     """
     def __init__(self, start, end):
         if start < end:
@@ -37,8 +37,8 @@ class Location:
         To instantiate a Location, you can:
         - set a start and end position: Location(start=34, end=69). The location will contain all the positions between the start end end.
         - list all the single positions (sorted or not) to be contained in the location: Location(single_positions=[34, 56, 57, 58, 67, 68, 69])
-        - list the ranges of continuous positions as nested lists: Location(nested_lists=[[34,34], [56,58], [67,69]]) 
-        """       
+        - list the ranges of continuous positions as nested lists: Location(nested_lists=[[34,34], [56,58], [67,69]])
+        """
         self.blocks = []
         if start and end:
             self.add_block(Block(start, end))
@@ -53,7 +53,7 @@ class Location:
 
     def add_block(self, block):
         blocks_to_remove = []
-        
+
         for _block in self.blocks:
             if block.is_before(_block) and not block.is_beside(_block):
                 break
@@ -64,10 +64,10 @@ class Location:
                 continue
             elif len(blocks_to_remove):
                 break
-        
+
         for block_to_remove in blocks_to_remove:
             self.blocks.remove(block_to_remove)
-        
+
         self.blocks.append(block)
         self.blocks = sorted(self.blocks, key=lambda block: block.start)
 
@@ -112,7 +112,7 @@ class Location:
 
     def has_position(self, position):
         """
-        Test if the location encloses a single position. 
+        Test if the location encloses a single position.
         Parameters:
         ---------
         position: an integer
@@ -123,7 +123,7 @@ class Location:
         return self.blocks[0].start
 
     def end(self):
-        return self.blocks[-1].end        
+        return self.blocks[-1].end
 
 
 class Molecule:
@@ -162,7 +162,7 @@ class Molecule:
 
     def _repr_html_(self):
         from pyrna.utils import chunks
-        subsequences = [''.join(subsequence) for subsequence in chunks(list(self.sequence),60)] 
+        subsequences = [''.join(subsequence) for subsequence in chunks(list(self.sequence),60)]
         html = "<pre>"
         i = 0
         for subsequence in subsequences:
@@ -237,7 +237,7 @@ class RNA(Molecule):
         basecomplement = {'A': 'U', 'C': 'G', 'G': 'C', 'U': 'A'}
         letters = list(self.sequence)
         letters = [basecomplement[base] if basecomplement.has_key(base) else base for base in letters]
-        return ''.join(letters)    
+        return ''.join(letters)
 
 class SecondaryStructure:
 
@@ -331,7 +331,7 @@ class SecondaryStructure:
         self.__residue_occupancy = residue_occupancy
         self.__junction_diameter = junction_diameter
         if not len(self.helices):
-            raise Exception("Your secondary structure contains no helices!!") 
+            raise Exception("Your secondary structure contains no helices!!")
         x = 0
         if verbose:
             print "\nStem-loops placement\n"
@@ -359,7 +359,7 @@ class SecondaryStructure:
                  if l > 2*self.__junction_diameter:
                     l = 2*self.__junction_diameter
                  x += l
-            else:    
+            else:
                 x += total_junctions*self.__step
             if verbose:
                 print "stem loop", self.stem_loops[i+1]['location']
@@ -387,9 +387,9 @@ class SecondaryStructure:
         for junction in self.junctions:
             for single_strand in junction['single_strands']:
                 single_strands_not_in_junctions.remove(single_strand)
-                            
+
         single_strands_not_in_junctions = sorted(single_strands_not_in_junctions)
-        
+
         for single_strand in single_strands_not_in_junctions:
             if verbose:
                 print "single strand not in a junction", single_strand['location']
@@ -398,7 +398,7 @@ class SecondaryStructure:
                     if helix['location'][0][0] == single_strand['location'][-1]+1:
                         l = helix['location'][0][0]*self.__residue_occupancy
                         if l > 2*self.__junction_diameter:
-                            l = 2*self.__junction_diameter 
+                            l = 2*self.__junction_diameter
                         single_strand['coords'] = [[helix['coords'][0][0]-l, helix['coords'][0][1]], [helix['coords'][0][0], helix['coords'][0][1]]]
                         break
             elif single_strand['location'][-1] == len(self.rna):
@@ -406,14 +406,14 @@ class SecondaryStructure:
                     if helix['location'][-1][-1] == single_strand['location'][0]-1:
                         l =  (len(self.rna)-helix['location'][-1][-1]+1)*self.__residue_occupancy
                         if l > 2*self.__junction_diameter:
-                            l = 2*self.__junction_diameter 
+                            l = 2*self.__junction_diameter
                         single_strand['coords'] = [[helix['coords'][0][0], helix['coords'][0][1]], [helix['coords'][0][0]+l, helix['coords'][0][1]]]
                         break
             else:
                 first_helix = None
                 second_helix = None
                 for helix in self.helices:
-                    if helix['location'][-1][-1] == single_strand['location'][0]-1: 
+                    if helix['location'][-1][-1] == single_strand['location'][0]-1:
                         first_helix =  helix
                     if helix['location'][0][0] == single_strand['location'][-1]+1:
                         second_helix = helix
@@ -432,11 +432,11 @@ class SecondaryStructure:
 
         for single_strand in self.single_strands: #only the single-strands with a coords key are not in junctions
             if single_strand.has_key('coords'):
-                single_strands_not_in_junctions.append(single_strand)    
-        
+                single_strands_not_in_junctions.append(single_strand)
+
         for single_strand in single_strands_not_in_junctions:
             if single_strand.has_key('quantitative_value'):
-                quantitative_values.append(single_strand['quantitative_value'])   
+                quantitative_values.append(single_strand['quantitative_value'])
             all_x.append(single_strand['coords'][0][0])
             all_y.append(single_strand['coords'][0][1])
             all_x.append(single_strand['coords'][1][0])
@@ -456,28 +456,28 @@ class SecondaryStructure:
 
         min_x = min(all_x)
         min_y = min(all_y)
-        
+
         for single_strand in single_strands_not_in_junctions:
             single_strand['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in single_strand['coords']]
         for helix in self.helices:
             helix['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in helix['coords']]
         for junction in self.junctions:
             junction['coords'] = [[coord[0]-min_x+self.__junction_diameter, coord[1]-min_y+self.__junction_diameter] for coord in junction['coords']]
-        
+
         all_x = [x-min_x+self.__junction_diameter for x in all_x]
         all_y = [y-min_y+self.__junction_diameter for y in all_y]
 
         colors_d3 = """"""
         if quantitative_values:
             colors_d3 = """var colors = d3.scale.linear().domain(["""+str(min(quantitative_values))+""","""+str(mean(quantitative_values))+""","""+str(max(quantitative_values))+"""]).range(["#4daf4a",  "#377eb8", "#e41a1c"]);"""
-        
+
         helices_d3 = """"""
         helix_color = '"steelblue"'
         if helix.has_key('quantitative_value'):
             helix_color = "colors("+str(helix['quantitative_value'])+")"
         for helix in self.helices:
             helices_d3 += """svg.append("line")
-                            .style("stroke", """+helix_color+""") 
+                            .style("stroke", """+helix_color+""")
                             .style("stroke-width", """+str(stroke_width)+""")
                             .attr("x1", """+str(helix['coords'][0][0])+""")
                             .attr("y1", """+str(helix['coords'][0][1])+""")
@@ -500,7 +500,7 @@ class SecondaryStructure:
                                         helix_color = "colors("+str(h['quantitative_value'])+")"
                                     junctions_d3 += """svg.append("line")
                                         .style("stroke-linecap", "round")
-                                        .style("stroke", """+helix_color+""") 
+                                        .style("stroke", """+helix_color+""")
                                         .style("stroke-width", """+str(stroke_width)+""")
                                         .attr("x1", """+str(h['coords'][0][0])+""")
                                         .attr("y1", """+str(h['coords'][0][1])+""")
@@ -513,12 +513,12 @@ class SecondaryStructure:
                 junction_color = "colors("+str(junction['quantitative_value'])+")"
 
             junctions_d3 += """svg.append("circle")
-                            .style("fill", """+junction_color+""") 
+                            .style("fill", """+junction_color+""")
                             .attr("cx", """+str(junction['coords'][0][0])+""")
                             .attr("cy", """+str(junction['coords'][0][1])+""")
                             .attr("r", """+str(self.__junction_diameter/2)+""");
                     """
-            
+
             junction_color = '"steelblue"'
             if junction.has_key('quantitative_value'):
                 junction_color = "colors("+str(junction['quantitative_value'])+")"
@@ -530,7 +530,7 @@ class SecondaryStructure:
                     .attr("cx", """+str(junction['coords'][0][0])+""")
                     .attr("cy", """+str(junction['coords'][0][1])+""")
                     .attr("r", """+str((1.5*self.__junction_diameter)/2)+""");
-            """            
+            """
 
         single_strands_d3 = """"""
         for single_strand in single_strands_not_in_junctions:
@@ -541,7 +541,7 @@ class SecondaryStructure:
 
             single_strands_d3 += """svg.append("line")
                                     .style("stroke-linecap", "round")
-                                    .style("stroke", """+single_strand_color+""") 
+                                    .style("stroke", """+single_strand_color+""")
                                     .style("stroke-width", """+str(stroke_width)+""")
                                     .attr("x1", """+str(single_strand['coords'][0][0])+""")
                                     .attr("y1", """+str(single_strand['coords'][0][1])+""")
@@ -564,7 +564,7 @@ class SecondaryStructure:
                             print "directly linked helices", previous_helix['location'] , helix['location']
                         directly_linked_helices_d3 += """svg.append("line")
                                         .style("stroke-linecap", "round")
-                                        .style("stroke", "grey") 
+                                        .style("stroke", "grey")
                                         .style("stroke-width", """+str(stroke_width)+""")
                                         .attr("x1", """+str(previous_helix['coords'][0][0])+""")
                                         .attr("y1", """+str(previous_helix['coords'][0][1])+""")
@@ -576,7 +576,7 @@ class SecondaryStructure:
                     break
 
         d3_description = """
-        
+
             <div id="viz"></div>
             <script type="text/javascript">
 
@@ -591,7 +591,7 @@ class SecondaryStructure:
                 """+directly_linked_helices_d3+"""
                 </script>"""
 
-        return d3_description   
+        return d3_description
 
     def get_junctions(self):
         return DataFrame(self.junctions)
@@ -619,7 +619,7 @@ class SecondaryStructure:
             if index == 0 or current_pos == single_positions[index-1]+1:
                 length += 1
                 if index == 0:
-                    start = current_pos    
+                    start = current_pos
             else:
                 self.add_single_strand("SS_%i"%single_strand_count, start, length)
                 single_strand_count +=1
@@ -636,8 +636,8 @@ class SecondaryStructure:
             strands = [single_strand]
             descr = self.rna[single_strand['location'][0]-1:single_strand['location'][-1]]+" "
             current_pos =  self.get_paired_residue(single_strand['location'][-1]+1)+1
-            location = [[single_strand['location'][0]-1, single_strand['location'][-1]+1]] 
-            next_single_strand = None           
+            location = [[single_strand['location'][0]-1, single_strand['location'][-1]+1]]
+            next_single_strand = None
 
             while current_pos >= 1 and current_pos <= len(self.rna):
                 next_single_strand = filter(lambda single_strand : single_strand['location'][0] == current_pos, self.single_strands)
@@ -659,7 +659,7 @@ class SecondaryStructure:
                 self.junctions.append({
                     'single_strands': strands,
                     'description': descr.strip(),
-                    'location': location                    
+                    'location': location
                 })
 
         #now we search for junctions with only directly linked helices
@@ -688,8 +688,8 @@ class SecondaryStructure:
                 self.junctions.append({
                     'single_strands': [],
                     'description': descr.strip(),
-                    'location': location                    
-                })  
+                    'location': location
+                })
 
             #the other side
             descr = ""
@@ -714,10 +714,10 @@ class SecondaryStructure:
                 self.junctions.append({
                     'single_strands': [],
                     'description': descr.strip(),
-                    'location': location                    
-                })  
+                    'location': location
+                })
 
-        self.junctions = sorted(self.junctions, key=lambda x: x['location'][0][0])      
+        self.junctions = sorted(self.junctions, key=lambda x: x['location'][0][0])
 
     def find_stem_loops(self):
         if not self.junctions:
@@ -726,7 +726,7 @@ class SecondaryStructure:
         self.stem_loops = []
         ranges = []
         for helix in self.helices:
-            #print "helix",helix['location'] 
+            #print "helix",helix['location']
             start = helix['location'][0][0]
             end = helix['location'][-1][-1]
             #if the helix ends are linked to a junction of degree >= 3 or not linked to any junction, this is a range to keep.
@@ -748,7 +748,7 @@ class SecondaryStructure:
         for _range in ranges:
             start = _range[0]
             end = _range[1]
-            #print '\n\n', "search between: ", start,"-", end, '\n\n' 
+            #print '\n\n', "search between: ", start,"-", end, '\n\n'
             enclosed_apical_loops = []
             enclosed_junctions = []
             enclosed_inner_loops = []
@@ -774,7 +774,7 @@ class SecondaryStructure:
                 if _start >= start and _end <= end:
                     enclosed_helices.append(helix)
             #print "enclosed apical loops", len(enclosed_apical_loops)
-            #print "enclosed junctions", len(enclosed_junctions)   
+            #print "enclosed junctions", len(enclosed_junctions)
             if len(enclosed_apical_loops) == 1 and not enclosed_junctions:
                 stem_loop = {'location': [[start, end]]}
                 stem_loop['apical_loop'] = enclosed_apical_loops[0]
@@ -790,7 +790,7 @@ class SecondaryStructure:
             self.find_junctions()
         if not self.stem_loops:
             self.find_stem_loops()
-               
+
         tertiary_interactions = self.tertiary_interactions
 
         for tertiary_interaction in self.tertiary_interactions:
@@ -806,14 +806,14 @@ class SecondaryStructure:
                             if location_2.has_position(end):
                                 if location_2.end() < location_1.start() or location_2.start() > location_1.end():
                                     self.connected_modules.append((stem_loop_1, junction))
-                                    #print location_1.start(),location_1.end() 
+                                    #print location_1.start(),location_1.end()
                                     #print location_2.start(),location_2.end()
                     for stem_loop_2 in self.stem_loops:
                         location_2 = Location(nested_lists = stem_loop_2['location'])
                         if location_2.has_position(end) and stem_loop_2 != stem_loop_1:
                             if location_2.end() < location_1.start() or location_2.start() > location_1.end():
                                 self.connected_modules.append((stem_loop_1, stem_loop_2))
-                                #print location_1.start(),location_1.end() 
+                                #print location_1.start(),location_1.end()
                                 #print location_2.start(),location_2.end()
                 if location_1.has_position(end):
                     for junction in self.junctions:
@@ -822,8 +822,8 @@ class SecondaryStructure:
                             if location_2.has_position(start):
                                 if location_2.end() < location_1.start() or location_2.start() > location_1.end():
                                     self.connected_modules.append((stem_loop_1, junction))
-                                    #print location_1.start(),location_1.end() 
-                                    #print location_2.start(),location_2.end() 
+                                    #print location_1.start(),location_1.end()
+                                    #print location_2.start(),location_2.end()
 
     def add_helix(self, name, start, end, length):
         _ends = [start, start+length-1, end-length+1, end]
@@ -857,13 +857,13 @@ class SecondaryStructure:
         for tertiary_interaction in self.tertiary_interactions:
             if tertiary_interaction['location'] == location:
                 self.tertiary_interactions.remove(tertiary_interaction)
-                break    
+                break
         self.tertiary_interactions.append({
-                            'orientation': orientation, 
-                            'edge1': edge1, 
-                            'edge2': edge2, 
+                            'orientation': orientation,
+                            'edge1': edge1,
+                            'edge2': edge2,
                             'location': [[pos1, pos1], [pos2, pos2]]
-                        })    
+                        })
 
     def add_base_pair(self, orientation, edge1, edge2, pos1, pos2):
         is_secondary_interaction = False
@@ -884,16 +884,16 @@ class SecondaryStructure:
                             self.rna.sequence[pos1-1] == 'G' and self.rna.sequence[pos2-1] == 'U' or \
                             self.rna.sequence[pos1-1] == 'U' and self.rna.sequence[pos2-1] == 'G') or \
                           orientation != 'C' or edge1 != '(' or edge2 != ')': #we have a non-canonical secondary-interaction
-                        
+
                         for secondary_interaction in helix['interactions']:
                             if secondary_interaction['location'] == location:
                                 helix['interactions'].remove(secondary_interaction)
                                 break
 
                         helix['interactions'].append({
-                            'orientation': orientation, 
-                            'edge1': edge1, 
-                            'edge2': edge2, 
+                            'orientation': orientation,
+                            'edge1': edge1,
+                            'edge2': edge2,
                             'location': location
                         })
                     is_secondary_interaction = True
@@ -921,8 +921,8 @@ class StructuralAlignment:
         for interaction in self.json_data['consensus2D']:
             interaction['pos1'] = int(interaction['location']['ends'][0][0]);
             interaction['pos2'] = int(interaction['location']['ends'][1][0]);
-            del(interaction['location'])    
-        return DataFrame(self.json_data['consensus2D']) 
+            del(interaction['location'])
+        return DataFrame(self.json_data['consensus2D'])
 
 
 class TertiaryStructure:
@@ -969,7 +969,7 @@ class TertiaryStructure:
                     'y': atom['coords'][1],
                     'z': atom['coords'][2]
                 })
-        
+
         return DataFrame(_atoms)
 
     def add_atom(self, atom_name, absolute_position, coords):
@@ -997,7 +997,7 @@ class TertiaryStructure:
         if self.numbering_system.has_key(str(absolute_position)):
             return self.numbering_system[str(absolute_position)]
         else:
-            return str(absolute_position)          
+            return str(absolute_position)
 
 modified_ribonucleotides = {
     "T": "U",

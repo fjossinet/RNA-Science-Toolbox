@@ -1,7 +1,7 @@
+. ~/.bashrc
+
 #ipython will only be available after the basic installation (see file /vagrant/fabfile.py)
 if which ipython >/dev/null; then
   echo "iPython notebook server running..."
   ipython notebook --notebook-dir=/vagrant/notebooks --no-browser --quiet --ip=0.0.0.0 &
 fi
-
-. ~/.bashrc
