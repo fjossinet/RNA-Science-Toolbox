@@ -8,7 +8,7 @@ from fabric.colors import green
 from fabric.api import *
 
 home = os.path.expanduser('~')
-algorithms_2_install = ['rnaview', 'vienna', 'infernal', 'contrafold', \
+available_algorithms = ['rnaview', 'vienna', 'infernal', 'contrafold', \
                         'locarna', 'foldalign', 'trnascan-SE', 'blast', 'blastR', 'clustalw', \
                         'rnamotif', 'samtools', 'bowtie2', 'gotohscan', 'rnabob', 'bcheck', \
                         'snoreport', 'snoscan', 'snogps']
@@ -16,32 +16,63 @@ algorithms_2_install = ['rnaview', 'vienna', 'infernal', 'contrafold', \
 @task(default=True)
 def basic_install():
     """
-    Provides a basic install of the system. Not all the RNA algorithms are installed.
+    Do a basic installation of the system. Not all the RNA algorithms will be installed.
     """
-    if not confirm("This will install and configure all the basic dependencies. Do you wish to continue?") :
+    if not confirm("This will install and configure the most basic tools and dependencies. Do you wish to continue?") :
         print "Bye!"
         sys.exit()
-    #update()
-    #python()
-    algorithms(['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
+    update()
+    python()
+    algorithms(install=['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
     website()
-    #PDB()
-    #RNA3DHub()
+    PDB(limit=5000)
+    RNA3DHub(limit=5000)
+
+def full_install():
+    """
+    Do a full installation of the system. All the RNA algorithms will be installed.
+    """
+    if not confirm("This will install and configure all the dependencies. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
+    update()
+    python()
+    website()
+    PDB()
+    RNA3DHub()
+
+def minimal_install():
+    """
+    Do a minimal installation of the system. No RNA algorithms will be installed, only the Python packages.
+    """
+    if not confirm("This will install and configure all the Python packages. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
+    python()
 
 @task
-def python():
+def python(manager="conda"):
     """
     Install all the Python packages
     """
     print(green("Installing Python packages..."))
-    local('conda config --set always_yes TRUE')
-    local('conda install ipython')
-    local('conda install ipython-notebook')
-    local('conda install pandas')
-    local('conda install pymongo')
-    local('conda install pysam')
-    local('conda install ujson')
-    local('conda install tornado')
+    if manager == "conda":
+        local('conda config --set always_yes TRUE')
+        local('conda install pandas')
+        local('conda install pymongo')
+        local('conda install pysam')
+        local('conda install ujson')
+    elif manager == "pip":
+        local('pip install pandas')
+        local('pip install pymongo')
+        local('pip install pysam')
+        local('pip install ujson')
+    else:
+        print "You need to install the following Python packages:"
+        print ("pandas")
+        print ("pymongo")
+        print ("pysam")
+        print ("ujson")
 
 @task
 def update():
@@ -52,53 +83,59 @@ def update():
     local('sudo apt-get update -qq')
 
 @task
-def algorithms(algorithms_2_install = algorithms_2_install):
+def algorithms(install=available_algorithms, list="False"):
     """
     Install all the RNA algorithms
     """
+    if list == "True":
+        print '\n'.join(available_algorithms)
+        sys.exit()
+    if isinstance(install, basestring):
+        install = install.split(':')
     print(green("Installing the RNA algorithms..."))
     installation_directory = prompt('Where do you want to install your RNA algorithms?', default=os.path.join(home, 'algorithms'), validate=r'^'+expanduser('~')+'/.+/?$')
     if os.path.exists(installation_directory) and confirm("The directory %s already exist. Do you wish to continue?"%installation_directory) or not os.path.exists(installation_directory):
         if not os.path.exists(installation_directory):
             local('mkdir '+installation_directory)
-        if not os.path.exists('%s/RNAVIEW/bin/rnaview'%installation_directory) and 'rnaview' in algorithms_2_install:
+        if not os.path.exists('%s/RNAVIEW/bin/rnaview'%installation_directory) and 'rnaview' in install:
             rnaview(installation_directory)
-        if not os.path.exists('%s/ViennaRNA_2.1.8/bin/RNAfold'%installation_directory) and 'vienna' in algorithms_2_install:
+        if not os.path.exists('%s/ViennaRNA_2.1.8/bin/RNAfold'%installation_directory) and 'vienna' in install:
             vienna_rna_package(installation_directory)
-        if not os.path.exists('%s/infernal_1.0.2/bin/cmsearch'%installation_directory) and 'infernal' in algorithms_2_install :
+        if not os.path.exists('%s/infernal_1.0.2/bin/cmsearch'%installation_directory) and 'infernal' in install :
             infernal(installation_directory)
-        if not os.path.exists('%s/contrafold/src/contrafold'%installation_directory) and 'contrafold' in algorithms_2_install:
+        if not os.path.exists('%s/contrafold/src/contrafold'%installation_directory) and 'contrafold' in install:
             contrafold(installation_directory)
-        if not os.path.exists('%s/locarna_1.8.1/bin/locarna'%installation_directory) and 'locarna' in algorithms_2_install:
+        if not os.path.exists('%s/locarna_1.8.1/bin/locarna'%installation_directory) and 'locarna' in install:
             locarna("%s/ViennaRNA"%installation_directory, installation_directory)
-        if not os.path.exists('%s/foldalign.2.1.1/bin/foldalign'%installation_directory) and 'foldalign' in algorithms_2_install:
+        if not os.path.exists('%s/foldalign.2.1.1/bin/foldalign'%installation_directory) and 'foldalign' in install:
             foldalign(installation_directory)
-        if not os.path.exists('%s/tRNAscan-SE-1.3.1/bin/tRNAscan-SE'%installation_directory) and 'trnascan-SE' in algorithms_2_install:
+        if not os.path.exists('%s/tRNAscan-SE-1.3.1/bin/tRNAscan-SE'%installation_directory) and 'trnascan-SE' in install:
             trnaScanSE(installation_directory)
-        if (not os.path.exists('%s/blast-2.2.26/bin/blastall'%installation_directory) or not os.path.exists('%s/ncbi-blast-2.2.31+/bin/blastp'%installation_directory)) and 'blast' in algorithms_2_install:
+        if (not os.path.exists('%s/blast-2.2.26/bin/blastall'%installation_directory) or not os.path.exists('%s/ncbi-blast-2.2.31+/bin/blastp'%installation_directory)) and 'blast' in install:
             blast(installation_directory)
-        if not os.path.exists('%s/blastR_package_V2.2/scripts/blastR.pl'%installation_directory) and 'blastR' in algorithms_2_install:
+        if not os.path.exists('%s/blastR_package_V2.2/scripts/blastR.pl'%installation_directory) and 'blastR' in install:
             blastR(installation_directory)
-        if not os.path.exists('%s/clustalw_2.1/bin/clustalw2'%installation_directory) and 'clustalw' in algorithms_2_install:
+        if not os.path.exists('%s/clustalw_2.1/bin/clustalw2'%installation_directory) and 'clustalw' in install:
             clustalw(installation_directory)
-        if not os.path.exists('%s/rnamotif-3.0.7/src/rnamotif'%installation_directory) and 'rnamotif' in algorithms_2_install:
+        if not os.path.exists('%s/rnamotif-3.0.7/src/rnamotif'%installation_directory) and 'rnamotif' in install:
             rnamotif(installation_directory)
-        if not os.path.exists('%s/samtools-0.1.18/samtools'%installation_directory) and 'samtools' in algorithms_2_install:
+        if not os.path.exists('%s/samtools-0.1.18/samtools'%installation_directory) and 'samtools' in install:
             samtools(installation_directory)
-        if not os.path.exists('%s/bowtie2-2.2.2/bowtie2'%installation_directory) and 'bowtie2' in algorithms_2_install:
+        if not os.path.exists('%s/bowtie2-2.2.2/bowtie2'%installation_directory) and 'bowtie2' in install:
             bowtie2(installation_directory)
-        if not os.path.exists('%s/GotohScan_2.0-alpha/src/GotohScan2a'%installation_directory) and 'gotohscan' in algorithms_2_install:
+        if not os.path.exists('%s/GotohScan_2.0-alpha/src/GotohScan2a'%installation_directory) and 'gotohscan' in install:
             gotohscan(installation_directory)
-        if not os.path.exists('%s/rnabob-2.2.1/rnabob'%installation_directory) and 'rnabob' in algorithms_2_install:
+        if not os.path.exists('%s/rnabob-2.2.1/rnabob'%installation_directory) and 'rnabob' in install:
             rnabob(installation_directory)
-        if not os.path.exists('%s/Bcheck-0.6/Bcheck'%installation_directory) and 'bcheck' in algorithms_2_install:
+        if not os.path.exists('%s/Bcheck-0.6/Bcheck'%installation_directory) and 'bcheck' in install:
             bcheck(installation_directory)
-        if not os.path.exists('%s/SnoReport1.0/snoReport'%installation_directory) and 'snoreport' in algorithms_2_install:
+        if not os.path.exists('%s/SnoReport1.0/snoReport'%installation_directory) and 'snoreport' in install:
             snoreport(installation_directory)
-        if not os.path.exists('%s/snoscan-0.9b/snoscan'%installation_directory) and 'snoscan' in algorithms_2_install:
+        if not os.path.exists('%s/snoscan-0.9b/snoscan'%installation_directory) and 'snoscan' in install:
             snoscan(installation_directory)
-        if not os.path.exists('%s/snoGPS-0.2/src/pseudoU_test'%installation_directory) and 'snogps' in algorithms_2_install:
+        if not os.path.exists('%s/snoGPS-0.2/src/pseudoU_test'%installation_directory) and 'snogps' in install:
             snogps(installation_directory)
+    print(green("The PATH variable has been updated in your .bashrc file"))
 
 def bcheck(installation_directory = "%s/algorithms"%home):
     """
@@ -416,22 +453,28 @@ def vienna_rna_package(installation_directory = "%s/algorithms"%expanduser("~"))
             local('rm -rf ViennaRNA-2.1.8')
 
 @task
-def PDB():
+def PDB(limit = 5000):
     """
     Feed the database with PDB data
     """
-    print(green("Feed the database with PDB data..."))
+    print(green("Feed the database with %i 3D junctions..."%limit))
+    if not confirm("The current PDB database will be erased. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
     local('mongo PDB --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate")
+    local("import_3Ds.py -annotate -canonical_only -l %i"%limit)
 
 @task
-def RNA3DHub():
+def RNA3DHub(limit = 5000):
     """
     Feed the database with PDB data derived from the RNA3DHub website
     """
-    print(green("Feed the database with PDB data derived from the RNA3DHub website..."))
+    print(green("Feed the database with %i 3D junctions derived from the RNA3DHub website..."%limit))
+    if not confirm("The current RNA3DHub database will be erased. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
     local('mongo RNA3DHub --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate -rna3dhub")
+    local("import_3Ds.py -annotate -canonical_only -rna3dhub -l %i"%limit)
 
 @task
 def website():
@@ -439,11 +482,20 @@ def website():
     Install the website
     """
     print(green("Installing a full web stack..."))
+
+    print(green("Installing the Python packages..."))
+    local('conda config --set always_yes TRUE')
+    local('conda install ipython')
+    local('conda install ipython-notebook')
+    local('conda install tornado')
+
     print(green("Installing Node.js..."))
     local("sudo apt-get -y install nodejs npm")
     local("sudo ln -s `which nodejs` /usr/bin/node")
-    print(green("Bower..."))
+
+    print(green("Installing Bower..."))
     local("sudo npm install -g bower")
+
     print(green("Installing the website..."))
     local('cd /vagrant/website ; bower --config.interactive=false install')
 

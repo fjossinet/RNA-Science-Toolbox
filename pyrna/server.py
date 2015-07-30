@@ -709,7 +709,7 @@ if __name__ == '__main__':
     if "-hostname" in sys.argv:
         hostname = sys.argv[sys.argv.index("-hostname")+1]
 
-    with open("%s/../pyrna.conf"%os.path.dirname(os.path.realpath(__file__))) as config:
+    with open("%s/../conf/pyrna.json"%os.path.dirname(os.path.realpath(__file__))) as config:
         params = config.read()
         params = json.loads(params)
         webserver_port = params['rest_server']['port']
@@ -723,7 +723,7 @@ if __name__ == '__main__':
         webserver_db = mongodb['webserver']
     except Exception, e:
         print '\033[91mI cannot connect any Mongodb instance hosted at %s:%i\033[0m'%(mongodb_host, mongodb_port)
-        print 'You can check and change your parameters in the file \033[95mpyrna.conf\033[0m'
+        print 'You can check and change your parameters in the file \033[95mconf/pyrna.json\033[0m'
         sys.exit(-1)
 
     app = Application()
@@ -732,6 +732,6 @@ if __name__ == '__main__':
     print "\033[92mYour webserver is now accessible at http://%s:%i/\033[0m"%(hostname, webserver_port)
     print "To modify:"
     print "- the hostname: launch the server like: \033[95m./server.py -hostname your_hostname\033[0m"
-    print '- all the other parameters: open and edit the file \033[95mpyrna.conf\033[0m\n'
+    print '- all the other parameters: open and edit the file \033[95mconf/pyrna.conf\033[0m\n'
     main_loop = tornado.ioloop.IOLoop.instance()
     main_loop.start()

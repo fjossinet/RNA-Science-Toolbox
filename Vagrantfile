@@ -24,6 +24,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # within the machine from a port on the host machine.
   config.vm.network "forwarded_port", guest: 8080, host: 8080 #Tornado server
   config.vm.network "forwarded_port", guest: 8888, host: 8888 #ipython netbook server
+  config.vm.network "forwarded_port", guest: 27017, host: 27017 #MongoDB
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.

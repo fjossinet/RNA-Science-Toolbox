@@ -12,20 +12,16 @@ from pyrna.computations import Rnaview
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
-def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonical_only = True, annotate = False):
+def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonical_only = True, annotate = False, limit = 5000):
     client = MongoClient(db_host, db_port)
     db_name = ""
 
     if rna3dhub:
         rna3dHub = RNA3DHub()
         db_name = "RNA3DHub"
-        if canonical_only:
-            db_name += "_canonical_only"
     else:
         rna3dHub = None
         db_name = "PDB"
-        if canonical_only:
-            db_name += "_canonical_only"
 
     db = client[db_name]
     structuresPerJob = 100
@@ -50,9 +46,9 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
     total_jobs = int(math.floor(total_structures/100)+1) #100 structures per job
 
     for job_id in range (1, total_jobs+1):
-        doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures)
+        doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures, limit)
 
-def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures):
+def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures, limit):
     pdb = PDB()
     rnaview = Rnaview()
 
@@ -76,7 +72,7 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures)
                     ss = None
                     if annotate:
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
-                    save(db, ss, ts, cluster[0])
+                    save(db, ss, ts, cluster[0], limit)
 
                 except Exception, e:
                     print "No annotation for %s"%cluster[0]
@@ -103,13 +99,16 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures)
                     ss = None
                     if annotate:
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
-                    save(db, ss, ts, pdb_id)
+                    save(db, ss, ts, pdb_id, limit)
 
                 except Exception, e:
                     print e
                     print "No annotation for %s"%pdb_id
 
-def save(db, secondary_structure, tertiary_structure, pdbId):
+def save(db, secondary_structure, tertiary_structure, pdbId, limit):
+
+    if db['junctions'].count() >= limit:
+        return
 
     tertiary_structure.source="db:pdb:%s"%pdbId
 
@@ -268,13 +267,16 @@ if __name__ == '__main__':
     db_port = 27017
     rna3dhub = False
     canonical_only = False
+    limit=5000
 
     if "-h" in sys.argv:
         db_host = sys.argv[sys.argv.index("-h")+1]
     if "-p" in sys.argv:
         db_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-l" in sys.argv:
+        limit = int(sys.argv[sys.argv.index("-l")+1])
     rna3dhub =  "-rna3dhub" in sys.argv
     canonical_only =  "-canonical_only" in sys.argv
     annotate = "-annotate" in sys.argv
 
-    import_3Ds(db_host = db_host, db_port = db_port, rna3dhub = rna3dhub, canonical_only = canonical_only, annotate = annotate)
+    import_3Ds(db_host = db_host, db_port = db_port, rna3dhub = rna3dhub, canonical_only = canonical_only, annotate = annotate, limit = limit)
