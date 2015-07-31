@@ -108,7 +108,8 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
 
     if db['junctions'].count() >= limit:
-        return
+        print "Limit of %i junctions reached"%limit
+        sys.exit()
 
     tertiary_structure.source="db:pdb:%s"%pdbId
 

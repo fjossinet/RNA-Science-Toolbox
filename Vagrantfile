@@ -10,7 +10,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # please see the online documentation at vagrantup.com.
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "puphpet/ubuntu1404-x64"
+  config.vm.box = "fjossinet/RnaSciToolbox"
   config.vm.hostname = "RnaSciToolbox"
 
   #config.vm.box_version = ">= 0.1.2"
