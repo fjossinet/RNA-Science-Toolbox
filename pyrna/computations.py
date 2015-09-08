@@ -498,7 +498,7 @@ class Bowtie2(Tool):
 
         commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
         print "bowtie2 %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file)
-        commands.getoutput("bowtie2 %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file))
+        commands.getoutput("bowtie2 -x %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
 
         if no_parsing:
