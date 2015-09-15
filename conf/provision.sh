@@ -48,5 +48,3 @@ then
   rm Miniconda-latest-Linux-x86_64.sh
   chown -Rf vagrant.vagrant /home/vagrant/miniconda
 fi
-
-fab -f /vagrant/conf/fabfile.py
