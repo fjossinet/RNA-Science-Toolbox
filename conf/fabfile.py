@@ -18,9 +18,6 @@ def basic_install():
     """
     Do a basic installation of the system. Not all the RNA algorithms will be installed.
     """
-    if not confirm("This will install and configure the most basic tools and dependencies. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
     update()
     python()
     algorithms(install=['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
