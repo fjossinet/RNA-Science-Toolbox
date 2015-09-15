@@ -11,6 +11,7 @@ then
 else
   echo "source /vagrant/conf/bash_login" >> /home/vagrant/.bash_login
   sudo chown vagrant.vagrant /home/vagrant/.bash_login
+fi
 
 if grep "source /vagrant/conf/bashrc" /home/vagrant/.bashrc > /dev/null
 then
@@ -47,3 +48,5 @@ then
   rm Miniconda-latest-Linux-x86_64.sh
   chown -Rf vagrant.vagrant /home/vagrant/miniconda
 fi
+
+fab /vagrant/files/fabfile.py
