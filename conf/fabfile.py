@@ -491,7 +491,7 @@ def website():
 
     print(green("Installing Node.js..."))
     local("sudo apt-get -y install nodejs npm")
-    local("sudo ln -s `which nodejs` /usr/bin/node")
+    local("sudo ln -sf `which nodejs` /usr/bin/node")
 
     print(green("Installing Bower..."))
     local("sudo npm install -g bower")
