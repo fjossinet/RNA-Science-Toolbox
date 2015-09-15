@@ -49,4 +49,4 @@ then
   chown -Rf vagrant.vagrant /home/vagrant/miniconda
 fi
 
-fab /vagrant/files/fabfile.py
+fab -f /vagrant/files/fabfile.py
