@@ -735,14 +735,19 @@ if __name__ == '__main__':
     webserver_port = 8080
     mongodb_host = "localhost"
     mongodb_port = 27017
+    conf_file = "%s/../conf/pyrna.json"%os.path.dirname(os.path.realpath(__file__))
 
     if "-h" in sys.argv:
-        print "Usage: ./server.py [-hostname your_hostname]"
+        print "Usage: ./server.py [-hostname your_hostname] [-conf configuration_file]"
+        print "- hostname: the hostname of your server (default is 127.0.0.1)"
+        print '- conf: the configuration file (default is conf/pyrna.json). Copy and edit this file to modify the parameters.\n'
         sys.exit(-1)
     if "-hostname" in sys.argv:
         hostname = sys.argv[sys.argv.index("-hostname")+1]
+    if "-conf" in sys.argv:
+        conf_file = os.path.abspath(sys.argv[sys.argv.index("-conf")+1])
 
-    with open("%s/../conf/pyrna.json"%os.path.dirname(os.path.realpath(__file__))) as config:
+    with open(conf_file) as config:
         params = config.read()
         params = json.loads(params)
         webserver_port = params['rest_server']['port']
@@ -757,15 +762,13 @@ if __name__ == '__main__':
         webserver_db = mongodb['webserver']
     except Exception, e:
         print '\033[91mI cannot connect any Mongodb instance hosted at %s:%i\033[0m'%(mongodb_host, mongodb_port)
-        print 'You can check and change your parameters in the file \033[95mconf/pyrna.json\033[0m'
+        print 'To modify the parameters for the Mongodb instance, copy and edit the file conf/pyrna.json.'
         sys.exit(-1)
 
     app = Application()
     server = tornado.httpserver.HTTPServer(app)
     server.listen(webserver_port)
     print "\033[92mYour webserver is now accessible at http://%s:%i/\033[0m"%(hostname, webserver_port)
-    print "To modify:"
-    print "- the hostname: launch the server like: \033[95m./server.py -hostname your_hostname\033[0m"
-    print '- all the other parameters: open and edit the file \033[95mconf/pyrna.conf\033[0m\n'
+
     main_loop = tornado.ioloop.IOLoop.instance()
     main_loop.start()
