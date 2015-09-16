@@ -1,6 +1,7 @@
 {
   "rest_server": {
     "enable-algorithms": ["rnafold", "rnaplot", "rnaview", "contrafold"],
+    "enable-accounts": "True",
     "port": 8080
   },
   "mongodb": {

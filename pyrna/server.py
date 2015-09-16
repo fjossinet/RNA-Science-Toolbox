@@ -28,11 +28,12 @@ mongodb = None
 logs_db = None
 webserver_db = None
 enabled_algorithms = ['rnafold', 'rnaplot', 'contrafold', 'rnaview']
+enable_accounts = True
 
 def is_registered_user(secret_key):
     return logs_db['user_keys'].find_one({'key': secret_key}) != None
 
-#to write messsages to websockets outside of the WebSocketHandler class
+#to write messsages to websockets outside of the WebSocket class
 def wsSend(message):
     for ws in websockets:
         if not ws.ws_connection.stream.socket:
@@ -41,30 +42,30 @@ def wsSend(message):
         else:
             ws.write_message(message)
 
-class IndexHandler(tornado.web.RequestHandler):
+class Index(tornado.web.RequestHandler):
     def get(self):
         if not os.path.exists(static_dir):
             self.write("RNA WebServices running...")
         else:
             self.render('index.html', hostname = hostname)
 
-class ServerHandler(tornado.web.RequestHandler):
+class ServerActivity(tornado.web.RequestHandler):
     def get(self):
         self.render('server.html', hostname = hostname)
 
-class PyrnaDocHandler(tornado.web.RequestHandler):
+class PyrnaDoc(tornado.web.RequestHandler):
     def get(self):
         self.render('pyrna.html', hostname = hostname)
 
-class WebservicesDocHandler(tornado.web.RequestHandler):
+class WebservicesDoc(tornado.web.RequestHandler):
     def get(self):
         self.render('webservices.html', hostname = hostname)
 
-class RnapediaHandler(tornado.web.RequestHandler):
+class Rnapedia(tornado.web.RequestHandler):
     def get(self):
         self.render('rnapedia.html', hostname = hostname)
 
-class AccountHandler(tornado.web.RequestHandler):
+class UserAccount(tornado.web.RequestHandler):
     def get(self):
         if not self.get_secure_cookie("login"):
             self.redirect("/login")
@@ -72,19 +73,50 @@ class AccountHandler(tornado.web.RequestHandler):
         user = webserver_db['users'].find_one({'login': self.get_secure_cookie("login")})
         self.render('account.html', hostname = hostname, user = user, tool_name = self.get_argument('tool_name', default = None), tool_id = self.get_argument('tool_id', default = None), tools_online = external_tools_2_websockets.keys())
 
-class RegisterUserHandler(tornado.web.RequestHandler):
+class RegisterUserAccount(tornado.web.RequestHandler):
     def post(self):
         webserver_db['users'].insert({
             'login': self.get_argument("login"),
             'password': self.get_argument("password"),
-            'external tools linked': []
+            'external tools linked': [],
+            'projects': []
         })
         self.set_secure_cookie("login", self.get_argument("login"))
         self.redirect("/account")
 
-class LoginHandler(tornado.web.RequestHandler):
+class SaveProject(tornado.web.RequestHandler):
+    def post(self):
+        project = self.get_argument("project", None)
+        tool_id = self.get_argument("tool_id", None)
+        tool_name = self.get_argument("tool_name", None)
+        if project and tool_id:
+            project = json.loads(project)
+            user = webserver_db['users'].find_one({'external tools linked.id': tool_id})
+            if user:
+                if not project.has_key('_id'):
+                    project['_id'] = ObjectId()
+                    user['projects'].append({
+                        'name': project['name'],
+                        'project_id': project['_id'],
+                        'tool_id': tool_id,
+                        'tool_name': tool_name,
+                        'created': datetime.datetime.now()
+                    })
+                    webserver_db['users'].update({'_id': user['_id']}, user)
+                    webserver_db['projects'].insert(project)
+                else:
+                    for _project in user['projects']:
+                        if _project['_id'] == project['_id']:
+                            user['projects'].remove(_project)
+                            _project['updated'] = datetime.datetime.now()
+                            user['projects'].append(_project)
+                            break
+                    webserver_db['projects'].update({'_id': project['_id']}, project)
+        self.render('server.html', hostname = hostname)
+
+class Login(tornado.web.RequestHandler):
     def get(self):
-        self.render('login.html', hostname = hostname)
+        self.render('login.html', enable_accounts = enable_accounts, hostname = hostname)
 
     def post(self):
         user = webserver_db['users'].find_one({'login': self.get_argument("login"), 'password': self.get_argument("password")})
@@ -94,7 +126,7 @@ class LoginHandler(tornado.web.RequestHandler):
             self.set_secure_cookie("login", user['login'])
             self.redirect("/account")
 
-class LogoutHandler(AccountHandler):
+class Logout(UserAccount):
     def get(self):
         user = webserver_db['users'].find_one({'login': self.get_secure_cookie("login")})
         for tool in user['external tools linked']:
@@ -110,7 +142,7 @@ class LogoutHandler(AccountHandler):
         self.clear_cookie("login")
         self.redirect("/login")
 
-class LinkToolHandler(tornado.web.RequestHandler):
+class LinkTool(tornado.web.RequestHandler):
     def post(self):
         if len(self.get_argument("tool_name")) !=0 and len(self.get_argument("tool_id")) != 0:
             user = webserver_db['users'].find_one({'login': self.get_secure_cookie("login")})
@@ -123,7 +155,7 @@ class LinkToolHandler(tornado.web.RequestHandler):
             webserver_db['users'].save(user)
         self.redirect("/account")
 
-class UnLinkToolHandler(tornado.web.RequestHandler):
+class UnLinkTool(tornado.web.RequestHandler):
     def post(self):
         user = webserver_db['users'].find_one({'login': self.get_secure_cookie("login")})
         tools = user.get('external tools linked', [])
@@ -139,7 +171,7 @@ class UnLinkToolHandler(tornado.web.RequestHandler):
 ##########################################################
 
 #webservice to generate and register an api key (needed to call webservices from python scripts or ipython sessions)
-class APIKeyHandler(tornado.web.RequestHandler):
+class APIKey(tornado.web.RequestHandler):
     def get(self):
         secret_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(10))
         remote_ip = self.request.remote_ip
@@ -157,7 +189,7 @@ class APIKeyHandler(tornado.web.RequestHandler):
         self.write(secret_key)
 
 #webservice to run RNAfold
-class RNAfoldHandler(tornado.web.RequestHandler):
+class RNAfold(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -187,7 +219,7 @@ class RNAfoldHandler(tornado.web.RequestHandler):
                 self.send_error(status_code=401)
 
 #webservice to run RNAplot
-class RNAplotHandler(tornado.web.RequestHandler):
+class RNAplot(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -210,7 +242,7 @@ class RNAplotHandler(tornado.web.RequestHandler):
             self.write(Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True))
 
 #webservice to run Contrafold
-class ContrafoldHandler(tornado.web.RequestHandler):
+class Contrafold(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -234,7 +266,7 @@ class ContrafoldHandler(tornado.web.RequestHandler):
             self.write(Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True))
 
 #webservice to run RNAVIEW
-class RnaviewHandler(tornado.web.RequestHandler):
+class Rnaview(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -260,7 +292,7 @@ class RnaviewHandler(tornado.web.RequestHandler):
 # Here starts the high-level webservices...
 ##########################################################
 
-class Compute2dHandler(tornado.web.RequestHandler):
+class Compute2d(tornado.web.RequestHandler):
 
     def get(self):
         self.post(self)
@@ -488,7 +520,7 @@ class Compute2dHandler(tornado.web.RequestHandler):
 
                 self.write(json_encode(result))
 
-class Compute2dplotHandler(tornado.web.RequestHandler):
+class Compute2dplot(tornado.web.RequestHandler):
 
     def get(self):
         self.post(self)
@@ -514,7 +546,7 @@ class Compute2dplotHandler(tornado.web.RequestHandler):
             coords.append([row['x'], row['y']])
         self.write(json_encode(coords))
 
-class PDBHandler (tornado.web.RequestHandler):
+class PDB (tornado.web.RequestHandler):
 
     def get(self):
         self.post(self)
@@ -550,7 +582,7 @@ class PDBHandler (tornado.web.RequestHandler):
                 result = '{"count":%i}'%len(result)
         self.write(json_encode(result))
 
-class RNA3DHubHandler (tornado.web.RequestHandler):
+class RNA3DHub (tornado.web.RequestHandler):
 
     def get(self):
         self.post(self)
@@ -587,7 +619,7 @@ class RNA3DHubHandler (tornado.web.RequestHandler):
 
         self.write(json_encode(result))
 
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
+class WebSocket(tornado.websocket.WebSocketHandler):
 
     def open(self, *args):
         if self not in websockets:
@@ -666,27 +698,28 @@ class Application(tornado.web.Application):
     def __init__(self):
 
         handlers = [
-            (r'/', IndexHandler),
-            (r'/server', ServerHandler),
-            (r'/pyrna', PyrnaDocHandler),
-            (r'/rnapedia', RnapediaHandler),
-            (r'/account', AccountHandler),
-            (r'/register', RegisterUserHandler),
-            (r'/login', LoginHandler),
-            (r'/logout', LogoutHandler),
-            (r'/link', LinkToolHandler),
-            (r'/unlink', UnLinkToolHandler),
-            (r'/webservices', WebservicesDocHandler),
-            (r'/websocket', WebSocketHandler),
-            (r'/api/get_key', APIKeyHandler),
-            (r'/api/computations/rnafold', RNAfoldHandler),
-            (r'/api/computations/rnaplot', RNAplotHandler),
-            (r'/api/computations/contrafold', ContrafoldHandler),
-            (r'/api/computations/rnaview', RnaviewHandler),
-            (r'/api/compute/2d', Compute2dHandler),
-            (r'/api/compute/2dplot', Compute2dplotHandler),
-            (r'/api/pdb', PDBHandler),
-            (r'/api/rna3dhub', RNA3DHubHandler)
+            (r'/', Index),
+            (r'/server', ServerActivity),
+            (r'/pyrna', PyrnaDoc),
+            (r'/rnapedia', Rnapedia),
+            (r'/account', UserAccount),
+            (r'/register', RegisterUserAccount),
+            (r'/save_project', SaveProject),
+            (r'/login', Login),
+            (r'/logout', Logout),
+            (r'/link', LinkTool),
+            (r'/unlink', UnLinkTool),
+            (r'/webservices', WebservicesDoc),
+            (r'/websocket', WebSocket),
+            (r'/api/get_key', APIKey),
+            (r'/api/computations/rnafold', RNAfold),
+            (r'/api/computations/rnaplot', RNAplot),
+            (r'/api/computations/contrafold', Contrafold),
+            (r'/api/computations/rnaview', Rnaview),
+            (r'/api/compute/2d', Compute2d),
+            (r'/api/compute/2dplot', Compute2dplot),
+            (r'/api/pdb', PDB),
+            (r'/api/rna3dhub', RNA3DHub)
         ]
 
         settings = {
@@ -716,6 +749,7 @@ if __name__ == '__main__':
         mongodb_host = params['mongodb']['host']
         mongodb_port = params['mongodb']['port']
         enabled_algorithms = params['rest_server']['enable-algorithms']
+        enable_accounts = params['rest_server']['enable-accounts'] == 'True'
 
     try :
         mongodb = MongoClient(mongodb_host, mongodb_port)
