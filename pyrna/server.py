@@ -189,7 +189,7 @@ class APIKey(tornado.web.RequestHandler):
         self.write(secret_key)
 
 #webservice to run RNAfold
-class RNAfold(tornado.web.RequestHandler):
+class RNAfoldTool(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -219,7 +219,7 @@ class RNAfold(tornado.web.RequestHandler):
                 self.send_error(status_code=401)
 
 #webservice to run RNAplot
-class RNAplot(tornado.web.RequestHandler):
+class RNAplotTool(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -242,7 +242,7 @@ class RNAplot(tornado.web.RequestHandler):
             self.write(Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True))
 
 #webservice to run Contrafold
-class Contrafold(tornado.web.RequestHandler):
+class ContrafoldTool(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -266,7 +266,7 @@ class Contrafold(tornado.web.RequestHandler):
             self.write(Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True))
 
 #webservice to run RNAVIEW
-class Rnaview(tornado.web.RequestHandler):
+class RnaviewTool(tornado.web.RequestHandler):
     def post(self):
         log = {
             '_id': str(ObjectId()),
@@ -712,10 +712,10 @@ class Application(tornado.web.Application):
             (r'/webservices', WebservicesDoc),
             (r'/websocket', WebSocket),
             (r'/api/get_key', APIKey),
-            (r'/api/computations/rnafold', RNAfold),
-            (r'/api/computations/rnaplot', RNAplot),
-            (r'/api/computations/contrafold', Contrafold),
-            (r'/api/computations/rnaview', Rnaview),
+            (r'/api/computations/rnafold', RNAfoldTool),
+            (r'/api/computations/rnaplot', RNAplotTool),
+            (r'/api/computations/contrafold', ContrafoldTool),
+            (r'/api/computations/rnaview', RnaviewTool),
             (r'/api/compute/2d', Compute2d),
             (r'/api/compute/2dplot', Compute2dplot),
             (r'/api/pdb', PDB),
