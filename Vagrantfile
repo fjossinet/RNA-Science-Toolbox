@@ -13,7 +13,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "fjossinet/RnaSciToolbox"
   config.vm.hostname = "RnaSciToolbox"
 
-  #config.vm.box_version = ">= 0.1.2"
+  #config.vm.box_version = ">= 1.0.0"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs

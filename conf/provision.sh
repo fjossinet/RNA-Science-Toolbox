@@ -33,6 +33,15 @@ then
   sudo apt-get -y install mongodb-server
 fi
 
+#to access the mongodb server from any interface
+if grep "bind_ip = 127.0.0.1" /etc/mongodb.conf > /dev/null
+then
+  echo "[vagrant provisioning] Changing the MongoDB bind IP..."
+  sudo sed -i 's/bind_ip = 127.0.0.1/bind_ip = 0.0.0.0/' /etc/mongodb.conf
+  sudo service mongod stop
+  sudo service mongod start
+fi
+
 if ! [ -x "$(command -v fab)" ]
 then
   echo "[vagrant provisioning] Installing fabric..."
