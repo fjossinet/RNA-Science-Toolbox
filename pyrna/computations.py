@@ -2526,3 +2526,48 @@ class Tophat(Bowtie2):
             return result_file
 
         return self.parse_sam(result_file, target_molecules)
+
+class Tophat2(Bowtie2):
+    """
+    Application Controller for Tophat2.
+    """
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
+        if not self.rest_server:
+            self.find_executable("tophat2")
+
+    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
+        """
+        Align reads to target molecules
+
+        Parameters:
+        -----------
+        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
+        - fastq_file: the full path for the fastq file containing the reads (as a String)
+        - bowtie2_index: the full path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
+
+        Returns:
+        --------
+        The full path of the SAM file or a pandas DataFrame describing the reads. The columns are:
+        - genomicStart (an int)
+        - genomicEnd (an int)
+        - genomicStrand ('+' or '-')
+        - genomeName (a String)
+        """
+
+        if not bowtie2_index:
+            bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
+
+        print "tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file)
+        commands.getoutput("tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file))
+
+        result_file = None
+        if no_convert_bam:
+            result_file = self.cache_dir+'/accepted_hits.sam'
+        else:
+            result_file = self.cache_dir+'/accepted_hits.bam'
+
+        if no_parsing:
+            return result_file
+
+        return self.parse_sam(result_file, target_molecules)
