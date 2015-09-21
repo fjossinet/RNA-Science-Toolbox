@@ -457,7 +457,7 @@ class Bowtie2(Tool):
         print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
         return DataFrame(reads)
 
-    def align(self, target_molecules, fastq_file, no_parsing = False):
+    def align(self, target_molecules, fastq_file, no_parsing = False, user_defined_options=[]):
         """
         Align reads against target molecules.
 
@@ -491,9 +491,11 @@ class Bowtie2(Tool):
         self.index_path = self.cache_dir+"/"+random_name
         result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
 
-        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
-        print "bowtie2 %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file)
-        commands.getoutput("bowtie2 -x %s -q \"%s\" -S %s"%(self.index_path, fastq_file, result_file))
+        if not os.path.exists(self.index_path):
+            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
+            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+        print "bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file)
+        commands.getoutput("bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
 
         if no_parsing:
@@ -519,6 +521,7 @@ class Bowtie2(Tool):
         fasta_file = open(fasta_file_name, 'w')
         fasta_file.write(to_fasta(target_molecules))
         fasta_file.close()
+        print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
         commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
         print "Index files produced successfully!!"
 
