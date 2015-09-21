@@ -481,19 +481,21 @@ class Bowtie2(Tool):
         print bowtie2.index_path
         """
 
-        random_name = utils.generate_random_name(7)
-        fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')
-        fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(to_fasta(target_molecules))
-        fasta_file.close()
-
-        self.index_path = self.cache_dir+"/"+random_name
         result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
 
-        if not os.path.exists(self.index_path):
+        if not self.index_path:
+            random_name = utils.generate_random_name(7)
+            fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')
+            fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
+            fasta_file = open(fasta_file_name, 'w')
+            fasta_file.write(to_fasta(target_molecules))
+            fasta_file.close()
+
+            self.index_path = self.cache_dir+"/"+random_name
+
             print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
             commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+            
         print "bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file)
         commands.getoutput("bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
