@@ -418,11 +418,12 @@ class Bowtie2(Tool):
     """
     Application Controller for Bowtie2.
     """
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+    def __init__(self, cache_dir = "/tmp", index_path = None, rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("bowtie2-build")
             self.find_executable("bowtie2")
+        self.index_path = index_path
 
     def parse_sam(self, sam_file, target_molecules):
         """
@@ -495,7 +496,7 @@ class Bowtie2(Tool):
 
             print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
             commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
-            
+
         print "bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file)
         commands.getoutput("bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
