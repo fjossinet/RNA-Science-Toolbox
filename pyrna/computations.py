@@ -2026,6 +2026,12 @@ class Samtools(Tool):
         if not self.rest_server:
             self.find_executable("samtools")
 
+    def run(self, user_defined_options = []):
+        """
+        Generic function to run samtools
+        """
+        return commands.getoutput("samtools %s"%(" ".join(user_defined_options)))
+
     def sort_and_index(self):
         """
         Sort and index a SAM file.
@@ -2040,17 +2046,20 @@ class Samtools(Tool):
         """
         path = os.path.realpath(self.sam_file).split('.sam')[0]
         if not os.path.exists("%s.bam"%path):
-            commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
+            self.run(["view", "-bS %s"%self.sam_file, "> %s.bam"%path])
+            #commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
             print "BAM file done"
         else:
             print "BAM file already done"
         if not os.path.exists("%s.sorted.bam"%(path)):
-            commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
+            self.run(["sort", "%s.bam"%path, "%s.sorted"%path])
+            #commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
             print "Sorted BAM file done"
         else:
             print "Sorted BAM file already done"
         if not os.path.exists("%s.sorted.bam.bai"%(path)):
-            commands.getoutput("samtools index %s.sorted.bam"%path)
+            self.run(["index", "%s.sorted.bam"%path])
+            #commands.getoutput("samtools index %s.sorted.bam"%path)
             print "Indexed BAM file done"
         else:
             print "Indexed BAM file already done"
@@ -2067,7 +2076,7 @@ class Samtools(Tool):
         query = "%s"%chromosome_name
         if start and end:
             query = "%s:%i-%i"%(query, start, end)
-        return int(commands.getoutput("samtools view %s -c %s %s"%(restrict_to, sorted_bam_file, query)))
+        return int(self.run(["view", restrict_to, "-c", sorted_bam_file, query]))
 
 class SnoGPS(Tool):
     """
