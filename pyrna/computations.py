@@ -12,11 +12,12 @@ def get_api_key(rest_server):
     return api_key
 
 class Tool:
-    def __init__(self, cache_dir = '/tmp', rest_server = None, api_key = None, user_defined_options = []):
+    def __init__(self, cache_dir = '/tmp', rest_server = None, api_key = None):
         self.cache_dir = cache_dir
+        if not os.path.exists(self.cache_dir):
+            os.mkdir(self.cache_dir)
         self.rest_server = rest_server
         self.api_key = api_key
-        self.user_defined_options = user_defined_options
 
     def find_executable(self, executable):
         if not find_executable(executable):
@@ -43,10 +44,8 @@ class Tool:
         --------
         the local path of the file downloaded.
         """
-        path = self.cache_dir+"/"+utils.generate_random_name(7)
-        os.mkdir(path)
         if not uri.endswith("/"):
-            file_name = path+'/'+uri.split('/')[-1]
+            file_name = self.cache_dir+'/'+uri.split('/')[-1]
         else:
             print "Error: your URI should not end with the character '/'"
             sys.exit(1)
@@ -65,8 +64,8 @@ class Augustus(Tool):
     Application Controller for Augustus.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("augustus")
 
@@ -144,8 +143,8 @@ class Bcheck(Tool):
     Application Controller for Bcheck.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("Bcheck")
 
@@ -202,13 +201,13 @@ class Bcheck(Tool):
         return DataFrame(hits)
 
 class Blast(Tool):
-    def __init__(self, target_molecules, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
+    def __init__(self, target_molecules, cache_dir = "/tmp", rest_server = None, api_key = None):
         """"
         Parameters:
         ---------
         - target_molecules:  the target molecules that will be used to make the blast database and to do the search (as a list of Molecule objects, see pyrna.features)
         """
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("formatdb")
             self.find_executable("blastall")
@@ -222,9 +221,7 @@ class Blast(Tool):
         ---------
         is_nucleotide (default: True): state if the target molecules are nucleotides or proteins
         """
-        path = self.cache_dir+"/"+utils.generate_random_name(7)
-        os.mkdir(path)
-        with open("%s/input.fasta"%path, 'w+b') as fasta_file:
+        with open("%s/input.fasta"%self.cache_dir, 'w+b') as fasta_file:
             fasta_file.write(parsers.to_fasta(self.target_molecules))
 
         commands.getoutput("cd %s ; formatdb -i %s -p %s -o"%(self.cache_dir, fasta_file.name, "F" if is_nucleotide else "T"))
@@ -379,13 +376,13 @@ class Blastr(Blast):
     """
     Application Controller for blastR.
     """
-    def __init__(self, target_molecules, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
+    def __init__(self, target_molecules, cache_dir = "/tmp", rest_server = None, api_key = None):
         """"
         Parameters:
         ---------
         - target_molecules:  the target molecules that will be used to make the blast database and to do the search (as a list of Molecule objects, see pyrna.features)
         """
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("formatdbR.pl")
             self.find_executable("blastallR.pl")
@@ -395,9 +392,7 @@ class Blastr(Blast):
         """
         Dump the target_molecules into a fasta file and format them into a Blast database.
         """
-        path = self.cache_dir+"/"+utils.generate_random_name(7)
-        os.mkdir(path)
-        with open("%s/input.fasta"%path, 'w+b') as fasta_file:
+        with open("%s/input.fasta"%self.cache_dir, 'w+b') as fasta_file:
             fasta_file.write(parsers.to_fasta(self.target_molecules))
         commands.getoutput("cd %s ; formatdbR.pl -i %s"%(self.cache_dir, fasta_file.name))
         self.formatted_db = fasta_file.name
@@ -423,8 +418,8 @@ class Bowtie2(Tool):
     """
     Application Controller for Bowtie2.
     """
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("bowtie2-build")
             self.find_executable("bowtie2")
@@ -536,8 +531,8 @@ class Clustalw(Tool):
     Application Controller for clustalw.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("clustalw2")
 
@@ -592,8 +587,8 @@ class Cmalign(Tool):
     """
     Application Controller for cmalign.
     """
-    def __init__(self, cache_dir = "/tmp", local_mode = True, rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", local_mode = True, rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("cmalign")
         self.local_mode = local_mode
@@ -612,9 +607,7 @@ class Cmalign(Tool):
         --------
         a tuple like: (list of all the aligned molecules, dict of organism names (keys) and accession numbers/start-end (values), Dataframe of the consensus 2D)
         """
-        path = self.cache_dir+"/cmalign_"+utils.generate_random_name(7)
-        os.mkdir(path)
-        with open("%s/input.fasta"%path, 'w') as fasta_file:
+        with open("%s/input.fasta"%self.cache_dir, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta(molecules))
         if not stockholm_content:
             try:
@@ -622,9 +615,9 @@ class Cmalign(Tool):
             except Exception, e:
                 raise e
         if rfam_id:
-            stockholm_file = open("%s/%s.stk"%(path,rfam_id), 'w')
+            stockholm_file = open("%s/%s.stk"%(self.cache_dir,rfam_id), 'w')
         else:
-            stockholm_file = open("%s/%s.stk"%(path, utils.generate_random_name(7)), 'w')
+            stockholm_file = open("%s/%s.stk"%(self.cache_dir, utils.generate_random_name(7)), 'w')
 
         stockholm_file.write(stockholm_content)
         stockholm_file.close()
@@ -643,7 +636,7 @@ class Cmalign(Tool):
             output = commands.getoutput("cmalign -l --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
         else:
             output = commands.getoutput("cmalign --withali %s %s %s"%(stockholm_file.name, cm_file if cm_file else rfam.cache_dir+'/CMs/'+rfam_id+".cm", fasta_file.name))
-        shutil.rmtree(path)
+        #shutil.rmtree(self.cache_dir)
         if rfam_id:
             output = "#=GF AC "+rfam_id+"\n"+output
         return parsers.parse_stockholm(output)
@@ -653,8 +646,8 @@ class Cmbuild(Tool):
     Application Controller for Cmbuild.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("cmbuild")
 
@@ -688,8 +681,8 @@ class Cmcalibrate(Tool):
     Application Controller for Cmcalibrate.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("cmcalibrate")
 
@@ -721,8 +714,8 @@ class Cmsearch(Tool):
     Application Controller for Cmsearch.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("cmsearch")
 
@@ -948,8 +941,8 @@ class Contrafold(Tool):
     Application Controller for Contrafold.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("contrafold")
 
@@ -997,8 +990,8 @@ class Cufflinks(Tool):
     Application Controller for Cufflinks.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("cufflinks")
 
@@ -1267,15 +1260,13 @@ class Gmorse(Tool):
     Application Controller for Gmorse.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("extractNonMappedReads")
             self.find_executable("coverage")
             self.find_executable("build_covtigs")
             self.find_executable("gmorse")
-            self.cache_dir += "/gmorse_%s"%utils.generate_random_name(7)
-            os.makedirs(self.cache_dir)
 
     def extract_unmapped_reads(self, aligned_reads_file, fastq_file):
         print "extractNonMappedReads %s %s"%(aligned_reads_file, fastq_file)
@@ -1348,8 +1339,8 @@ class Gotohscan(Tool):
     Application Controller for GotohScan.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("GotohScan2a")
 
@@ -1415,8 +1406,8 @@ class Mlocarna(Tool):
     Application Controller for mlocarna.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("mlocarna")
 
@@ -1456,8 +1447,8 @@ class RnaAlifold(Tool):
     Application Controller for RNAalifold.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAalifold")
 
@@ -1478,8 +1469,8 @@ class Rnafold(Tool):
     Application Controller for RNAfold.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAfold")
 
@@ -1555,8 +1546,8 @@ class Rnainverse(Tool):
     Application Controller for RNAinverse.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAinverse")
 
@@ -1594,8 +1585,8 @@ class RNAMotif(Tool):
     """
     Application Controller for RNAMotif.
     """
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("rnamotif")
 
@@ -1698,8 +1689,8 @@ class Rnaplfold(Tool):
     Application Controller for RNAplfold.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAplfold")
 
@@ -1769,8 +1760,8 @@ class Rnaplot(Tool):
     Application Controller for RNAplot.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAplot")
 
@@ -1799,19 +1790,16 @@ class Rnaplot(Tool):
             output = str(response.read())
             response.close()
         else:
-            path=self.cache_dir+"/"+utils.generate_random_name(7)
-            os.mkdir(path)
-
             _rna = RNA(name="rna", sequence=rna.sequence) #the name of the rna object should not contains any / character.
-            vienna_file_name = path+'/'+utils.generate_random_name(7)+'.fasta'
+            vienna_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
             with open(vienna_file_name, 'w') as f:
                 f.write(parsers.to_vienna([secondary_structure], [_rna], single_line=True))
 
-            commands.getoutput("cd %s ; RNAplot -o svg < %s"%(path, vienna_file_name))
+            commands.getoutput("cd %s ; RNAplot -o svg < %s"%(self.cache_dir, vienna_file_name))
 
-            for f in os.listdir(path):
+            for f in os.listdir(self.cache_dir):
                 if f.endswith('.svg'):
-                    with open("%s/%s"%(path, f)) as svg_file:
+                    with open("%s/%s"%(self.cache_dir, f)) as svg_file:
                         output = svg_file.read()
 
         if raw_output:
@@ -1838,8 +1826,8 @@ class Rnasubopt(Tool):
     Application Controller for RNAsubopt.
     """
 
-    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
             self.find_executable("RNAsubopt")
 
@@ -1872,8 +1860,8 @@ class Rnaview(Tool):
     """
     Application Controller for RNAVIEW.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("rnaview")
 
@@ -2029,8 +2017,8 @@ class Samtools(Tool):
     """
     Application Controller for Samtools.
     """
-    def __init__(self, sam_file, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, sam_file, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         self.sam_file = sam_file
         if not self.rest_server:
             self.find_executable("samtools")
@@ -2082,8 +2070,8 @@ class SnoGPS(Tool):
     """
     Application Controller for SnoGPS.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("pseudoU_test")
 
@@ -2232,8 +2220,8 @@ class Snoreport(Tool):
     """
     Application Controller for SnoReport.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("snoReport")
 
@@ -2312,8 +2300,8 @@ class Snoscan(Tool):
     """
     Application Controller for SnoScan.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("snoscan")
 
@@ -2416,8 +2404,8 @@ class TrnaScanSE(Tool):
     """
     Application Controller for tRNAscan-SE.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("tRNAscan-SE")
 
@@ -2483,12 +2471,12 @@ class Tophat(Bowtie2):
     """
     Application Controller for Tophat.
     """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None, user_defined_options = []):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, user_defined_options = user_defined_options)
+    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("tophat")
 
-    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True):
+    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
         """
         Align reads to target molecules
 
@@ -2510,15 +2498,14 @@ class Tophat(Bowtie2):
         if not bowtie2_index:
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
 
-        output_dir = self.cache_dir+'/'+utils.generate_random_name(7)
-        print "tophat %s %s -o %s %s %s"%(' '.join(self.user_defined_options), "--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file)
-        commands.getoutput("tophat %s %s -o %s %s %s"%(' '.join(self.user_defined_options), "--no-convert-bam" if no_convert_bam else "", output_dir, bowtie2_index, fastq_file))
+        print "tophat %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file)
+        commands.getoutput("tophat %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file))
 
         result_file = None
         if no_convert_bam:
-            result_file = output_dir+'/accepted_hits.sam'
+            result_file = self.cache_dir+'/accepted_hits.sam'
         else:
-            result_file = output_dir+'/accepted_hits.bam'
+            result_file = self.cache_dir+'/accepted_hits.bam'
 
         if no_parsing:
             return result_file
