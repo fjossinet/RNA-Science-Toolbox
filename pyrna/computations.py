@@ -485,17 +485,10 @@ class Bowtie2(Tool):
         result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
 
         if not self.index_path:
-            random_name = utils.generate_random_name(7)
-            fastq_file = os.path.abspath(os.path.normpath(fastq_file)).replace(' ', '\ ')
-            fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
-            fasta_file = open(fasta_file_name, 'w')
-            fasta_file.write(to_fasta(target_molecules))
-            fasta_file.close()
+            self.index_path = self.build_index(target_molecules)
 
-            self.index_path = self.cache_dir+"/"+random_name
-
-            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
-            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+        elif not os.path.exists(self.index_path+".1.bt2"):
+            self.build_index(target_molecules)
 
         print "bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file)
         commands.getoutput("bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file))
@@ -518,15 +511,25 @@ class Bowtie2(Tool):
         --------
         The full path to the directory containing the index plus the prefix of the index files
         """
-        random_name = utils.generate_random_name(7)
-        self.index_path = self.cache_dir+"/"+random_name
-        fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
-        fasta_file = open(fasta_file_name, 'w')
-        fasta_file.write(to_fasta(target_molecules))
-        fasta_file.close()
-        print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
-        commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
-        print "Index files produced successfully!!"
+        if not self.index_path:
+            random_name = utils.generate_random_name(7)
+            self.index_path = self.cache_dir+"/"+random_name
+            fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
+            fasta_file = open(fasta_file_name, 'w')
+            fasta_file.write(to_fasta(target_molecules))
+            fasta_file.close()
+            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
+            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+            print "Index files produced successfully!!"
+        else:
+            random_name = self.index_path.split('/')[-1]
+            fasta_file_name = self.index_path+".fa"
+            fasta_file = open(fasta_file_name, 'w')
+            fasta_file.write(to_fasta(target_molecules))
+            fasta_file.close()
+            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
+            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
+            print "Index files produced successfully!!"
 
         return self.index_path
 
@@ -2535,6 +2538,7 @@ class Tophat2(Bowtie2):
         Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
             self.find_executable("tophat2")
+            self.find_executable("bed_to_juncs")
 
     def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
         """
@@ -2557,6 +2561,8 @@ class Tophat2(Bowtie2):
 
         if not bowtie2_index:
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
+        elif not os.path.exists(bowtie2_index+".1.bt2"):
+            bowtie2_index = Bowtie2(cache_dir = self.cache_dir, index_path = bowtie2_index).build_index(target_molecules)
 
         print "tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file)
         commands.getoutput("tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file))
@@ -2571,3 +2577,16 @@ class Tophat2(Bowtie2):
             return result_file
 
         return self.parse_sam(result_file, target_molecules)
+
+    def bed_to_juncs(self, junc_file):
+        """
+        This function converts the file junctions.bed into the file junc_file given as parameter. This junc_file can be provided to tophat2 with the option -j.
+
+        Parameters:
+        -----------
+        - junc_file: the name of the output file
+        """
+        lines = open(self.cache_dir+"/junctions.bed").readlines()
+        open(self.cache_dir+"/junctions_without_header.bed", 'w').writelines(lines[1:]) #the first line seems to crash the process....
+        commands.getoutput("bed_to_juncs < %s > %s"%(self.cache_dir+"/junctions_without_header.bed", junc_file))
+        print "bed_to_juncs < %s > %s"%(self.cache_dir+"/junctions_without_header.bed", junc_file)
