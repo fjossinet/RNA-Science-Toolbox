@@ -28,6 +28,7 @@ def basic_install():
     PDB(limit=5000)
     RNA3DHub(limit=5000)
 
+@task
 def full_install():
     """
     Do a full installation of the system. All the RNA algorithms will be installed.
@@ -43,6 +44,7 @@ def full_install():
     PDB()
     RNA3DHub()
 
+@task
 def minimal_install():
     """
     Do a minimal installation of the system. No RNA algorithms will be installed, only the Python packages.
