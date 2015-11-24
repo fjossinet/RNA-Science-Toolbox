@@ -1040,7 +1040,7 @@ class Cufflinks(Tool):
                         else:
                             return 0
 
-    def predict_genes(self, db_name, bam_file, db_host = "localhost", db_port = 27017):
+    def predict_genes(self, db_name, bam_file, db_host = "localhost", db_port = 27017, annotations = None):
         """
         Method that runs the Cufflinks program with RABT assembly option
 
@@ -1050,9 +1050,15 @@ class Cufflinks(Tool):
         - bam_file: the full path of a BAM sorted file
         - db_host : the host for the MongoDB containing the gene annotations
         - db_port : the port for the MongoDB containing the gene annotations
+        - annotations : an array of annotations used to be dumped as a GFF file
         """
 
-        data_str = self.__mongo_to_gff3(db_name, db_host, db_port)
+        if not annotations:
+            data_str = self.__mongo_to_gff3(db_name, db_host, db_port)
+        else:
+            data_str = ""
+            for annotation in annotations:
+                data_str += "%s\t.\t%s\t%i\t%i\t0.0\t%s\t.\tid %s\n"%(annotation['genomeName'], annotation['class'], annotation['genomicPositions'][0], annotation['genomicPositions'][1], annotation['genomoicStrand'], annotation['_id'])
 
         gff_file = utils.generate_random_name(7)+'.gff'
         fh = open('%s/%s'%(self.cache_dir, gff_file), 'w')

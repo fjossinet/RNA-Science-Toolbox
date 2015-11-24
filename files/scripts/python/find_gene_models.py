@@ -54,9 +54,11 @@ def find(fastq_file, host, port, db_name = None, genome_ids = None, reverse = Fa
         print "Tophat..."
         tophat = Tophat(current_dir, user_defined_options=['--read-realign-edit-dist 0', '-p 8']) #the option --read-realign-edit-dist 0 is to handle the problem with the pseudogenes
         sam_file = tophat.align(target_molecules = genomic_sequences, fastq_file = fastq_file, no_convert_bam = True)
+        samtools = Samtools(sam_file)
+        indexed_and_sorted_bam_file = samtools.sort_and_index()
 
     #step2: coverages
-    if True:
+    if False:
         print "Coverages..."
         aligned_reads, total_reads, tids  = parse_sam(sam_file)
         reads = []
@@ -125,8 +127,6 @@ def find(fastq_file, host, port, db_name = None, genome_ids = None, reverse = Fa
     #step3: gene models with cufflinks
     if False:
         print "Cufflinks..."
-        samtools = Samtools(sam_file)
-        indexed_and_sorted_bam_file = samtools.sort_and_index()
         cufflinks = Cufflinks(current_dir)
         gene_models = cufflinks.predict_genes(db_name = db_name, bam_file = indexed_and_sorted_bam_file, db_host = host, db_port = port)
         for row in gene_models.iterrows():
