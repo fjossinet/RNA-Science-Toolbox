@@ -239,6 +239,19 @@ class RNA(Molecule):
         letters = [basecomplement[base] if basecomplement.has_key(base) else base for base in letters]
         return ''.join(letters)
 
+class Protein(Molecule):
+    def __init__(self, sequence, name = 'protein'):
+        Molecule.__init__(self, name)
+
+        for residue in list(sequence):
+            self.add_residue(residue)
+
+    def add_residue(self, residue):
+        if modified_aminoacids.has_key(residue):
+            self.modified_residues.append((residue, len(self.sequence)+1))
+            residue = modified_aminoacids[residue]
+        self.sequence = ''.join([self.sequence, residue])
+
 class SecondaryStructure:
 
     def __init__(self, rna):
@@ -998,6 +1011,31 @@ class TertiaryStructure:
             return self.numbering_system[str(absolute_position)]
         else:
             return str(absolute_position)
+
+modified_aminoacids = {
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "ASX": "B",
+    "CYS": "C",
+    "GLU": "E",
+    "GLN": "Q",
+    "GLX": "Z",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU":  "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "VAL"
+}
 
 modified_ribonucleotides = {
     "T": "U",

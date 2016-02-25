@@ -1,6 +1,6 @@
 import re
 from pandas import DataFrame
-from pyrna.features import RNA, DNA, TertiaryStructure, SecondaryStructure
+from pyrna.features import RNA, DNA, Protein, TertiaryStructure, SecondaryStructure
 from pyrna import utils
 from pysam import Samfile
 
@@ -1292,39 +1292,45 @@ def parse_pdb(pdb_data):
     ------
     a list of TertiaryStructure objects (see pyrna.features). if the PDB data describes a tertiary structure made with several molecular chains, this method will return one TertiaryStructure object per chain.
     """
-    rnas = []
+    molecules = []
+    chains = []
     tertiary_structures = []
     current_chain = None
     current_residue = None
     current_residue_pos = None
     absolute_position = -1
-    current_rna = None
+    current_molecule = None
+    residues = []
     current_3D = None
     title = "N.A."
 
     for line in pdb_data.split('\n'):
         header = line[0:6].strip()
         atom_name = line[12:16].strip()
-        residue_name = line[17:20].strip()
+        residue_name = line[17:20].strip().upper()
         chain_name = line[21:22].strip()
         residue_pos = line[22:27].strip()
 
-        if (header == "ATOM" or header == "HETATM") and not residue_name in ["FMN","PRF","HOH","MG","OHX","MN","ZN", "SO4", "CA", "UNK"] and not atom_name in ["MG","K", "NA", "SR", "CL", "CD", "ACA"] and len(chain_name):
+        if (header == "ATOM" or header == "HETATM") and not residue_name in ["FMN","PRF","HOH","MG","OHX","MN","ZN", "SO4", "CA", "UNK", "AMO"] and not atom_name in ["MG","K", "NA", "SR", "CL", "CD", "ACA"] and len(chain_name):
             if chain_name != current_chain: #new chain
                 current_residue = residue_name
                 current_residue_pos = residue_pos
                 current_chain = chain_name
                 absolute_position = 1
-                current_rna = RNA(sequence="", name=current_chain)
-                current_rna.add_residue(current_residue)
-                current_3D = TertiaryStructure(current_rna)
+                residues = []
+                current_molecule = None
+                residues.append(current_residue)
+                current_3D = TertiaryStructure(current_molecule)
                 current_3D.title = re.sub(' +', ' ', title)
                 current_3D.numbering_system[str(absolute_position)] = current_residue_pos
 
             elif current_residue_pos != residue_pos: # new residue
                 current_residue = residue_name
                 current_residue_pos = residue_pos
-                current_rna.add_residue(current_residue)
+                if current_molecule:
+                    current_molecule.add_residue(current_residue)
+                else:
+                    residues.append(current_residue)
                 absolute_position += 1
                 current_3D.numbering_system[str(absolute_position)] = current_residue_pos
 
@@ -1333,12 +1339,30 @@ def parse_pdb(pdb_data):
             z = float(line[46:54].strip())
             current_3D.add_atom(atom_name, absolute_position, [x,y,z])
 
-            if (atom_name == "O4'" or atom_name == "O4*") and not current_rna in rnas:
-                rnas.append(current_rna)
+            if (atom_name == "O4'" or atom_name == "O4*") and not current_molecule in molecules:
+                current_molecule = RNA(sequence="", name = current_chain)
+                current_3D.rna = current_molecule
+                for residue in residues:
+                    current_molecule.add_residue(current_residue)
+                molecules.append(current_molecule)
+                tertiary_structures.append(current_3D)
+
+            elif (atom_name == "CA") and not current_molecule in molecules:
+                current_molecule = Protein(sequence="", name = current_chain)
+                current_3D.rna = current_molecule
+                for residue in residues:
+                    current_molecule.add_residue(current_residue)
+                molecules.append(current_molecule)
                 tertiary_structures.append(current_3D)
 
         elif header == 'TITLE':
             title += line[10:]
+
+        elif header == "TER":
+            current_chain = None
+            current_residue_pos = None
+            current_molecule = None
+            residues = []
 
     return tertiary_structures
 

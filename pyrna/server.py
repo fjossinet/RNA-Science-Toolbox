@@ -16,7 +16,7 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.websocket
-from tornado.escape import json_encode, native_str
+from tornado.escape import json_encode, native_str, xhtml_escape
 
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../website')
 pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../website/pages')
@@ -632,6 +632,12 @@ class WebSocket(tornado.websocket.WebSocketHandler):
             for websocket in websockets:
                 if self == websocket:
                     external_tools_2_websockets[message['id']] = websocket
+        elif message['header'] == 'plot 2d':
+            rnas, secondary_structures = parse_vienna(message['data'])
+            self.write_message( {
+                'header': '2d plot',
+                'data': Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True)
+            })
         elif message['header'] == 'webservices usage':
             db = mongodb['logs']
             now = datetime.datetime.now()
