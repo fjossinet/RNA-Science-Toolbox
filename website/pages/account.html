@@ -85,9 +85,7 @@
                 <div class="col-lg-12">
                   <h1 class="page-header"><i class="fa fa-user fa-1x"></i> Welcome {{user['login']}}</h1>
                 </div>
-                <!-- /.col-lg-12 -->
             </div>
-            <!-- /.row -->
             <div class="row">
                 <div class="col-lg-12">
                     {% if user.has_key('last_connection') %}
@@ -95,15 +93,80 @@
                     {% end %}
                 </div>
             </div>
-            <!-- /.row -->
             <div class="row">
                 <div class="col-lg-12">
-                    <h3>Link an External Tool</h3>
+                    <h2>Projects</h2>
                 </div>
             </div>
-            <!-- /.row -->
+
+              <div class="row">
+                <div class="col-lg-12">
+                    <table class="table table-striped">
+                      <tr>
+                        <th>
+                          Name
+                        </th>
+                        <th>
+                          Tool
+                        </th>
+                        <th>
+                          Created
+                        </th>
+                        <th>
+                          Last Update
+                        </th>
+                        <th>
+                        </th>
+                        <th>
+                        </th>
+                        <th>
+                        </th>
+                      </tr>
+                      {% for project in user['projects'] %}
+                      <tr id="{{project['project_id']}}">
+                        <td>
+                            {{project['name']}}
+                        </td>
+                        <td>
+                            {{project['tool_name']}} ({{project['tool_id']}})
+                        </td>
+                        <td>
+                            {{project['created']}}
+                        </td>
+                        <td>
+                          {% if project.has_key('updated') %}
+                            {{project['updated']}}
+                          {% else %}
+                            N.A.
+                          {% end %}
+                        </td>
+                        <td>
+                            <input type="submit" class="btn btn-success" value="Load"/>
+                        </td>
+                        <td>
+                            <input type="submit" class="btn btn-primary" value="Details"/>
+                        </td>
+                        <td>
+                            <input type="submit" class="btn btn-danger" value="Remove" onclick="remove_project('{{project['project_id']}}')"/>
+                        </td>
+                      </tr>
+                      {% end %}
+                    </table>
+                </div>
+              </div>
+
             <div class="row">
-              <div class="col-lg-6">
+                <div class="col-lg-12">
+                    <h2>Tools</h2>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-12">
+                    <h4>Link a Tool</h4>
+                </div>
+            </div>
+            <div class="row">
+              <div class="col-lg-12">
                 <form class="form-inline" action="/link" method="post">
                   <div class="form-group">
                       {% if tool_name != None %}
@@ -125,7 +188,7 @@
             </div>
             <div class="row">
                 <div class="col-lg-12">
-                    <h3>External Tools linked</h3>
+                    <h4>Tools linked</h4>
                 </div>
             </div>
             <div class="row">
@@ -148,15 +211,13 @@
                     {% end %}
                 </div>
             </div>
-            <!-- /.row -->
             <div class="row">
-                <div class="col-lg-2">
+                <div class="col-lg-2 col-md-3 col-sm-4">
                     <form role="form" action="/logout" method="get">
-                      <input type="submit" class="btn btn-md btn-danger btn-block" value="Logout"/>
+                      <input type="submit" class="btn btn-md btn-danger btn-block" value="Logout"/> 
                     </form>
                 </div>
             </div>
-            <!-- /.row -->
 
         </div>
         <!-- /#page-wrapper -->
@@ -175,6 +236,13 @@
 
     <!-- Custom Theme JavaScript -->
     <script src="{{ static_url('js/dashboard.js')}}"></script>
+
+    <script>
+      var remove_project = function(project_id) {
+        console.log(project_id)
+        $('tr#'+project_id).remove();
+      }
+    </script>
 
 </body>
 
