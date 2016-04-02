@@ -2,7 +2,6 @@ import re
 from pandas import DataFrame
 from pyrna.features import RNA, DNA, Protein, TertiaryStructure, SecondaryStructure
 from pyrna import utils
-from pysam import Samfile
 
 def consensus2d_to_base_pairs(aligned_rna, consensus_2d):
     """
@@ -1381,6 +1380,7 @@ def parse_sam(sam_file):
     - the total number of reads described in the SAM file
     - a dictionary providing the correspondance between the name of the genomic sequences and the tids available in the SAM file
     """
+    from pysam import Samfile
     reads = []
     tid_dic = {}
     total_read_nb = 0
