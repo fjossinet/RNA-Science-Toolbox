@@ -1,10 +1,10 @@
 . ~/.bashrc
 
 #ipython will only be available after a basic installation (see file /vagrant/fabfile.py for details)
-ipython notebook list 2>&1 | grep '^http' >> /dev/null
+#ipython notebook list 2>&1 | grep '^http' >> /dev/null
 
-if [ $? -ne 0 ]
-then
-  echo "launching iPython notebook server..."
-  ipython notebook --notebook-dir=/vagrant/notebooks --no-browser --quiet --ip=0.0.0.0 &
-fi
+#if [ $? -ne 0 ]
+#then
+#  echo "launching iPython notebook server..."
+#  ipython notebook --notebook-dir=/vagrant/notebooks --no-browser --quiet --ip=0.0.0.0 &
+#fi

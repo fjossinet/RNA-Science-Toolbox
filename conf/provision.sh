@@ -21,6 +21,12 @@ else
   sudo chown vagrant.vagrant /home/vagrant/.bash_login
 fi
 
+if ! [ -x "$(command -v g++)" ]
+then
+  echo "[vagrant provisioning] Installing g++..."
+  sudo apt-get -y install g++
+fi
+
 if ! [ -x "$(command -v vim)" ]
 then
   echo "[vagrant provisioning] Installing vim..."
@@ -38,8 +44,8 @@ if grep "bind_ip = 127.0.0.1" /etc/mongodb.conf > /dev/null
 then
   echo "[vagrant provisioning] Changing the MongoDB bind IP..."
   sudo sed -i 's/bind_ip = 127.0.0.1/bind_ip = 0.0.0.0/' /etc/mongodb.conf
-  sudo service mongod stop
-  sudo service mongod start
+  sudo service mongodb stop
+  sudo service mongodb start
 fi
 
 if ! [ -x "$(command -v fab)" ]

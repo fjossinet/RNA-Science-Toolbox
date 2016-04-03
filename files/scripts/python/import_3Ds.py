@@ -31,7 +31,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
     <version>head</version>
     <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
     <description>Chain Type: there is a Protein and a RNA chain but not any DNA or Hybrid</description>
-    <containsProtein>Y</containsProtein>
+    <containsProtein>N</containsProtein>
     <containsDna>N</containsDna>
     <containsRna>Y</containsRna>
     <containsHybrid>N</containsHybrid>

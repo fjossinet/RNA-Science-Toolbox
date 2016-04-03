@@ -10,7 +10,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # please see the online documentation at vagrantup.com.
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "fjossinet/RnaSciToolbox"
+  config.vm.box = "puphpet/ubuntu1404-x64"
   config.vm.hostname = "RnaSciToolbox"
 
   #config.vm.box_version = ">= 1.0.0"
@@ -23,7 +23,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine.
   config.vm.network "forwarded_port", guest: 8080, host: 8080 #Tornado server
-  config.vm.network "forwarded_port", guest: 8888, host: 8888 #ipython netbook server
   config.vm.network "forwarded_port", guest: 27017, host: 27017 #MongoDB
 
   # Create a private network, which allows host-only access to the machine
