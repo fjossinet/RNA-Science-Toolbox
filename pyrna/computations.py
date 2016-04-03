@@ -1908,10 +1908,12 @@ class Rnaview(Tool):
                 if pdb_content:
                     pdb_file.write(pdb_content)
                 else:
-                    print to_pdb(tertiary_structure, export_numbering_system = True)
                     pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
 
+            print commands.getoutput("ls -l %s"%self.cache_dir)
+
             commands.getoutput("rnaview -p %s"%(pdb_file_name))
+
 
             xml_file_name = pdb_file_name+".xml"
             xml_content = ""
