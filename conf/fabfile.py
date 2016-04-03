@@ -8,8 +8,8 @@ from fabric.colors import green
 from fabric.api import *
 
 home = os.path.expanduser('~')
-available_algorithms = ['rnaview', 'vienna', 'infernal', 'contrafold', \
-                        'locarna', 'foldalign', 'trnascan-SE', 'blast', 'blastR', 'clustalw', \
+available_algorithms = [ 'infernal', 'contrafold', \
+                        'trnascan-SE', 'blast', 'blastR', 'clustalw', \
                         'rnamotif', 'gotohscan', 'rnabob', 'bcheck', \
                         'snoreport', 'snoscan', 'snogps', 'samtools', 'bowtie2', 'tophat2']
 
@@ -22,8 +22,7 @@ def basic_install():
         print "Bye!"
         sys.exit()
     update()
-    python()
-    rna_structure_algorithms(install = ['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
+    rna_structure_algorithms(install = ['contrafold'])
     website()
     PDB(limit=5000)
     RNA3DHub(limit=5000)
@@ -37,46 +36,11 @@ def full_install():
         print "Bye!"
         sys.exit()
     update()
-    python()
     rna_structure_algorithms(install = available_algorithms)
     rnaseq_algorithms(install = available_algorithms)
     website()
     PDB()
     RNA3DHub()
-
-@task
-def minimal_install():
-    """
-    Do a minimal installation of the system. No RNA algorithms will be installed, only the Python packages.
-    """
-    if not confirm("This will install and configure all the Python packages. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
-    python()
-
-@task
-def python(manager="conda"):
-    """
-    Install all the Python packages
-    """
-    print(green("Installing Python packages..."))
-    if manager == "conda":
-        local('conda config --set always_yes TRUE')
-        local('conda install pandas')
-        local('conda install pymongo')
-        local('conda install pysam')
-        local('conda install ujson')
-    elif manager == "pip":
-        local('pip install pandas')
-        local('pip install pymongo')
-        local('pip install pysam')
-        local('pip install ujson')
-    else:
-        print "You need to install the following Python packages:"
-        print ("pandas")
-        print ("pymongo")
-        print ("pysam")
-        print ("ujson")
 
 @task
 def update():
@@ -101,18 +65,10 @@ def rna_structure_algorithms(install=available_algorithms, list="False"):
     if os.path.exists(installation_directory) and confirm("The directory %s already exist. Do you wish to continue?"%installation_directory) or not os.path.exists(installation_directory):
         if not os.path.exists(installation_directory):
             local('mkdir '+installation_directory)
-        if 'rnaview' in install:
-            rnaview(installation_directory)
-        if 'vienna' in install:
-            vienna_rna_package(installation_directory)
         if 'infernal' in install :
             infernal(installation_directory)
         if 'contrafold' in install:
             contrafold(installation_directory)
-        if 'locarna' in install:
-            locarna("%s/ViennaRNA"%installation_directory, installation_directory)
-        if 'foldalign' in install:
-            foldalign(installation_directory)
         if 'trnascan-SE' in install:
             trnaScanSE(installation_directory)
         if 'blast' in install:
@@ -244,22 +200,6 @@ def contrafold(installation_directory = "%s/algorithms"%home):
             local('tar -xzf contrafold.tar.gz')
             local('rm contrafold.tar.gz')
 
-def foldalign(installation_directory = "%s/algorithms"%home):
-    """
-    Install Foldalign
-    """
-    print(green("Installing Foldalign..."))
-    if not os.path.exists('%s/foldalign/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/foldalign/bin" >> $HOME/.bashrc'%installation_directory)
-    if not os.path.exists('%s/foldalign.2.1.1/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO foldalign.2.1.1.tar.gz http://dl.dropbox.com/u/3753967/algorithms/foldalign.2.1.1.tar.gz')
-            local('tar -xzf foldalign.2.1.1.tar.gz')
-            local('rm foldalign.2.1.1.tar.gz')
-            local('ln -sf %s/foldalign.2.1.1 ./foldalign'%installation_directory)
-            with lcd('foldalign'):
-                local('make')
-
 def gotohscan(installation_directory = "%s/algorithms"%home):
     """
     Install GotohScan
@@ -297,27 +237,6 @@ def infernal(installation_directory = "%s/algorithms"%home):
             with lcd(installation_directory):
                 local('rm -rf infernal-1.0.2')
 
-def locarna(vrna_path, installation_directory = "%s/algorithms"%home):
-    """
-    Install Locarna
-    """
-    print(green("Installing Locarna..."))
-    if not os.path.exists('%s/locarna/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/locarna/bin" >> $HOME/.bashrc'%installation_directory)
-    if not os.path.exists('%s/locarna_1.8.1/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO locarna-1.8.1.tar http://dl.dropbox.com/u/3753967/algorithms/locarna-1.8.1.tar')
-            local('tar -xf locarna-1.8.1.tar')
-            local('rm locarna-1.8.1.tar')
-            local('ln -sf %s/locarna_1.8.1 ./locarna'%installation_directory)
-            with lcd('locarna-1.8.1'):
-                local('./configure --prefix=%s/locarna_1.8.1 --with-vrna=%s --without-perl --without-forester --without-kinfold'%(installation_directory, vrna_path))
-                local('make clean')
-                local('make')
-                local('make install')
-            with lcd(installation_directory):
-                local('rm -rf locarna-1.8.1')
-
 def rnamotif(installation_directory = "%s/algorithms"%home):
     """
     Install RNAMotif
@@ -349,23 +268,6 @@ def rnabob(installation_directory = "%s/algorithms"%home):
             local('rm rnabob-2.2.1.tar.gz')
             local('ln -sf %s/rnabob-2.2.1 ./rnabob'%installation_directory)
             with lcd('rnabob'):
-                local('make')
-
-def rnaview(installation_directory = "%s/algorithms"%home):
-    """
-    Install RNAView
-    """
-    print(green("Installing RNAView..."))
-    if not os.path.exists('%s/RNAVIEW/bin'%installation_directory):
-        local('echo "export RNAVIEW=%s/RNAVIEW/" >> $HOME/.bashrc'%installation_directory)
-        local('echo "export PATH=\$PATH:\$RNAVIEW/bin" >> $HOME/.bashrc')
-    if not os.path.exists('%s/RNAVIEW/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO RNAVIEW.tar.gz http://dl.dropbox.com/u/3753967/algorithms/RNAVIEW.tar.gz')
-            local('tar -xzf RNAVIEW.tar.gz')
-            local('rm RNAVIEW.tar.gz')
-            with lcd('RNAVIEW'):
-                local('make clean')
                 local('make')
 
 def snogps(installation_directory = "%s/algorithms"%home):
@@ -439,28 +341,6 @@ def trnaScanSE(installation_directory = "%s/algorithms"%home):
                 local('mv Makefile2 Makefile')
                 local('make')
                 local('make install')
-
-def vienna_rna_package(installation_directory = "%s/algorithms"%expanduser("~")):
-    """
-    Install the Vienna RNA package
-    """
-    print(green("Installing Vienna RNA package..."))
-    if not os.path.exists('%s/ViennaRNA/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/bin" >> $HOME/.bashrc'%installation_directory)
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/share/ViennaRNA/bin/" >> $HOME/.bashrc'%installation_directory)
-    if not os.path.exists('%s/ViennaRNA_2.1.8/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO ViennaRNA-2.1.8.tar.gz http://dl.dropbox.com/u/3753967/algorithms/ViennaRNA-2.1.8.tar.gz')
-            local('tar -xzf ViennaRNA-2.1.8.tar.gz')
-            local('rm ViennaRNA-2.1.8.tar.gz')
-            local('ln -sf %s/ViennaRNA_2.1.8 ./ViennaRNA'%installation_directory)
-            with lcd('ViennaRNA-2.1.8'):
-                local('./configure --prefix="%s"/ViennaRNA_2.1.8'%installation_directory)
-                local('make clean')
-                local('make')
-                local('make install')
-            with lcd(installation_directory):
-                local('rm -rf ViennaRNA-2.1.8')
 
 def bowtie2(installation_directory = "%s/algorithms"%home):
     """

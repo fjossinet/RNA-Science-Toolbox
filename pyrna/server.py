@@ -737,30 +737,23 @@ class Application(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, cookie_secret = str(ObjectId()) , **settings)
 
 if __name__ == '__main__':
-    hostname = "127.0.0.1"
     webserver_port = 8080
     mongodb_host = "localhost"
     mongodb_port = 27017
-    conf_file = "%s/../conf/pyrna.json"%os.path.dirname(os.path.realpath(__file__))
 
     if "-h" in sys.argv:
-        print "Usage: ./server.py [-hostname your_hostname] [-conf configuration_file]"
-        print "- hostname: the hostname of your server (default is 127.0.0.1)"
-        print '- conf: the configuration file (default is conf/pyrna.json). Copy and edit this file to modify the parameters.\n'
+        print "Usage: ./server.py [-p x] [-mh x] [-mp x]  "
+        print '- p: the web server port (default: 8080)\n'
+        print '- mh: the mongodb host (default: localhost)\n'
+        print '- mp: the mongodb port (default: 27017)\n'
         sys.exit(-1)
-    if "-hostname" in sys.argv:
-        hostname = sys.argv[sys.argv.index("-hostname")+1]
-    if "-conf" in sys.argv:
-        conf_file = os.path.abspath(sys.argv[sys.argv.index("-conf")+1])
 
-    with open(conf_file) as config:
-        params = config.read()
-        params = json.loads(params)
-        webserver_port = params['rest_server']['port']
-        mongodb_host = params['mongodb']['host']
-        mongodb_port = params['mongodb']['port']
-        enabled_algorithms = params['rest_server']['enable-algorithms']
-        enable_accounts = params['rest_server']['enable-accounts'] == 'True'
+    if "-p" in sys.argv:
+        webserver_port = int(sys.argv[sys.argv.index("-p")+1])
+    if "-mh" in sys.argv:
+        mongodb_host = sys.argv[sys.argv.index("-mh")+1]
+    if "-mp" in sys.argv:
+        mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
 
     try :
         mongodb = MongoClient(mongodb_host, mongodb_port)
@@ -774,7 +767,7 @@ if __name__ == '__main__':
     app = Application()
     server = tornado.httpserver.HTTPServer(app)
     server.listen(webserver_port)
-    print "\033[92mYour webserver is now accessible at http://%s:%i/\033[0m"%(hostname, webserver_port)
+    print "\033[92mYour webserver is now accessible at http://127.0.0.1:%i/\033[0m"%webserver_port
 
     main_loop = tornado.ioloop.IOLoop.instance()
     main_loop.start()

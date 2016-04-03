@@ -268,12 +268,23 @@ if __name__ == '__main__':
     db_port = 27017
     rna3dhub = False
     canonical_only = False
-    limit=5000
+    annotate = False
+    limit = 5000
 
     if "-h" in sys.argv:
-        db_host = sys.argv[sys.argv.index("-h")+1]
-    if "-p" in sys.argv:
-        db_port = int(sys.argv[sys.argv.index("-p")+1])
+        print "Usage: ./import_3Ds.py [-p x] [-mh x] [-mp x] [-l x] [-rna3dhub] [-canonical_only] [-annotate]"
+        print '- mh: the mongodb host (default: localhost)\n'
+        print '- mp: the mongodb port (default: 27017)\n'
+        print '- l: limit of 3D structures to process (default: 5000)\n'
+        print '- rna3dhub: use the 3D structures from the non-redundant set\n'
+        print '- canonical_only: a secondary structure is made with canonical base-pairs only'
+        print '- annotate: annotate each 3D structure imported'
+        sys.exit(-1)
+
+    if "-mh" in sys.argv:
+        db_host = sys.argv[sys.argv.index("-mh")+1]
+    if "-mp" in sys.argv:
+        db_port = int(sys.argv[sys.argv.index("-mp")+1])
     if "-l" in sys.argv:
         limit = int(sys.argv[sys.argv.index("-l")+1])
     rna3dhub =  "-rna3dhub" in sys.argv
