@@ -47,6 +47,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                 try:
                     ss = None
                     if annotate:
+                        print canonical_only
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
                     save(db, ss, ts, pdb_id, limit)
 
