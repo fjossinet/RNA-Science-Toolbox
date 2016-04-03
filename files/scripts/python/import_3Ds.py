@@ -72,6 +72,7 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
                     ss = None
                     if annotate:
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
+                        print ss
                     save(db, ss, ts, cluster[0], limit)
 
                 except Exception, e:
