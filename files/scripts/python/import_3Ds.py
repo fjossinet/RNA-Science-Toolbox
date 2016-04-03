@@ -47,7 +47,6 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                 try:
                     ss = None
                     if annotate:
-                        print canonical_only
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
                     save(db, ss, ts, pdb_id, limit)
 
@@ -75,7 +74,6 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                     print "No annotation for %s"%cluster[0]
 
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
-    print "save"
     if db['junctions'].count() >= limit:
         print "Limit of %i junctions reached"%limit
         sys.exit()

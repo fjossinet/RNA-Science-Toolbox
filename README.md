@@ -28,6 +28,4 @@ You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to g
 
 #Quick Start
 
-The easiest way to start with the RNA Science Toolbox is by using one of the Docker images available:
-
-* [the Docker image for Assemble2](https://hub.docker.com/r/fjossinet/assemble2/): it provides a fully configured RNA Science Toolbox to be used with the tool [Assemble2](http://www.bioinformatics.org/assemble/)
+You can find all the details [here](http://fjossinet.github.io/RNA-Science-Toolbox/)
