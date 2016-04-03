@@ -84,7 +84,7 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
 <version>head</version>
 <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
 <description>Chain Type: there is a Protein and a RNA chain but not any DNA or Hybrid</description>
-<containsProtein>Y</containsProtein>
+<containsProtein>N</containsProtein>
 <containsDna>N</containsDna>
 <containsRna>Y</containsRna>
 <containsHybrid>N</containsHybrid>
@@ -107,7 +107,7 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
                     print "No annotation for %s"%pdb_id
 
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
-
+    print "save"
     if db['junctions'].count() >= limit:
         print "Limit of %i junctions reached"%limit
         sys.exit()
