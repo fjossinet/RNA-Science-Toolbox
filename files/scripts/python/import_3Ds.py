@@ -50,7 +50,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
 
 def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures, limit):
     pdb = PDB()
-    rnaview = Rnaview(cache_dir="/")
+    rnaview = Rnaview()
 
     start = (job_id-1)*structuresPerJob+1
     end = (job_id-1)*structuresPerJob+1+structuresPerJob-1
