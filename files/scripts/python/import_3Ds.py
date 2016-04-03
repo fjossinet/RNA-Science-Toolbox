@@ -54,6 +54,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                     print e
                     print "No annotation for %s"%pdb_id
     else:
+        pdb = PDB()
         rna3dHub = RNA3DHub()
         clusters = rna3dHub.get_clusters()
         print "%i 3Ds to process"%len(clusters)
