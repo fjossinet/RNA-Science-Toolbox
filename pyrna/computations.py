@@ -1910,6 +1910,7 @@ class Rnaview(Tool):
                 else:
                     pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
 
+            print commands.getoutput("ls /")
             print commands.getoutput("more %s"%(pdb_file_name+".out"))
 
             commands.getoutput("rnaview -p %s"%(pdb_file_name))
