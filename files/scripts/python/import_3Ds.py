@@ -75,6 +75,7 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
                     save(db, ss, ts, cluster[0], limit)
 
                 except Exception, e:
+                    print e
                     print "No annotation for %s"%cluster[0]
 
     else:
