@@ -17,17 +17,16 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
     db_name = ""
 
     if rna3dhub:
-        rna3dHub = RNA3DHub()
         db_name = "RNA3DHub"
     else:
         rna3dHub = None
         db_name = "PDB"
 
     db = client[db_name]
-    structuresPerJob = 100
+    rnaview = Rnaview()
 
-    total_structures = 0
     if not rna3dhub:
+        pdb = PDB()
         query ="""<orgPdbQuery>
     <version>head</version>
     <queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
@@ -37,61 +36,10 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
     <containsRna>Y</containsRna>
     <containsHybrid>N</containsHybrid>
   </orgPdbQuery>"""
-        total_structures = len(PDB().query(query))
-    else:
-        total_structures = len(RNA3DHub().get_clusters())
+        pdb_ids = pdb.query(query)
+        print "%i 3Ds to process"%len(pdb_ids)
 
-    print "%i 3Ds to process"%total_structures
-
-    total_jobs = int(math.floor(total_structures/100)+1) #100 structures per job
-
-    for job_id in range (1, total_jobs+1):
-        doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures, limit)
-
-def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures, limit):
-    pdb = PDB()
-    rnaview = Rnaview(cache_dir="/usr")
-
-    start = (job_id-1)*structuresPerJob+1
-    end = (job_id-1)*structuresPerJob+1+structuresPerJob-1
-
-    if rna3dHub:
-
-        clusters = rna3dHub.get_clusters()
-        print clusters
-
-        if end > len(clusters):
-            end = len(clusters)
-
-        for cluster in clusters['pdb-ids'][start:end]:
-            if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%cluster[0]}):
-                continue
-            print "Recover %s"%cluster[0] #we use the first pdb_id in the list of ids making a cluster
-            for ts in parsers.parse_pdb(pdb.get_entry(cluster[0])):
-                try:
-                    ss = None
-                    if annotate:
-                        ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
-                    save(db, ss, ts, cluster[0], limit)
-
-                except Exception, e:
-                    print e
-                    print "No annotation for %s"%cluster[0]
-
-    else:
-        query = """
-        <orgPdbQuery>
-<version>head</version>
-<queryType>org.pdb.query.simple.ChainTypeQuery</queryType>
-<description>Chain Type: there is a Protein and a RNA chain but not any DNA or Hybrid</description>
-<containsProtein>N</containsProtein>
-<containsDna>N</containsDna>
-<containsRna>Y</containsRna>
-<containsHybrid>N</containsHybrid>
-</orgPdbQuery>
-        """
-        pdb_ids = PDB().query(query)
-        for pdb_id in pdb_ids[start:end]:
+        for pdb_id in pdb_ids:
             if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%pdb_id}):
                 continue
             print "Recover %s"%pdb_id
@@ -105,6 +53,25 @@ def doTheJob(job_id, db, rna3dHub, annotate, structuresPerJob, total_structures,
                 except Exception, e:
                     print e
                     print "No annotation for %s"%pdb_id
+    else:
+        rna3dHub = RNA3DHub()
+        clusters = rna3dHub.get_clusters()
+        print "%i 3Ds to process"%len(clusters)
+
+        for cluster in clusters['pdb-ids']:
+            if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%cluster[0]}):
+                continue
+            print "Recover %s"%cluster[0] #we use the first pdb_id in the list of ids making a cluster
+            for ts in parsers.parse_pdb(pdb.get_entry(cluster[0])):
+                try:
+                    ss = None
+                    if annotate:
+                        ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
+                    save(db, ss, ts, cluster[0], limit)
+
+                except Exception, e:
+                    print e
+                    print "No annotation for %s"%cluster[0]
 
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
     print "save"
@@ -276,7 +243,7 @@ if __name__ == '__main__':
         print "Usage: ./import_3Ds.py [-p x] [-mh x] [-mp x] [-l x] [-rna3dhub] [-canonical_only] [-annotate]"
         print '- mh: the mongodb host (default: localhost)\n'
         print '- mp: the mongodb port (default: 27017)\n'
-        print '- l: limit of 3D structures to process (default: 5000)\n'
+        print '- l: limit of junctions to be stored (default: 5000)\n'
         print '- rna3dhub: use the 3D structures from the non-redundant set\n'
         print '- canonical_only: a secondary structure is made with canonical base-pairs only'
         print '- annotate: annotate each 3D structure imported'
