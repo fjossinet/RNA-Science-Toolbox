@@ -1904,12 +1904,14 @@ class Rnaview(Tool):
             response.close()
         else:
             pdb_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.pdb'
+            print pdb_file_name
             with open(pdb_file_name, 'w') as pdb_file:
                 if pdb_content:
                     pdb_file.write(pdb_content)
                 else:
                     pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
 
+            print "rnaview -p %s"%(pdb_file_name)
             commands.getoutput("rnaview -p %s"%(pdb_file_name))
 
             xml_file_name = pdb_file_name+".xml"
