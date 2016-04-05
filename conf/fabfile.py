@@ -72,7 +72,7 @@ def update():
     Update the Ubuntu package list
     """
     print(green("Updating the package list..."))
-    #local('sudo apt-get update -qq')
+    local('sudo apt-get update -qq')
 
 def python(manager="conda"):
     """
@@ -107,7 +107,7 @@ def install_algorithms(algorithms=[]):
     if isinstance(algorithms, basestring):
         algorithms = algorithms.split(':')
     print(green("Installing the algorithms..."))
-    installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'), validate=r'^'+expanduser('~')+'/.+/?$')
+    #installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'), validate=r'^'+expanduser('~')+'/.+/?$')
     if not os.path.exists(installation_directory):
         local('mkdir '+installation_directory)
     if 'rnaview' in algorithms:
