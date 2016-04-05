@@ -445,8 +445,7 @@ def vienna_rna_package(installation_directory = "%s/algorithms"%expanduser("~"))
             local('rm ViennaRNA-2.1.8.tar.gz')
             local('ln -sf %s/ViennaRNA_2.1.8 ./ViennaRNA'%installation_directory)
             with lcd('ViennaRNA-2.1.8'):
-                local('./configure --prefix="%s"/ViennaRNA_2.1.8'%installation_directory)
-                local('make clean')
+                local('./configure --prefix=%s/ViennaRNA_2.1.8'%installation_directory)
                 local('make')
                 local('make install')
             with lcd(installation_directory):
