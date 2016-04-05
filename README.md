@@ -28,4 +28,4 @@ You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to g
 
 #Quick Start
 
-You can find all the details [here](http://fjossinet.github.io/RNA-Science-Toolbox/)
+You can find all the details [here](http://jossinetlab.github.io/RNA-Science-Toolbox/)
