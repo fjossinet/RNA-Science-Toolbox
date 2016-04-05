@@ -18,18 +18,24 @@ def assemble2():
     """
     Install and configure the RNA Science toolbox to be usable with Assemble2
     """
+    if not confirm("Install and configure the RNA Science toolbox to be usable with Assemble2?") :
+        print "Bye!"
+        sys.exit()
     update()
     python()
     install_algorithms(algorithms = ['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
-    #website()
-    #PDB(limit=5000)
-    #RNA3DHub(limit=5000)
+    website()
+    PDB(limit=5000)
+    RNA3DHub(limit=5000)
 
 @task
 def python():
     """
     Install and configure the RNA Science toolbox without any algorithms and data. Just the Python dependencies.
     """
+    if not confirm("This will just install the Python dependencies. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
     update()
     python()
 
@@ -38,6 +44,9 @@ def rnaseq(algorithms=[]):
     """
     Install and configure the RNA Science Toolbox to do NGS stuff
     """
+    if not confirm("Install and configure the RNA Science Toolbox to do NGS stuff?") :
+        print "Bye!"
+        sys.exit()
     update()
     python()
     install_algorithms(algorithms = ['samtools', 'bowtie2', 'tophat2'])
@@ -101,44 +110,44 @@ def install_algorithms(algorithms=[]):
     if isinstance(algorithms, basestring):
         algorithms = algorithms.split(':')
     print(green("Installing the algorithms..."))
-    installation_directory = os.path.join(home, 'algorithms')
-    print installation_directory
-    if not os.path.exists(installation_directory):
-        local('mkdir '+installation_directory)
-    if 'rnaview' in algorithms:
-        rnaview(installation_directory)
-    if 'vienna' in algorithms:
-        vienna_rna_package(installation_directory)
-    if 'infernal' in algorithms :
-        infernal(installation_directory)
-    if 'contrafold' in algorithms:
-        contrafold(installation_directory)
-    if 'locarna' in algorithms:
-        locarna("%s/ViennaRNA"%installation_directory, installation_directory)
-    if 'foldalign' in algorithms:
-        foldalign(installation_directory)
-    if 'trnascan-SE' in algorithms:
-        trnaScanSE(installation_directory)
-    if 'blast' in algorithms:
-        blast(installation_directory)
-    if 'blastR' in algorithms:
-        blastR(installation_directory)
-    if 'clustalw' in algorithms:
-        clustalw(installation_directory)
-    if 'rnamotif' in algorithms:
-        rnamotif(installation_directory)
-    if 'gotohscan' in algorithms:
-        gotohscan(installation_directory)
-    if 'rnabob' in algorithms:
-        rnabob(installation_directory)
-    if 'bcheck' in algorithms:
-        bcheck(installation_directory)
-    if 'snoreport' in algorithms:
-        snoreport(installation_directory)
-    if 'snoscan' in algorithms:
-        snoscan(installation_directory)
-    if 'snogps' in algorithms:
-        snogps(installation_directory)
+    installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'), validate=r'^'+expanduser('~')+'/.+/?$')
+    if os.path.exists(installation_directory) and confirm("The directory %s already exist. Do you wish to continue?"%installation_directory) or not os.path.exists(installation_directory):
+        if not os.path.exists(installation_directory):
+            local('mkdir '+installation_directory)
+        if 'rnaview' in algorithms:
+            rnaview(installation_directory)
+        if 'vienna' in algorithms:
+            vienna_rna_package(installation_directory)
+        if 'infernal' in algorithms :
+            infernal(installation_directory)
+        if 'contrafold' in algorithms:
+            contrafold(installation_directory)
+        if 'locarna' in algorithms:
+            locarna("%s/ViennaRNA"%installation_directory, installation_directory)
+        if 'foldalign' in algorithms:
+            foldalign(installation_directory)
+        if 'trnascan-SE' in algorithms:
+            trnaScanSE(installation_directory)
+        if 'blast' in algorithms:
+            blast(installation_directory)
+        if 'blastR' in algorithms:
+            blastR(installation_directory)
+        if 'clustalw' in algorithms:
+            clustalw(installation_directory)
+        if 'rnamotif' in algorithms:
+            rnamotif(installation_directory)
+        if 'gotohscan' in algorithms:
+            gotohscan(installation_directory)
+        if 'rnabob' in algorithms:
+            rnabob(installation_directory)
+        if 'bcheck' in algorithms:
+            bcheck(installation_directory)
+        if 'snoreport' in algorithms:
+            snoreport(installation_directory)
+        if 'snoscan' in algorithms:
+            snoscan(installation_directory)
+        if 'snogps' in algorithms:
+            snogps(installation_directory)
     print(green("The PATH variable has been updated in your .bashrc file"))
 
 def bcheck(installation_directory = "%s/algorithms"%home):
@@ -507,7 +516,9 @@ def PDB(limit = 5000):
     Feed the database with PDB data
     """
     print(green("Feed the database with %i 3D junctions..."%limit))
-
+    if not confirm("The current PDB database will be erased. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
     local('mongo PDB --eval "db.dropDatabase()"')
     local("import_3Ds.py -annotate -l %i"%limit)
     local("rm -rf /tmp/*.pdb /tmp/*.pdb.out /tmp/*.pdb.xml /tmp/*.pdb.ps")
@@ -517,7 +528,9 @@ def RNA3DHub(limit = 5000):
     Feed the database with PDB data derived from the RNA3DHub website
     """
     print(green("Feed the database with %i 3D junctions derived from the RNA3DHub website..."%limit))
-
+    if not confirm("The current RNA3DHub database will be erased. Do you wish to continue?") :
+        print "Bye!"
+        sys.exit()
     local('mongo RNA3DHub --eval "db.dropDatabase()"')
     local("import_3Ds.py -annotate -rna3dhub -l %i"%limit)
     local("rm -rf /tmp/*.pdb /tmp/*.pdb.out /tmp/*.pdb.xml /tmp/*.pdb.ps")
