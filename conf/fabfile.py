@@ -72,7 +72,7 @@ def update():
     Update the Ubuntu package list
     """
     print(green("Updating the package list..."))
-    local('sudo apt-get update -qq')
+    #local('sudo apt-get update -qq')
 
 def python(manager="conda"):
     """
@@ -522,7 +522,7 @@ def RNA3DHub(limit = 5000):
     Feed the database with PDB data derived from the RNA3DHub website
     """
     print(green("Feed the database with %i 3D junctions derived from the RNA3DHub website..."%limit))
-    
+
     local('mongo RNA3DHub --eval "db.dropDatabase()"')
     local("import_3Ds.py -annotate -rna3dhub -l %i"%limit)
     local("rm -rf /tmp/*.pdb /tmp/*.pdb.out /tmp/*.pdb.xml /tmp/*.pdb.ps")
