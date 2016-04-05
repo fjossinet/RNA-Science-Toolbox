@@ -30,9 +30,6 @@ def python():
     """
     Install and configure the RNA Science toolbox without any algorithms and data. Just the Python dependencies.
     """
-    if not confirm("This will just install the Python dependencies. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
     update()
     python()
 
@@ -41,9 +38,6 @@ def rnaseq(algorithms=[]):
     """
     Install and configure the RNA Science Toolbox to do NGS stuff
     """
-    if not confirm("Install and configure the RNA Science Toolbox to do NGS stuff?") :
-        print "Bye!"
-        sys.exit()
     update()
     python()
     install_algorithms(algorithms = ['samtools', 'bowtie2', 'tophat2'])
@@ -108,6 +102,8 @@ def install_algorithms(algorithms=[]):
         algorithms = algorithms.split(':')
     print(green("Installing the algorithms..."))
     installation_directory = os.path.join(home, 'algorithms')
+    print installation_directory
+    sys.exit(-1)
     if not os.path.exists(installation_directory):
         local('mkdir '+installation_directory)
     if 'rnaview' in algorithms:
