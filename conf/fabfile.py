@@ -21,9 +21,9 @@ def assemble2():
     update()
     python()
     install_algorithms(algorithms = ['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
-    website()
-    PDB(limit=5000)
-    RNA3DHub(limit=5000)
+    #website()
+    #PDB(limit=5000)
+    #RNA3DHub(limit=5000)
 
 @task
 def python():
