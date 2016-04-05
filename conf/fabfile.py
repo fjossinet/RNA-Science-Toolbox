@@ -103,7 +103,6 @@ def install_algorithms(algorithms=[]):
     print(green("Installing the algorithms..."))
     installation_directory = os.path.join(home, 'algorithms')
     print installation_directory
-    sys.exit(-1)
     if not os.path.exists(installation_directory):
         local('mkdir '+installation_directory)
     if 'rnaview' in algorithms:
