@@ -68,7 +68,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #   # cf.run_file = "motd.cf"
   # end
 
-  config.vm.provision "shell", path: "conf/provision.sh"
+  config.vm.provision "shell", path: "conf/provision_linux.sh"
 
   #
   # You can also configure and bootstrap a client to an existing

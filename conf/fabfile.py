@@ -27,17 +27,7 @@ def assemble2():
     website()
     PDB(limit=5000)
     RNA3DHub(limit=5000)
-
-@task
-def python():
-    """
-    Install and configure the RNA Science toolbox without any algorithms and data. Just the Python dependencies.
-    """
-    if not confirm("This will just install the Python dependencies. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
-    update()
-    python()
+    print(red("Add the following line to you configuration file (%s/.bashrc or %s/.zshrc): source .RnaSciToolbox"%(home, home)))
 
 @task
 def rnaseq(algorithms=[]):
@@ -50,6 +40,7 @@ def rnaseq(algorithms=[]):
     update()
     python()
     install_algorithms(algorithms = ['samtools', 'bowtie2', 'tophat2'])
+    print(red("Add the following line to you configuration file (%s/.bashrc or %s/.zshrc): source .RnaSciToolbox"%(home, home)))
 
 @task
 def backup():
@@ -72,10 +63,16 @@ def restore():
 
 def update():
     """
-    Update the Ubuntu package list
+    Update the operating system
     """
-    print(green("Updating the package list..."))
-    local('sudo apt-get update -qq')
+    if sys.platform != 'darwin': #if not OSX
+        print(green("Using Linux..."))
+        print(green("Updating the package list..."))
+        local('sudo apt-get update -qq')
+    else:
+        print(green("Using MacOSX"))
+        with warn_only():
+            local('brew update')
 
 def python(manager="conda"):
     """
@@ -110,7 +107,7 @@ def install_algorithms(algorithms=[]):
     if isinstance(algorithms, basestring):
         algorithms = algorithms.split(':')
     print(green("Installing the algorithms..."))
-    installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'), validate=r'^'+expanduser('~')+'/.+/?$')
+    installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'))
     if os.path.exists(installation_directory) and confirm("The directory %s already exist. Do you wish to continue?"%installation_directory) or not os.path.exists(installation_directory):
         if not os.path.exists(installation_directory):
             local('mkdir '+installation_directory)
@@ -148,7 +145,12 @@ def install_algorithms(algorithms=[]):
             snoscan(installation_directory)
         if 'snogps' in algorithms:
             snogps(installation_directory)
-    print(green("The PATH variable has been updated in your .bashrc file"))
+        if 'samtools' in algorithms:
+            samtools(installation_directory)
+        if 'bowtie2' in algorithms:
+            bowtie2(installation_directory)
+        if 'tophat2' in algorithms:
+            tophat2(installation_directory)
 
 def bcheck(installation_directory = "%s/algorithms"%home):
     """
@@ -156,7 +158,7 @@ def bcheck(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing BCheck..."))
     if not os.path.exists('%s/Bcheck/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/Bcheck/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/Bcheck/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/Bcheck-0.6/'%installation_directory):
         with lcd(installation_directory):
             #the Bcheck recovered from Dropbox has been modified to not check the rnabob and Infernal version
@@ -164,7 +166,7 @@ def bcheck(installation_directory = "%s/algorithms"%home):
             local('tar -xzf Bcheck-0.6.tar.gz')
             local('rm Bcheck-0.6.tar.gz')
             local('ln -sf %s/Bcheck-0.6 ./Bcheck'%installation_directory)
-            local('echo "export PATH=\$PATH:%s/Bcheck/" >> $HOME/.bashrc'%installation_directory)
+            local('echo "export PATH=\$PATH:%s/Bcheck/" >> $HOME/.RnaSciToolbox'%installation_directory)
 
 def blast(installation_directory = "%s/algorithms"%home):
     """
@@ -172,9 +174,9 @@ def blast(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Blast..."))
     if not os.path.exists('%s/blast/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/blast/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/blast/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/ncbi-blast/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/ncbi-blast/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/ncbi-blast/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/ncbi-blast-2.2.31+/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO blast-2.2.26-x64-linux.tar.gz http://dl.dropbox.com/u/3753967/algorithms/blast-2.2.26-x64-linux.tar.gz')
@@ -192,7 +194,7 @@ def blastR(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing BlastR..."))
     if not os.path.exists('%s/blastR/scripts/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/blastR/scripts/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/blastR/scripts/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/blastR_package_V2.2/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO blastR_package_V2.2.tar.gz http://dl.dropboxusercontent.com/u/3753967/algorithms/blastR_package_V2.2.tar.gz')
@@ -206,7 +208,7 @@ def clustalw(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing ClustalW..."))
     if not os.path.exists('%s/clustalw/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/clustalw/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/clustalw/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/clustalw_2.1/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO clustalw-2.1.tar.gz http://dl.dropbox.com/u/3753967/algorithms/clustalw-2.1.tar.gz')
@@ -227,7 +229,7 @@ def contrafold(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Contrafold..."))
     if not os.path.exists('%s/contrafold/src'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/contrafold/src" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/contrafold/src" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/contrafold/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO contrafold.tar.gz http://dl.dropbox.com/u/3753967/algorithms/contrafold.tar.gz')
@@ -240,7 +242,7 @@ def foldalign(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Foldalign..."))
     if not os.path.exists('%s/foldalign/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/foldalign/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/foldalign/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/foldalign.2.1.1/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO foldalign.2.1.1.tar.gz http://dl.dropbox.com/u/3753967/algorithms/foldalign.2.1.1.tar.gz')
@@ -256,7 +258,7 @@ def gotohscan(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing GotohScan..."))
     if not os.path.exists('%s/GotohScan/src'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/GotohScan/src" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/GotohScan/src" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/GotohScan_2.0-alpha/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO GotohScan_2.0-alpha.tar.gz http://dl.dropbox.com/u/3753967/algorithms/GotohScan_2.0-alpha.tar.gz')
@@ -272,7 +274,7 @@ def infernal(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Infernal..."))
     if not os.path.exists('%s/infernal/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/infernal/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/infernal/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/infernal_1.0.2/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO infernal-1.0.2.tar.gz http://dl.dropbox.com/u/3753967/algorithms/infernal-1.0.2.tar.gz')
@@ -293,7 +295,7 @@ def locarna(vrna_path, installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Locarna..."))
     if not os.path.exists('%s/locarna/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/locarna/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/locarna/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/locarna_1.8.1/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO locarna-1.8.1.tar http://dl.dropbox.com/u/3753967/algorithms/locarna-1.8.1.tar')
@@ -314,8 +316,9 @@ def rnamotif(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing RNAMotif..."))
     if not os.path.exists('%s/rnamotif/src'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/rnamotif/src" >> $HOME/.bashrc'%installation_directory)
-    local("sudo apt-get -y install flex")
+        local('echo "export PATH=\$PATH:%s/rnamotif/src" >> $HOME/.RnaSciToolbox'%installation_directory)
+    if sys.platform != 'darwin': #if not OSX
+        local("sudo apt-get -y install flex")
     if not os.path.exists('%s/rnamotif-3.0.7/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO rnamotif-3.0.7.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/rnamotif-3.0.7.tar.gz')
@@ -331,7 +334,7 @@ def rnabob(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing RNABOB..."))
     if not os.path.exists('%s/rnabob/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/rnabob/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/rnabob/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/rnabob-2.2.1/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO rnabob-2.2.1.tar.gz http://dl.dropbox.com/u/3753967/algorithms/rnabob.tar.gz')
@@ -347,8 +350,8 @@ def rnaview(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing RNAView..."))
     if not os.path.exists('%s/RNAVIEW/bin'%installation_directory):
-        local('echo "export RNAVIEW=%s/RNAVIEW/" >> $HOME/.bashrc'%installation_directory)
-        local('echo "export PATH=\$PATH:\$RNAVIEW/bin" >> $HOME/.bashrc')
+        local('echo "export RNAVIEW=%s/RNAVIEW/" >> $HOME/.RnaSciToolbox'%installation_directory)
+        local('echo "export PATH=\$PATH:\$RNAVIEW/bin" >> $HOME/.RnaSciToolbox')
     if not os.path.exists('%s/RNAVIEW/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO RNAVIEW.tar.gz http://dl.dropbox.com/u/3753967/algorithms/RNAVIEW.tar.gz')
@@ -364,7 +367,7 @@ def snogps(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing SnoGPS..."))
     if not os.path.exists('%s/snoGPS/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/snoGPS/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/snoGPS/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/snoGPS/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO snoGPS-0.2.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/snoGPS-0.2.tar.gz')
@@ -380,7 +383,7 @@ def snoreport(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing snoReport..."))
     if not os.path.exists('%s/SnoReport/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/SnoReport/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/SnoReport/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/SnoReport1.0/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO SnoReport1.0.tgz http://dl.dropboxusercontent.com/u/3753967/algorithms/SnoReport1.0.tgz')
@@ -397,7 +400,7 @@ def snoscan(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Snoscan..."))
     if not os.path.exists('%s/snoscan/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/snoscan/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/snoscan/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/snoscan-0.9b/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO snoscan-0.9b.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/snoscan.tar.gz')
@@ -415,8 +418,8 @@ def trnaScanSE(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing tRNAscan-SE..."))
     if not os.path.exists('%s/tRNAscan-SE/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/tRNAscan-SE/bin" >> $HOME/.bashrc'%installation_directory)
-        local('echo "export PERL5LIB=%s/tRNAscan-SE/bin/:\$PERL5LIB" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/tRNAscan-SE/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
+        local('echo "export PERL5LIB=%s/tRNAscan-SE/bin/:\$PERL5LIB" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/tRNAscan-SE-1.3.1/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO tRNAscan-SE-1.3.1.tar https://dl.dropboxusercontent.com/u/3753967/algorithms/tRNAscan-SE-1.3.1.tar')
@@ -436,8 +439,8 @@ def vienna_rna_package(installation_directory = "%s/algorithms"%expanduser("~"))
     """
     print(green("Installing Vienna RNA package..."))
     if not os.path.exists('%s/ViennaRNA/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/bin" >> $HOME/.bashrc'%installation_directory)
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/share/ViennaRNA/bin/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/ViennaRNA/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/ViennaRNA/share/ViennaRNA/bin/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/ViennaRNA_2.1.8/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO ViennaRNA-2.1.8.tar.gz http://dl.dropbox.com/u/3753967/algorithms/ViennaRNA-2.1.8.tar.gz')
@@ -457,7 +460,7 @@ def bowtie2(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Bowtie2..."))
     if not os.path.exists('%s/bowtie2/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/bowtie2/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/bowtie2/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/bowtie2-2.2.6/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO bowtie2-2.2.6.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/bowtie2-2.2.6.tar.gz')
@@ -473,7 +476,7 @@ def samtools(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Samtools..."))
     if not os.path.exists('%s/samtools/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/samtools/" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/samtools/" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/samtools-1.2/'%installation_directory):
         with lcd(installation_directory):
             local('wget -qO samtools-1.2.tar.bz2 http://dl.dropbox.com/u/3753967/algorithms/samtools-1.2.tar.bz2')
@@ -489,7 +492,7 @@ def tophat2(installation_directory = "%s/algorithms"%home):
     """
     print(green("Installing Tophat2..."))
     if not os.path.exists('%s/tophat2/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/tophat2/bin" >> $HOME/.bashrc'%installation_directory)
+        local('echo "export PATH=\$PATH:%s/tophat2/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
     if not os.path.exists('%s/tophat_2.1.0/'%installation_directory):
         with lcd(installation_directory):
             if not os.path.exists('%s/boost_1_59_0/'%installation_directory):
@@ -543,8 +546,9 @@ def website():
     local('conda config --set always_yes TRUE')
 
     print(green("Installing Node.js..."))
-    local("sudo apt-get -y install nodejs npm")
-    local("sudo ln -sf `which nodejs` /usr/bin/node")
+    if sys.platform != 'darwin': #if not OSX
+        local("sudo apt-get -y install nodejs npm")
+        local("sudo ln -sf `which nodejs` /usr/bin/node")
 
     print(green("Installing Bower..."))
     local("sudo npm install -g bower")
