@@ -8,58 +8,11 @@ from fabric.colors import green
 from fabric.api import *
 
 home = os.path.expanduser('~')
-available_algorithms = ['rnaview', 'vienna', 'infernal', 'contrafold', \
-                        'locarna', 'foldalign', 'trnascan-SE', 'blast', 'blastR', 'clustalw', \
-                        'rnamotif', 'gotohscan', 'rnabob', 'bcheck', \
-                        'snoreport', 'snoscan', 'snogps', 'samtools', 'bowtie2', 'tophat2']
 
 @task(default=True)
-def assemble2():
-    """
-    Install and configure the RNA Science toolbox to be usable with Assemble2
-    """
-    if not confirm("Install and configure the RNA Science toolbox to be usable with Assemble2?") :
-        print "Bye!"
-        sys.exit()
+def install(manager="conda"):
     update()
-    python()
-    install_algorithms(algorithms = ['rnaview', 'vienna', 'contrafold', 'foldalign', 'locarna'])
-    website()
-    PDB(limit=5000)
-    RNA3DHub(limit=5000)
-    print(red("Add the following line to you configuration file (%s/.bashrc or %s/.zshrc): source .RnaSciToolbox"%(home, home)))
-
-@task
-def rnaseq(algorithms=[]):
-    """
-    Install and configure the RNA Science Toolbox to do NGS stuff
-    """
-    if not confirm("Install and configure the RNA Science Toolbox to do NGS stuff?") :
-        print "Bye!"
-        sys.exit()
-    update()
-    python()
-    install_algorithms(algorithms = ['samtools', 'bowtie2', 'tophat2'])
-    print(red("Add the following line to you configuration file (%s/.bashrc or %s/.zshrc): source .RnaSciToolbox"%(home, home)))
-
-@task
-def backup():
-    """
-    Dump the database and store the data in the folder /vagrant/backup accessible from the host.
-    """
-    print(green("The database is dumped in the folder /vagrant/backup..."))
-    if not os.path.exists('/vagrant/backup'):
-        local('mkdir /vagrant/backup')
-    local('mongodump --out /vagrant/backup/')
-
-@task
-def restore():
-    """
-    Restore the database from a backup stored in the folder /vagrant/backup
-    """
-    print(green("The database is restored..."))
-    if os.path.exists('/vagrant/backup'):
-        local('mongorestore /vagrant/backup/')
+    python(manager)
 
 def update():
     """
@@ -69,10 +22,10 @@ def update():
         print(green("Using Linux..."))
         print(green("Updating the package list..."))
         local('sudo apt-get update -qq')
-    else:
-        print(green("Using MacOSX"))
-        with warn_only():
-            local('brew update')
+    #else:
+    #    print(green("Using MacOSX"))
+    #    with warn_only():
+    #        local('brew update')
 
 def python(manager="conda"):
     """
@@ -99,58 +52,6 @@ def python(manager="conda"):
         print ("pysam")
         print ("ujson")
         print ("tornado")
-
-def install_algorithms(algorithms=[]):
-    """
-    Install all RNA algorithms related to structural analysis
-    """
-    if isinstance(algorithms, basestring):
-        algorithms = algorithms.split(':')
-    print(green("Installing the algorithms..."))
-    installation_directory = prompt('Where do you want to install your algorithms?', default=os.path.join(home, 'algorithms'))
-    if os.path.exists(installation_directory) and confirm("The directory %s already exist. Do you wish to continue?"%installation_directory) or not os.path.exists(installation_directory):
-        if not os.path.exists(installation_directory):
-            local('mkdir '+installation_directory)
-        if 'rnaview' in algorithms:
-            rnaview(installation_directory)
-        if 'vienna' in algorithms:
-            vienna_rna_package(installation_directory)
-        if 'infernal' in algorithms :
-            infernal(installation_directory)
-        if 'contrafold' in algorithms:
-            contrafold(installation_directory)
-        if 'locarna' in algorithms:
-            locarna("%s/ViennaRNA"%installation_directory, installation_directory)
-        if 'foldalign' in algorithms:
-            foldalign(installation_directory)
-        if 'trnascan-SE' in algorithms:
-            trnaScanSE(installation_directory)
-        if 'blast' in algorithms:
-            blast(installation_directory)
-        if 'blastR' in algorithms:
-            blastR(installation_directory)
-        if 'clustalw' in algorithms:
-            clustalw(installation_directory)
-        if 'rnamotif' in algorithms:
-            rnamotif(installation_directory)
-        if 'gotohscan' in algorithms:
-            gotohscan(installation_directory)
-        if 'rnabob' in algorithms:
-            rnabob(installation_directory)
-        if 'bcheck' in algorithms:
-            bcheck(installation_directory)
-        if 'snoreport' in algorithms:
-            snoreport(installation_directory)
-        if 'snoscan' in algorithms:
-            snoscan(installation_directory)
-        if 'snogps' in algorithms:
-            snogps(installation_directory)
-        if 'samtools' in algorithms:
-            samtools(installation_directory)
-        if 'bowtie2' in algorithms:
-            bowtie2(installation_directory)
-        if 'tophat2' in algorithms:
-            tophat2(installation_directory)
 
 def bcheck(installation_directory = "%s/algorithms"%home):
     """
@@ -289,27 +190,6 @@ def infernal(installation_directory = "%s/algorithms"%home):
             with lcd(installation_directory):
                 local('rm -rf infernal-1.0.2')
 
-def locarna(vrna_path, installation_directory = "%s/algorithms"%home):
-    """
-    Install Locarna
-    """
-    print(green("Installing Locarna..."))
-    if not os.path.exists('%s/locarna/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/locarna/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/locarna_1.8.1/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO locarna-1.8.1.tar http://dl.dropbox.com/u/3753967/algorithms/locarna-1.8.1.tar')
-            local('tar -xf locarna-1.8.1.tar')
-            local('rm locarna-1.8.1.tar')
-            local('ln -sf %s/locarna_1.8.1 ./locarna'%installation_directory)
-            with lcd('locarna-1.8.1'):
-                local('./configure --prefix=%s/locarna_1.8.1 --with-vrna=%s --without-perl --without-forester --without-kinfold'%(installation_directory, vrna_path))
-                local('make clean')
-                local('make')
-                local('make install')
-            with lcd(installation_directory):
-                local('rm -rf locarna-1.8.1')
-
 def rnamotif(installation_directory = "%s/algorithms"%home):
     """
     Install RNAMotif
@@ -342,23 +222,6 @@ def rnabob(installation_directory = "%s/algorithms"%home):
             local('rm rnabob-2.2.1.tar.gz')
             local('ln -sf %s/rnabob-2.2.1 ./rnabob'%installation_directory)
             with lcd('rnabob'):
-                local('make')
-
-def rnaview(installation_directory = "%s/algorithms"%home):
-    """
-    Install RNAView
-    """
-    print(green("Installing RNAView..."))
-    if not os.path.exists('%s/RNAVIEW/bin'%installation_directory):
-        local('echo "export RNAVIEW=%s/RNAVIEW/" >> $HOME/.RnaSciToolbox'%installation_directory)
-        local('echo "export PATH=\$PATH:\$RNAVIEW/bin" >> $HOME/.RnaSciToolbox')
-    if not os.path.exists('%s/RNAVIEW/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO RNAVIEW.tar.gz http://dl.dropbox.com/u/3753967/algorithms/RNAVIEW.tar.gz')
-            local('tar -xzf RNAVIEW.tar.gz')
-            local('rm RNAVIEW.tar.gz')
-            with lcd('RNAVIEW'):
-                local('make clean')
                 local('make')
 
 def snogps(installation_directory = "%s/algorithms"%home):
@@ -432,111 +295,6 @@ def trnaScanSE(installation_directory = "%s/algorithms"%home):
                 local('mv Makefile2 Makefile')
                 local('make')
                 local('make install')
-
-def vienna_rna_package(installation_directory = "%s/algorithms"%expanduser("~")):
-    """
-    Install the Vienna RNA package
-    """
-    print(green("Installing Vienna RNA package..."))
-    if not os.path.exists('%s/ViennaRNA/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
-        local('echo "export PATH=\$PATH:%s/ViennaRNA/share/ViennaRNA/bin/" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/ViennaRNA_2.1.8/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO ViennaRNA-2.1.8.tar.gz http://dl.dropbox.com/u/3753967/algorithms/ViennaRNA-2.1.8.tar.gz')
-            local('tar -xzf ViennaRNA-2.1.8.tar.gz')
-            local('rm ViennaRNA-2.1.8.tar.gz')
-            local('ln -sf %s/ViennaRNA_2.1.8 ./ViennaRNA'%installation_directory)
-            with lcd('ViennaRNA-2.1.8'):
-                local('./configure --prefix=%s/ViennaRNA_2.1.8'%installation_directory)
-                local('make')
-                local('make install')
-            with lcd(installation_directory):
-                local('rm -rf ViennaRNA-2.1.8')
-
-def bowtie2(installation_directory = "%s/algorithms"%home):
-    """
-    Install Bowtie2
-    """
-    print(green("Installing Bowtie2..."))
-    if not os.path.exists('%s/bowtie2/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/bowtie2/" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/bowtie2-2.2.6/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO bowtie2-2.2.6.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/bowtie2-2.2.6.tar.gz')
-            local('tar -xzf bowtie2-2.2.6.tar.gz')
-            local('rm bowtie2-2.2.6.tar.gz')
-            local('ln -sf %s/bowtie2-2.2.6 ./bowtie2'%installation_directory)
-            with lcd("bowtie2"):
-                local('make')
-
-def samtools(installation_directory = "%s/algorithms"%home):
-    """
-    Install Samtools
-    """
-    print(green("Installing Samtools..."))
-    if not os.path.exists('%s/samtools/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/samtools/" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/samtools-1.2/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO samtools-1.2.tar.bz2 http://dl.dropbox.com/u/3753967/algorithms/samtools-1.2.tar.bz2')
-            local('tar -xzf samtools-1.2.tar.bz2')
-            local('rm samtools-1.2.tar.bz2')
-            local('ln -sf %s/samtools-1.2 ./samtools'%installation_directory)
-            with lcd('samtools'):
-                local('make')
-
-def tophat2(installation_directory = "%s/algorithms"%home):
-    """
-    Install Tophat2
-    """
-    print(green("Installing Tophat2..."))
-    if not os.path.exists('%s/tophat2/'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/tophat2/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/tophat_2.1.0/'%installation_directory):
-        with lcd(installation_directory):
-            if not os.path.exists('%s/boost_1_59_0/'%installation_directory):
-                local('wget -qO boost_1_59_0.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/boost_1_59_0.tar.gz')
-                local('tar -xvf boost_1_59_0.tar.gz')
-                local('rm boost_1_59_0.tar.gz')
-                with lcd('boost_1_59_0'):
-                    local('sudo apt-get -y install libbz2-dev')
-                    local('./bootstrap.sh')
-                    local('sudo ./bjam link=static runtime-link=static stage install')
-            local('wget -qO tophat-2.1.0.tar.gz https://dl.dropboxusercontent.com/u/3753967/algorithms/tophat-2.1.0.tar.gz')
-            local('tar -xzf tophat-2.1.0.tar.gz')
-            local('rm tophat-2.1.0.tar.gz')
-            local('ln -sf %s/tophat_2.1.0 ./tophat2'%installation_directory)
-            with lcd('tophat-2.1.0'):
-                local('./configure --prefix=%s/tophat_2.1.0'%installation_directory)
-                local('make')
-                local('make install')
-            local('rm -rf tophat-2.1.0')
-
-
-def PDB(limit = 5000):
-    """
-    Feed the database with PDB data
-    """
-    print(green("Feed the database with %i 3D junctions..."%limit))
-    if not confirm("The current PDB database will be erased. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
-    local('mongo PDB --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate -l %i"%limit)
-    local("rm -rf /tmp/*.pdb /tmp/*.pdb.out /tmp/*.pdb.xml /tmp/*.pdb.ps")
-
-def RNA3DHub(limit = 5000):
-    """
-    Feed the database with PDB data derived from the RNA3DHub website
-    """
-    print(green("Feed the database with %i 3D junctions derived from the RNA3DHub website..."%limit))
-    if not confirm("The current RNA3DHub database will be erased. Do you wish to continue?") :
-        print "Bye!"
-        sys.exit()
-    local('mongo RNA3DHub --eval "db.dropDatabase()"')
-    local("import_3Ds.py -annotate -rna3dhub -l %i"%limit)
-    local("rm -rf /tmp/*.pdb /tmp/*.pdb.out /tmp/*.pdb.xml /tmp/*.pdb.ps")
 
 def website():
     """

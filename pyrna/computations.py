@@ -5,6 +5,7 @@ import parsers, utils
 from features import RNA, SecondaryStructure, TertiaryStructure
 from parsers import base_pairs_to_secondary_structure, parse_bn, to_fasta, to_pdb
 from distutils.spawn import find_executable
+from pyrna.utils import check_docker_image
 
 def get_api_key(rest_server):
     response = urllib.urlopen("http://%s/api/get_key"%rest_server)
@@ -953,7 +954,7 @@ class Contrafold(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("contrafold")
+            check_docker_image('fjossinet/assemble2')
 
     def fold(self, molecule, raw_output = False):
         """
@@ -1424,7 +1425,7 @@ class Mlocarna(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("mlocarna")
+            check_docker_image('fjossinet/assemble2')
 
     def align(self, molecules):
         """
@@ -1432,10 +1433,10 @@ class Mlocarna(Tool):
         --------
         a tuple like (list of aligned molecules, secondary structure computed as a list of base-pairs in a pandas DataFrame)
         """
-        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        with open(fileName, 'w') as fasta_file:
+        fileName = utils.generate_random_name(7)+'.fasta'
+        with open(self.cache_dir+'/'+fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta(molecules))
-        output = commands.getoutput("mlocarna %s"%fileName)
+        output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 mlocarna /data/%s"%fileName)
 
         aligned_molecules = {}
         consensus2D = None
@@ -1465,7 +1466,7 @@ class RnaAlifold(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAalifold")
+            check_docker_image('fjossinet/assemble2')
 
     def align(self, alignment):
         """
@@ -1473,10 +1474,10 @@ class RnaAlifold(Tool):
         --------
         the bracket notation of the MFE structure as a String
         """
-        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.aln'
-        with open(fileName, 'w') as aln_file:
+        fileName = utils.generate_random_name(7)+'.aln'
+        with open(self.cache_dir+'/'+fileName, 'w') as aln_file:
             aln_file.write(alignment)
-        return commands.getoutput("cd %s ; RNAalifold < %s"%(self.cache_dir, fileName)).strip().split('\n')[-1].split(' ')[0]
+        return commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAalifold < /data/%s'"%(self.cache_dir, fileName)).strip().split('\n')[-1].split(' ')[0]
 
 class Rnafold(Tool):
 
@@ -1487,7 +1488,7 @@ class Rnafold(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAfold")
+            check_docker_image('fjossinet/assemble2')
 
     def fold(self, molecule, constraints = None, bp_probabilities = False, raw_output = False):
         """
@@ -1514,20 +1515,21 @@ class Rnafold(Tool):
                 parameters['constraints'] = constraints
             output = self.submit('rnafold', parameters)
         else:
-            fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-            with open(fileName, 'w') as fasta_file:
+            fileName = utils.generate_random_name(7)+'.fasta'
+            with open(self.cache_dir+'/'+fileName, 'w') as fasta_file:
                 fasta_file.write(parsers.to_fasta([molecule], single_line=True))
                 if constraints:
                     fasta_file.write("\n"+constraints)
 
             if constraints:
-                output = commands.getoutput("cd %s ; RNAfold -C < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAfold -C < /data/%s'"%(self.cache_dir, fileName)).strip()
             elif bp_probabilities:
-                commands.getoutput("cd %s ; RNAfold -p < %s"%(self.cache_dir, fileName)).strip()
+                commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAfold -p < /data/%s'"%(self.cache_dir, fileName)).strip()
                 with open("%s/%s_dp.ps"%(self.cache_dir, molecule.name), 'r') as ps_file:
                     output = ps_file.read()
             else:
-                output = commands.getoutput("cd %s ; RNAfold < %s"%(self.cache_dir, fileName)).strip()
+                output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAfold < /data/%s'"%(self.cache_dir, fileName)).strip()
+                print output
         if raw_output:
             return output
         else:
@@ -1564,7 +1566,7 @@ class Rnainverse(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAinverse")
+            check_docker_image('fjossinet/assemble2')
 
     def compute_sequences(self, secondary_structure, molecule, repeats=1):
         """
@@ -1582,14 +1584,14 @@ class Rnainverse(Tool):
 
         """
 
-        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.bn'
-        with open(fileName, 'w') as input_file:
+        fileName = utils.generate_random_name(7)+'.bn'
+        with open(self.cache_dir+'/'+fileName, 'w') as input_file:
             input_file.write(parsers.to_bn(secondary_structure, len(molecule))+'\n')
             input_file.write('N'*len(molecule))
 
         rnas = []
         i = 0
-        output = commands.getoutput("RNAinverse -R %i < %s"%(repeats, fileName))
+        output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAinverse -R %i < /data/%s'"%(repeats, fileName))
         for line in output.split('\n'):
             i+=1
             name = "%s_%i"%(molecule.name, i)
@@ -1707,7 +1709,7 @@ class Rnaplfold(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAplfold")
+            check_docker_image('fjossinet/assemble2')
 
     def scan(self, molecule, winsize, span, width, free_energies = False, raw_output = False):
         """
@@ -1731,18 +1733,18 @@ class Rnaplfold(Tool):
         a pandas DataFrame reporting the mean probability that regions of length 1 to width are unpaired for a sequence. The index of the Dataframe lists the Molecule positions (from A to molecule's length) and the columns list the length of the region (from 1 to width).
         """
 
-        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-        with open(fileName, 'w') as fasta_file:
+        fileName = utils.generate_random_name(7)+'.fasta'
+        with open(self.cache_dir+'/'+fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta([molecule], single_line=True))
 
         if free_energies:
-            commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i -O < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
+            commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'cd /data/ ;RNAplfold -W %i -L %i -u %i -O < /data/%s'"%(self.cache_dir, winsize, span, width, fileName)).strip()
 
             h = open('%s/test_openen'%self.cache_dir)
             output = h.read()
             h.close()
         else:
-            commands.getoutput("cd %s ; RNAplfold -W %i -L %i -u %i < %s"%(self.cache_dir, winsize, span, width, fileName)).strip()
+            commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'cd /data/ ; RNAplfold -W %i -L %i -u %i < /data/%s'"%(self.cache_dir, winsize, span, width, fileName)).strip()
 
             with open('%s/test_lunp'%self.cache_dir) as h:
                 output = h.read()
@@ -1778,7 +1780,7 @@ class Rnaplot(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAplot")
+            check_docker_image('fjossinet/assemble2')
 
     def plot(self, secondary_structure, rna, raw_output = False):
         """
@@ -1806,16 +1808,17 @@ class Rnaplot(Tool):
             response.close()
         else:
             _rna = RNA(name="rna", sequence=rna.sequence) #the name of the rna object should not contains any / character.
-            vienna_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
-            with open(vienna_file_name, 'w') as f:
+            vienna_file_name = utils.generate_random_name(7)+'.fasta'
+            with open(self.cache_dir+'/'+vienna_file_name, 'w') as f:
                 f.write(parsers.to_vienna([secondary_structure], [_rna], single_line=True))
 
-            commands.getoutput("cd %s ; RNAplot -o svg < %s"%(self.cache_dir, vienna_file_name))
+            commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'cd /data ; RNAplot -o svg < /data/%s'"%(self.cache_dir, vienna_file_name))
 
             for f in os.listdir(self.cache_dir):
                 if f.endswith('.svg'):
                     with open("%s/%s"%(self.cache_dir, f)) as svg_file:
                         output = svg_file.read()
+
 
         if raw_output:
             return output
@@ -1844,7 +1847,7 @@ class Rnasubopt(Tool):
     def __init__(self, cache_dir = "/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("RNAsubopt")
+            check_docker_image('fjossinet/assemble2')
 
     def fold(self, molecule, range = None, random_sample = None):
         """
@@ -1858,12 +1861,12 @@ class Rnasubopt(Tool):
         --------
         all the suboptimal secondary structures as a list of pandas DataFrames. Each pandas Dataframe contains a list of base-pairs.
         """
-        fileName = self.cache_dir+'/'+utils.generate_random_name(7)+'.fasta'
+        fileName = utils.generate_random_name(7)+'.fasta'
 
-        with open(fileName, 'w') as fasta_file:
+        with open(self.cache_dir+'/'+fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta([molecule], single_line=True))
 
-        output = commands.getoutput("cd %s ; RNAsubopt %s %s < %s"%(self.cache_dir, "-e %i"%range if range else "" ,  "-p %i"%random_sample if random_sample else "", fileName)).strip()
+        output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAsubopt %s %s < /data/%s'"%(self.cache_dir, "-e %i"%range if range else "" ,  "-p %i"%random_sample if random_sample else "", fileName)).strip()
         secondary_structures = []
         for line in output.split('\n'):
             tokens = line.split(' ')
@@ -1878,7 +1881,7 @@ class Rnaview(Tool):
     def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
-            self.find_executable("rnaview")
+            check_docker_image('fjossinet/assemble2')
 
     def annotate(self, tertiary_structure = None, pdb_content = None, canonical_only = False, raw_output = False):
         """
@@ -1903,16 +1906,15 @@ class Rnaview(Tool):
             xml_content = str(response.read())
             response.close()
         else:
-            pdb_file_name = self.cache_dir+'/'+utils.generate_random_name(7)+'.pdb'
-            with open(pdb_file_name, 'w') as pdb_file:
+            pdb_file_name = utils.generate_random_name(7)+'.pdb'
+            with open(self.cache_dir+'/'+pdb_file_name, 'w') as pdb_file:
                 if pdb_content:
                     pdb_file.write(pdb_content)
                 else:
                     pdb_file.write(to_pdb(tertiary_structure, export_numbering_system = True))
+            commands.getoutput("docker run -v %s:/data fjossinet/assemble2 rnaview -p /data/%s"%(self.cache_dir,pdb_file_name))
 
-            commands.getoutput("rnaview -p %s"%(pdb_file_name))
-
-            xml_file_name = pdb_file_name+".xml"
+            xml_file_name = self.cache_dir+'/'+pdb_file_name+".xml"
             xml_content = ""
             if os.path.exists(xml_file_name):
                 with open(xml_file_name) as xml_file:

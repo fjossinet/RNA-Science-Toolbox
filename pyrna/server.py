@@ -633,10 +633,48 @@ class WebSocket(tornado.websocket.WebSocketHandler):
                 if self == websocket:
                     external_tools_2_websockets[message['id']] = websocket
         elif message['header'] == 'plot 2d':
+            #rnas, secondary_structures = parse_vienna(message['data'])
+            #self.write_message( {
+        #        'header': '2d plot',
+    #            'data': Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True)
+#            })
             rnas, secondary_structures = parse_vienna(message['data'])
+            rna = rnas[0]
+            base_pairs = secondary_structures[0]
+            ss = base_pairs_to_secondary_structure(rna, base_pairs)
+            ss.find_junctions()
+
+            coords = Rnaplot().plot(base_pairs, rna)
+
+            ss_json = {
+                'rna': {
+                    'name': rna.name,
+                    'sequence': rna.sequence
+                }
+            }
+
+            helices_descriptions = []
+            for helix in ss.helices:
+                helices_descriptions.append(helix)
+            ss_json['helices'] = helices_descriptions
+
+            sstrand_descriptions = []
+            for sstrand in ss.single_strands:
+                sstrand_descriptions.append(sstrand)
+            ss_json['single-strands'] = sstrand_descriptions
+
+            tertiary_descriptions = []
+            for tertiary in ss.tertiary_interactions:
+                sstrand_descriptions.append(tertiary)
+            ss_json['single-strands'] = sstrand_descriptions
+
+            ss_json['coords'] = []
+            for index, row in coords.iterrows():
+                ss_json['coords'].append([int(row['x']), int(row['y'])])
+
             self.write_message( {
                 'header': '2d plot',
-                'data': Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True)
+                'data': ss_json
             })
         elif message['header'] == 'webservices usage':
             db = mongodb['logs']

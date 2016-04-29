@@ -1,7 +1,20 @@
-import uuid, string, random, datetime, difflib
+import uuid, string, random, datetime, difflib,commands
 import math, re
 from features import RNA, DNA
 from bson.objectid import ObjectId
+from distutils.spawn import find_executable
+
+def check_docker_image(image_name):
+    if not find_executable('docker'):
+        raise Exception("You need to install the tool Docker")
+    found = False
+    for line in commands.getoutput("docker images").split('\n'):
+        if re.split(' +',line)[0] == image_name:
+            found = True
+            break
+    if not found:
+        raise Exception("You need to install the Docker image %s"%image_name)
+
 
 def get_points(x1, y1, x2, y2, distance):
     opposite_side = get_distance(x1, y1, x1, y2)
@@ -13,26 +26,26 @@ def get_points(x1, y1, x2, y2, distance):
     new_y1 = None
     new_x2 = None
     new_y2 = None
-    
+
     if x1 >= x2:
         new_x2 = x2 + get_adjacent_side(angle, distance)
         new_x1 = x1 - get_adjacent_side(angle, distance)
     else:
         new_x2 = x2 - get_adjacent_side(angle, distance)
         new_x1 = x1 + get_adjacent_side(angle, distance)
-    
+
     if y1 >= y2:
         new_y2 = y2 + get_opposite_side(angle, distance)
         new_y1 = y1 - get_opposite_side(angle, distance)
     else:
         new_y2 = y2 - get_opposite_side(angle, distance)
         new_y1 = y1 + get_opposite_side(angle, distance)
-        
+
     return [[new_x1, new_y1], [new_x2, new_y2]]
-    
+
 def get_angle(opposite_side, adjacent_side):
     return math.atan(opposite_side/adjacent_side)
-    
+
 def get_distance(x1, y1, x2, y2):
     horizontal = x1 - x2
     vertical = y1 - y2
@@ -57,7 +70,7 @@ def cluster_genomic_annotations(genomic_annotations, threshold = 1, fill_cluster
     clusters = []
     sorted_genomic_annotations = sorted(genomic_annotations, key=lambda genomic_annotation: genomic_annotation['genomicStart'])
     first_genomic_annotation = sorted_genomic_annotations[0]
-    cluster  = { 
+    cluster  = {
         'genomicStart': first_genomic_annotation['genomicStart'],
         'genomicEnd': first_genomic_annotation['genomicEnd'],
         'annotations_count': 1,
@@ -69,13 +82,13 @@ def cluster_genomic_annotations(genomic_annotations, threshold = 1, fill_cluster
         if genomic_annotation['genomicStart'] <= cluster['genomicEnd']:
             cluster['annotations_count'] += 1
             if fill_cluster_with_genomic_annotations:
-                cluster['genomic_annotations'].append(genomic_annotation)    
+                cluster['genomic_annotations'].append(genomic_annotation)
             if genomic_annotation['genomicEnd'] > cluster['genomicEnd']:
-                cluster['genomicEnd'] = genomic_annotation['genomicEnd']                       
+                cluster['genomicEnd'] = genomic_annotation['genomicEnd']
         else:
             if cluster['annotations_count'] >= threshold:
                 clusters.append(cluster)
-            cluster = { 
+            cluster = {
                 'genomicStart': genomic_annotation['genomicStart'],
                 'genomicEnd': genomic_annotation['genomicEnd'],
                 'annotations_count':1,
@@ -83,15 +96,15 @@ def cluster_genomic_annotations(genomic_annotations, threshold = 1, fill_cluster
             }
     # last cluster
     if cluster['annotations_count'] >= threshold:
-        clusters.append(cluster)    
+        clusters.append(cluster)
 
     return clusters
 
 def dataframe_to_json(dataframe):
     import ujson
-    d = [ 
+    d = [
         dict([
-            (colname, row[i]) 
+            (colname, row[i])
             for i, colname in enumerate(dataframe.columns)
         ])
         for row in dataframe.values
@@ -220,6 +233,3 @@ def renumber_pdb_atoms(pdb_file):
             else:
                 new_lines.append(line)
     return ''.join(new_lines)
-
-
-
