@@ -71,4 +71,10 @@ Recovering entry 1EHZ from Protein Databank...
 ## 3D annotation ##
 
 List of base-pairs computed with RNAVIEW:
+
+edge1 edge2 orientation  pos1  pos2
+0      (     )           c     1    72
+1      (     )           c     2    71
+2      (     )           c     3    70
+[...]
 </pre>
