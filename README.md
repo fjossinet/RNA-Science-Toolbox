@@ -5,19 +5,19 @@ The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science. PyRNA a
 
 * parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
     * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
-    * "PyRNA objects": defined in the module pyrna.features.
-* compute RNA data from RNA algorithms (see list below) and convert them into Pandas data structures and PyRNA objects,
+    * "PyRNA objects" (as defined in the module pyrna.features).
+* compute RNA data from RNA algorithms (see below for details) and convert them into Pandas data structures and PyRNA objects,
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
 * deploy some functionalities as REST Web services.
 
-To be able to use RNA algorithms, you need to install them. This can be easily done by installing Docker images providing these algorithms fully installed and configured.
+This project is related to the [DockeRNA project](https://github.com/fjossinet/DockeRNA) which provides Docker images containing the RNA algorithms you may need.
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
 Installation
 ------------
 
-To install the RNA Science Toolbox, you need to go through several steps. But don't be afraid, each step is really easy to follow. This installation workflow targets computers running under MacOSX or Linux.
+To use the RNA Science Toolbox, you will need to go through several steps. But don't be afraid, each step is really easy to follow. We do suppose that you are using either MacOSX or Linux.
 
 ### Python environment
 
@@ -25,31 +25,32 @@ You need at first to have a Python distribution installed on your computer. If y
 
 ### Fabric
 
-You need also to have the tool [Fabric](http://www.fabfile.org) installed. If you have installed a Python distribution like [Anaconda](https://www.continuum.io/why-anaconda), you can install Fabric by typing:
+You also need the tool [Fabric](http://www.fabfile.org). If you're using the [Anaconda distribution](https://www.continuum.io/why-anaconda), you can get it by typing:
 
     conda install fabric
 
 ### Python dependencies
 
-Once done, download the RNA Science Toolbox and go into its directory. Now you need to install its Python dependencies. If you have installed the [Anaconda](https://www.continuum.io/why-anaconda) distribution, type:
-
+Once done, download the RNA Science Toolbox and go into its directory. To install its Python dependencies, you can  use either the package manager conda (from the [Anaconda distribution](https://www.continuum.io/why-anaconda)) or pip. To use conda, type:
 
     fab
 
-This will launch the package manager conda to install dependencies. Otherwise, to use a package manager like pip, type:
+To use pip, type:
 
     fab install:manager=pip
 
 ### Docker
 
-Now you need to install the algorithms. This will be done with Docker images providing these algorithms fully configured. You first need to install the tool Docker. You will find all the details [here](https://docs.docker.com/engine/installation/).
+To install the RNA algorithms, you need first to get the tool Docker. You will find all the details [here](https://docs.docker.com/engine/installation/).
 
 ### RNA algorithms
 
-Now you need to install the Docker images containing the algorithms you want to work with. Here is the list of the images available:
+Each Docker image available contains several algorithms:
 
- * [fjossinet/assemble2](https://hub.docker.com/r/fjossinet/assemble2/): provides algorithms like [RNAVIEW](http://ndbserver.rutgers.edu/ndbmodule/services/download/rnaview.html), [Vienna RNA package](https://www.tbi.univie.ac.at/RNA/), [foldalign](http://rth.dk/resources/foldalign/), [LocARNA](http://rna.informatik.uni-freiburg.de/LocARNA/)
- * [fjossinet/rnaseq](https://hub.docker.com/r/fjossinet/rnaseq/): provides algorithms like [SAMtools](http://samtools.sourceforge.net), [Tophat2](https://ccb.jhu.edu/software/tophat/), [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
+ * [fjossinet/assemble2](https://hub.docker.com/r/fjossinet/assemble2/): provides [RNAVIEW](http://ndbserver.rutgers.edu/ndbmodule/services/download/rnaview.html), [Vienna RNA package](https://www.tbi.univie.ac.at/RNA/), [foldalign](http://rth.dk/resources/foldalign/), [LocARNA](http://rna.informatik.uni-freiburg.de/LocARNA/)
+ * [fjossinet/rnaseq](https://hub.docker.com/r/fjossinet/rnaseq/): provides [SAMtools](http://samtools.sourceforge.net), [Tophat2](https://ccb.jhu.edu/software/tophat/), [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
+
+Go to their Web page for more details about their installation and usage.
 
 ### Configure your PATH
 
