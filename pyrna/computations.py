@@ -422,8 +422,7 @@ class Bowtie2(Tool):
     def __init__(self, cache_dir = "/tmp", index_path = None, rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("bowtie2-build")
-            self.find_executable("bowtie2")
+            check_docker_image('fjossinet/rnaseq')
         self.index_path = index_path
 
     def parse_sam(self, sam_file, target_molecules):
@@ -459,14 +458,14 @@ class Bowtie2(Tool):
         print "%i reads found, %i reads aligned..."%(total_reads, total_aligned_reads)
         return DataFrame(reads)
 
-    def align(self, target_molecules, fastq_file, no_parsing = False, user_defined_options=[]):
+    def align(self, target_molecules, fastq_file, parsing = False, user_defined_options=[]):
         """
         Align reads against target molecules.
 
         Parameters:
         -----------
         - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
-        - fastq_file: the full path for the fastq file containing the reads (as a String)
+        - fastq_file: the full path for the fastq file containing the reads (as a String). This file HAS TO BE located in the cache_dir defined during the instanciation of Bowtie2
         - no_parsing (default: False): if True, the function returns the full path of the SAM file without parsing it
 
         Returns:
@@ -483,7 +482,7 @@ class Bowtie2(Tool):
         print bowtie2.index_path
         """
 
-        result_file = self.cache_dir+'/'+os.path.basename(fastq_file)+'.sam'
+        result_file = os.path.basename(fastq_file)+'.sam'
 
         if not self.index_path:
             self.index_path = self.build_index(target_molecules)
@@ -491,14 +490,14 @@ class Bowtie2(Tool):
         elif not os.path.exists(self.index_path+".1.bt2"):
             self.build_index(target_molecules)
 
-        print "bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file)
-        commands.getoutput("bowtie2 %s -x %s -q \"%s\" -S %s"%(' '.join(user_defined_options), self.index_path, fastq_file, result_file))
+        print "docker run -v %s:/data fjossinet/rnaseq bowtie2 %s -x /data/%s -q \"/data/%s\" -S /data/%s"%(self.cache_dir, ' '.join(user_defined_options), self.index_path, fastq_file, result_file)
+        commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2 %s -x /data/%s -q \"/data/%s\" -S /data/%s"%(self.cache_dir, ' '.join(user_defined_options), self.index_path, fastq_file, result_file))
         print "SAM file %s produced successfully!!"%result_file
 
-        if no_parsing:
+        if not parsing:
             return result_file
 
-        return self.parse_sam(result_file, target_molecules)
+        return self.parse_sam(self.cache_dir+"/"+result_file, target_molecules)
 
     def build_index(self, target_molecules):
         """
@@ -512,25 +511,23 @@ class Bowtie2(Tool):
         --------
         The full path to the directory containing the index plus the prefix of the index files
         """
+        print "Build index..."
         if not self.index_path:
             random_name = utils.generate_random_name(7)
-            self.index_path = self.cache_dir+"/"+random_name
-            fasta_file_name = self.cache_dir+'/'+random_name+'.fa'
-            fasta_file = open(fasta_file_name, 'w')
+            self.index_path = random_name
+            fasta_file_name = random_name+'.fa'
+            fasta_file = open(self.cache_dir+'/'+fasta_file_name, 'w')
             fasta_file.write(to_fasta(target_molecules))
             fasta_file.close()
-            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
-            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
-            print "Index files produced successfully!!"
+            commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2-build /data/%s /data/%s"%(self.cache_dir, fasta_file_name, self.index_path))
+            print "Index files produced successfully: %s!!"%self.cache_dir+'/'+self.index_path
         else:
-            random_name = self.index_path.split('/')[-1]
             fasta_file_name = self.index_path+".fa"
-            fasta_file = open(fasta_file_name, 'w')
+            fasta_file = open(self.cache_dir+'/'+fasta_file_name, 'w')
             fasta_file.write(to_fasta(target_molecules))
             fasta_file.close()
-            print "bowtie2-build %s %s"%(fasta_file_name, self.index_path)
-            commands.getoutput("bowtie2-build %s %s"%(fasta_file_name, self.index_path))
-            print "Index files produced successfully!!"
+            commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2-build /data/%s /data/%s"%(self.cache_dir, fasta_file_name, self.index_path))
+            print "Index files produced successfully: %s!!"%self.cache_dir+'/'+self.index_path
 
         return self.index_path
 
@@ -2492,7 +2489,7 @@ class Tophat(Bowtie2):
     def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
-            self.find_executable("tophat")
+            check_docker_image('fjossinet/rnaseq')
 
     def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
         """
@@ -2537,8 +2534,7 @@ class Tophat2(Bowtie2):
     def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
         if not self.rest_server:
-            self.find_executable("tophat2")
-            self.find_executable("bed_to_juncs")
+            check_docker_image('fjossinet/rnaseq')
 
     def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
         """
