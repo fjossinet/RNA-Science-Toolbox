@@ -137,22 +137,6 @@ def contrafold(installation_directory = "%s/algorithms"%home):
             local('tar -xzf contrafold.tar.gz')
             local('rm contrafold.tar.gz')
 
-def foldalign(installation_directory = "%s/algorithms"%home):
-    """
-    Install Foldalign
-    """
-    print(green("Installing Foldalign..."))
-    if not os.path.exists('%s/foldalign/bin'%installation_directory):
-        local('echo "export PATH=\$PATH:%s/foldalign/bin" >> $HOME/.RnaSciToolbox'%installation_directory)
-    if not os.path.exists('%s/foldalign.2.1.1/'%installation_directory):
-        with lcd(installation_directory):
-            local('wget -qO foldalign.2.1.1.tar.gz http://dl.dropbox.com/u/3753967/algorithms/foldalign.2.1.1.tar.gz')
-            local('tar -xzf foldalign.2.1.1.tar.gz')
-            local('rm foldalign.2.1.1.tar.gz')
-            local('ln -sf %s/foldalign.2.1.1 ./foldalign'%installation_directory)
-            with lcd('foldalign'):
-                local('make')
-
 def gotohscan(installation_directory = "%s/algorithms"%home):
     """
     Install GotohScan

@@ -490,9 +490,9 @@ class Bowtie2(Tool):
         elif not os.path.exists(self.index_path+".1.bt2"):
             self.build_index(target_molecules)
 
-        print "docker run -v %s:/data fjossinet/rnaseq bowtie2 %s -x /data/%s -q \"/data/%s\" -S /data/%s"%(self.cache_dir, ' '.join(user_defined_options), self.index_path, fastq_file, result_file)
+        print "Reads alignment..."
         commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2 %s -x /data/%s -q \"/data/%s\" -S /data/%s"%(self.cache_dir, ' '.join(user_defined_options), self.index_path, fastq_file, result_file))
-        print "SAM file %s produced successfully!!"%result_file
+        print "SAM file %s produced successfully: "%result_file
 
         if not parsing:
             return result_file
@@ -520,14 +520,14 @@ class Bowtie2(Tool):
             fasta_file.write(to_fasta(target_molecules))
             fasta_file.close()
             commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2-build /data/%s /data/%s"%(self.cache_dir, fasta_file_name, self.index_path))
-            print "Index files produced successfully: %s!!"%self.cache_dir+'/'+self.index_path
+            print "Index files produced successfully: %s"%(self.cache_dir+'/'+self.index_path)
         else:
             fasta_file_name = self.index_path+".fa"
             fasta_file = open(self.cache_dir+'/'+fasta_file_name, 'w')
             fasta_file.write(to_fasta(target_molecules))
             fasta_file.close()
             commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bowtie2-build /data/%s /data/%s"%(self.cache_dir, fasta_file_name, self.index_path))
-            print "Index files produced successfully: %s!!"%self.cache_dir+'/'+self.index_path
+            print "Index files produced successfully: %s"%(self.cache_dir+'/'+self.index_path)
 
         return self.index_path
 
@@ -2482,51 +2482,6 @@ class TrnaScanSE(Tool):
         target_molecule = None
         return DataFrame(hits)
 
-class Tophat(Bowtie2):
-    """
-    Application Controller for Tophat.
-    """
-    def __init__(self, cache_dir="/tmp", rest_server = None, api_key = None):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
-        if not self.rest_server:
-            check_docker_image('fjossinet/rnaseq')
-
-    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
-        """
-        Align reads to target molecules
-
-        Parameters:
-        -----------
-        - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
-        - fastq_file: the full path for the fastq file containing the reads (as a String)
-        - bowtie2_index: the full path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
-
-        Returns:
-        --------
-        The full path of the SAM file or a pandas DataFrame describing the reads. The columns are:
-        - genomicStart (an int)
-        - genomicEnd (an int)
-        - genomicStrand ('+' or '-')
-        - genomeName (a String)
-        """
-
-        if not bowtie2_index:
-            bowtie2_index = Bowtie2(cache_dir = self.cache_dir).build_index(target_molecules)
-
-        print "tophat %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file)
-        commands.getoutput("tophat %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file))
-
-        result_file = None
-        if no_convert_bam:
-            result_file = self.cache_dir+'/accepted_hits.sam'
-        else:
-            result_file = self.cache_dir+'/accepted_hits.bam'
-
-        if no_parsing:
-            return result_file
-
-        return self.parse_sam(result_file, target_molecules)
-
 class Tophat2(Bowtie2):
     """
     Application Controller for Tophat2.
@@ -2536,15 +2491,17 @@ class Tophat2(Bowtie2):
         if not self.rest_server:
             check_docker_image('fjossinet/rnaseq')
 
-    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, no_parsing = True, user_defined_options=[]):
+    def align(self, target_molecules, fastq_file, bowtie2_index = None, no_convert_bam = False, parsing = True, user_defined_options=[]):
         """
         Align reads to target molecules
 
         Parameters:
         -----------
         - target_molecules: the genomic sequences to be used for the alignment (an array of Molecule objects, see pyrna.features)
-        - fastq_file: the full path for the fastq file containing the reads (as a String)
+        - fastq_file: the full path for the fastq file containing the reads (as a String). This file HAS TO BE located in the cache_dir defined during the instanciation of Tophat2.
         - bowtie2_index: the full path of the bowtie2 index. If None, a new index will be build before to do the alignment (as a String)
+        - no_convert_bam: do not convert to bam format (default: False)
+        - parsing: if no_convert_bam is set to True, this parameter set if the SAM file will be parsed to return the list of aligned reads as a pandas DataFrame (default: True)
 
         Returns:
         --------
@@ -2560,19 +2517,20 @@ class Tophat2(Bowtie2):
         elif not os.path.exists(bowtie2_index+".1.bt2"):
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir, index_path = bowtie2_index).build_index(target_molecules)
 
-        print "tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file)
-        commands.getoutput("tophat2 %s %s -o %s %s %s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", self.cache_dir, bowtie2_index, fastq_file))
+        fastq_file = os.path.basename(fastq_file)
+
+        print "Reads alignment..."
+        commands.getoutput("docker run -v %s:/data fjossinet/rnaseq tophat2 %s %s -o /data/ /data/%s /data/%s"%(self.cache_dir, ' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", bowtie2_index, fastq_file))
 
         result_file = None
         if no_convert_bam:
             result_file = self.cache_dir+'/accepted_hits.sam'
+            if parsing:
+                return self.parse_sam(result_file, target_molecules)
         else:
             result_file = self.cache_dir+'/accepted_hits.bam'
 
-        if no_parsing:
-            return result_file
-
-        return self.parse_sam(result_file, target_molecules)
+        return result_file
 
     def bed_to_juncs(self, junc_file):
         """
@@ -2582,7 +2540,7 @@ class Tophat2(Bowtie2):
         -----------
         - junc_file: the name of the output file
         """
+        junc_file = os.path.basename(junc_file)
         lines = open(self.cache_dir+"/junctions.bed").readlines()
         open(self.cache_dir+"/junctions_without_header.bed", 'w').writelines(lines[1:]) #the first line seems to crash the process....
-        commands.getoutput("bed_to_juncs < %s > %s"%(self.cache_dir+"/junctions_without_header.bed", junc_file))
-        print "bed_to_juncs < %s > %s"%(self.cache_dir+"/junctions_without_header.bed", junc_file)
+        commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bash -c 'bed_to_juncs < %s > %s'"%(self.cache_dir, "junctions_without_header.bed", junc_file))
