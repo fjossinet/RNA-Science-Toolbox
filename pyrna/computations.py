@@ -2036,15 +2036,16 @@ class Samtools(Tool):
     """
     def __init__(self, sam_file, cache_dir="/tmp", rest_server = None, api_key = None):
         Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
-        self.sam_file = sam_file
+        self.sam_file = "/data/%s"%os.path.basename(sam_file)
+        self.sam_dir = os.path.dirname(os.path.realpath(sam_file))
         if not self.rest_server:
-            self.find_executable("samtools")
+            check_docker_image('fjossinet/rnaseq')
 
     def run(self, user_defined_options = []):
         """
         Generic function to run samtools
         """
-        return commands.getoutput("samtools %s"%(" ".join(user_defined_options)))
+        return commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bash -c 'samtools %s'"%(self.sam_dir, " ".join(user_defined_options)))
 
     def sort_and_index(self):
         """
@@ -2059,24 +2060,15 @@ class Samtools(Tool):
         the full path of the indexed and sorted BAM file
         """
         path = os.path.realpath(self.sam_file).split('.sam')[0]
-        if not os.path.exists("%s.bam"%path):
-            self.run(["view", "-bS %s"%self.sam_file, "> %s.bam"%path])
-            #commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
-            print "BAM file done"
-        else:
-            print "BAM file already done"
-        if not os.path.exists("%s.sorted.bam"%(path)):
-            self.run(["sort", "%s.bam"%path, "%s.sorted"%path])
-            #commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
-            print "Sorted BAM file done"
-        else:
-            print "Sorted BAM file already done"
-        if not os.path.exists("%s.sorted.bam.bai"%(path)):
-            self.run(["index", "%s.sorted.bam"%path])
-            #commands.getoutput("samtools index %s.sorted.bam"%path)
-            print "Indexed BAM file done"
-        else:
-            print "Indexed BAM file already done"
+        self.run(["view", "-bS %s"%self.sam_file, "> %s.bam"%path])
+        #commands.getoutput("samtools view -bS %s > %s.bam"%(self.sam_file, path))
+        print "BAM file done"
+        self.run(["sort", "%s.bam"%path, "%s.sorted"%path])
+        #commands.getoutput("samtools sort %s.bam %s.sorted"%(path, path))
+        print "Sorted BAM file done"
+        self.run(["index", "%s.sorted.bam"%path])
+        #commands.getoutput("samtools index %s.sorted.bam"%path)
+        print "Indexed BAM file done"
         return "%s.sorted.bam"%path
 
     def count(self, chromosome_name, start, end, restrict_to_plus_strand = False, restrict_to_minus_strand = False):
