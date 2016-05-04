@@ -1,1 +1,2 @@
 *.pyc
+website/bower_components/*

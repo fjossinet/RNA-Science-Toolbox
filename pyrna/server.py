@@ -25,6 +25,7 @@ app = None
 websockets = []
 external_tools_2_websockets = {}
 mongodb = None
+hostname = 'localhost'
 logs_db = None
 webserver_db = None
 enabled_algorithms = ['rnafold', 'rnaplot', 'contrafold', 'rnaview']
@@ -775,17 +776,26 @@ class Application(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, cookie_secret = str(ObjectId()) , **settings)
 
 if __name__ == '__main__':
+    dir = os.path.dirname(os.path.realpath(__file__))
+    print dir+'/../website/bower_components'
+    if not os.path.exists(dir+'/../website/bower_components'):
+        print 'It seems that you did not install the website dependencies.'
+        print 'To do so, from the RNA Science Toolbox directory, type: fab website'
+        sys.exit()
     webserver_port = 8080
     mongodb_host = "localhost"
     mongodb_port = 27017
 
-    if "-h" in sys.argv:
-        print "Usage: ./server.py [-p x] [-mh x] [-mp x]  "
+    if "--help" in sys.argv:
+        print "Usage: ./server.py [-h x] [-p x] [-mh x] [-mp x]  "
+        print '- m: the web server hostname (default: localhost)\n'
         print '- p: the web server port (default: 8080)\n'
         print '- mh: the mongodb host (default: localhost)\n'
         print '- mp: the mongodb port (default: 27017)\n'
         sys.exit(-1)
 
+    if "-h" in sys.argv:
+        hostname = sys.argv[sys.argv.index("-h")+1]
     if "-p" in sys.argv:
         webserver_port = int(sys.argv[sys.argv.index("-p")+1])
     if "-mh" in sys.argv:
@@ -805,7 +815,7 @@ if __name__ == '__main__':
     app = Application()
     server = tornado.httpserver.HTTPServer(app)
     server.listen(webserver_port)
-    print "\033[92mYour webserver is now accessible at http://127.0.0.1:%i/\033[0m"%webserver_port
+    print "\033[92mYour webserver is now accessible at http://%s:%i/\033[0m"%(hostname, webserver_port)
 
     main_loop = tornado.ioloop.IOLoop.instance()
     main_loop.start()

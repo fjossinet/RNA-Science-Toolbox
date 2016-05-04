@@ -14,6 +14,25 @@ def install(manager="conda"):
     update()
     python(manager)
 
+@task
+def website():
+    """
+    Install the website
+    """
+    print(green("Installing the website dependencies..."))
+    print(green("You need to have node.js installed on your computer (https://nodejs.org/en/)."))
+
+    if sys.platform != 'darwin': #if not OSX
+        print(green("Installing Node.js..."))
+        local("sudo apt-get -y install nodejs npm")
+        local("sudo ln -sf `which nodejs` /usr/bin/node")
+
+    print(green("Installing Bower..."))
+    local("sudo npm install -g bower")
+
+    print(green("Installing the website..."))
+    local('cd website ; bower --config.interactive=false install')
+
 def update():
     """
     Update the operating system
@@ -279,21 +298,3 @@ def trnaScanSE(installation_directory = "%s/algorithms"%home):
                 local('mv Makefile2 Makefile')
                 local('make')
                 local('make install')
-
-def website():
-    """
-    Install the website
-    """
-    print(green("Installing a full web stack..."))
-    local('conda config --set always_yes TRUE')
-
-    print(green("Installing Node.js..."))
-    if sys.platform != 'darwin': #if not OSX
-        local("sudo apt-get -y install nodejs npm")
-        local("sudo ln -sf `which nodejs` /usr/bin/node")
-
-    print(green("Installing Bower..."))
-    local("sudo npm install -g bower")
-
-    print(green("Installing the website..."))
-    local('cd /vagrant/website ; bower --config.interactive=false install')
