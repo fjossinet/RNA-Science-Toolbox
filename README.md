@@ -14,7 +14,7 @@ This project is related to the [DockeRNA project](https://github.com/fjossinet/D
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
-Installation
+Basic installation
 ------------
 
 To use the RNA Science Toolbox, you will need to go through several steps. But don't be afraid, each step is really easy to follow. We do suppose that you are using either MacOSX or Linux.
@@ -63,7 +63,7 @@ In the configuration file of your shell (.bashrc, .zshrc,...), add the folowing 
 
     export TOOLBOX=THE_PATH_TO_YOUR_RNA_SCIENCE_TOOLBOX
     export PYTHONPATH=$PYTHONPATH:$TOOLBOX
-    export PATH=$PATH:$TOOLBOX/files/scripts/python:$PATH
+    export PATH=$PATH:$TOOLBOX/pyrna:$TOOLBOX/files/scripts/python:$PATH
 
 Restart your shell and type:
 
@@ -84,3 +84,30 @@ edge1 edge2 orientation  pos1  pos2
 2      (     )           c     3    70
 [...]
 </pre>
+
+Installation of the embedded Web server (optional)
+------------
+
+You don't need to follow the next steps if you're just interested in the ability to use the PyRNA API in your Python scripts. The RNA Science Toolbox provides also an embedded Web server. This allows you to use some functionalities through interactive Web applications and pages. This part of the project is under active development and new capabilities will be added regularly.
+
+### MongoDB
+
+You need to have [MongoDB](https://www.mongodb.com) installed on your computer.
+
+### Node.js
+
+You need to have [node.js](https://nodejs.org/en/) installed on your computer.
+
+### Install the Web server dependencies
+
+From the directory of the RNA Science Toolbox, type:
+
+    fab website
+
+### Launch the Web server
+
+Just type:
+
+    server.py
+
+Open your browser at [http://localhost:8080](http://localhost:8080)

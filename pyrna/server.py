@@ -777,7 +777,6 @@ class Application(tornado.web.Application):
 
 if __name__ == '__main__':
     dir = os.path.dirname(os.path.realpath(__file__))
-    print dir+'/../website/bower_components'
     if not os.path.exists(dir+'/../website/bower_components'):
         print 'It seems that you did not install the website dependencies.'
         print 'To do so, from the RNA Science Toolbox directory, type: fab website'
