@@ -50,7 +50,12 @@ Each Docker image available contains several algorithms:
  * [fjossinet/assemble2](https://hub.docker.com/r/fjossinet/assemble2/): provides [RNAVIEW](http://ndbserver.rutgers.edu/ndbmodule/services/download/rnaview.html), [Vienna RNA package](https://www.tbi.univie.ac.at/RNA/), [foldalign](http://rth.dk/resources/foldalign/), [LocARNA](http://rna.informatik.uni-freiburg.de/LocARNA/)
  * [fjossinet/rnaseq](https://hub.docker.com/r/fjossinet/rnaseq/): provides [SAMtools](http://samtools.sourceforge.net), [Tophat2](https://ccb.jhu.edu/software/tophat/), [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
 
-Go to their Web page for more details about their installation and usage.
+To install these images, you just have to type:
+
+    docker pull fjossinet/assemble2
+    docker pull fjossinet/rnaseq
+
+If you need more details about these images, check their Web page.
 
 ### Configure your PATH
 
