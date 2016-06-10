@@ -1433,7 +1433,7 @@ class Mlocarna(Tool):
         fileName = utils.generate_random_name(7)+'.fasta'
         with open(self.cache_dir+'/'+fileName, 'w') as fasta_file:
             fasta_file.write(parsers.to_fasta(molecules))
-        output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 mlocarna /data/%s"%fileName)
+        output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 mlocarna /data/%s"%(self.cache_dir,fileName))
 
         aligned_molecules = {}
         consensus2D = None
@@ -1526,7 +1526,6 @@ class Rnafold(Tool):
                     output = ps_file.read()
             else:
                 output = commands.getoutput("docker run -v %s:/data fjossinet/assemble2 bash -c 'RNAfold < /data/%s'"%(self.cache_dir, fileName)).strip()
-                print output
         if raw_output:
             return output
         else:

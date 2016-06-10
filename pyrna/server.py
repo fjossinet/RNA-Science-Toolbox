@@ -4,7 +4,6 @@ import ujson, sys, datetime, os, random, string, json
 
 from pyrna.features import RNA
 from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt, RnaAlifold
-from pyrna.db import PDB
 from pyrna import parsers
 from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw
 from pymongo import MongoClient
@@ -395,6 +394,7 @@ class Compute2d(tornado.web.RequestHandler):
         elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
             self.write(RnaAlifold().align(data))
         elif tool == 'rnaview': #3D annotation
+            from pyrna.db import PDB
             rnaview = Rnaview()
 
             if output == 'rnaml':
@@ -412,7 +412,6 @@ class Compute2d(tornado.web.RequestHandler):
                 result = []
 
                 for ts in tertiary_structures:
-
                     (ss, ts) = rnaview.annotate(ts, canonical_only = False)
 
                     ss.find_junctions()
