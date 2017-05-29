@@ -29,19 +29,19 @@ You also need the tool [Fabric](http://www.fabfile.org). If you're using the [An
 
     conda install fabric
 
+### Docker
+
+To install the RNA algorithms, you need first to get the tool Docker Community Edition. You will find all the details [here](https://docs.docker.com/engine/installation/).
+
 ### Python dependencies
 
 Once done, download the RNA Science Toolbox and go into its directory. To install its Python dependencies, you can  use either the package manager conda (from the [Anaconda distribution](https://www.continuum.io/why-anaconda)) or pip. To use conda, type:
 
-    fab
+    fab python
 
 To use pip, type:
 
-    fab install:manager=pip
-
-### Docker
-
-To install the RNA algorithms, you need first to get the tool Docker. You will find all the details [here](https://docs.docker.com/engine/installation/).
+    fab python:manager=pip
 
 ### RNA algorithms
 
@@ -52,14 +52,13 @@ Each Docker image available contains several algorithms:
 
 To install these images, you just have to type:
 
-    docker pull fjossinet/assemble2
-    docker pull fjossinet/rnaseq
+    fab docker
 
 If you need more details about these images, check their Web page.
 
-### Configure your PATH
+### Configure your PATH (mandatory)
 
-In the configuration file of your shell (.bashrc, .zshrc,...), add the folowing lines:
+In the configuration file of your shell (.bashrc, .zshrc,...), add the following lines:
 
     export TOOLBOX=THE_PATH_TO_YOUR_RNA_SCIENCE_TOOLBOX
     export PYTHONPATH=$PYTHONPATH:$TOOLBOX
@@ -84,6 +83,46 @@ edge1 edge2 orientation  pos1  pos2
 2      (     )           c     3    70
 [...]
 </pre>
+
+Jupyter notebooks (optional)
+------------
+
+The RNA Science Toolbox provides several interactive notebooks with code samples. To use them efficiently, you need [Jupyter](http://jupyter.org) installed on your computer. To do so, type:
+
+    fab jupyter
+
+To use pip, type:
+
+    fab jupyter:manager=pip  
+
+Then go in the directory notebooks and type:
+
+    jupyter notebook
+
+Click on a notebook and enjoy!!
+
+IPython configuration (optional)
+-------------
+
+To automatically import the PyRNA API from the IPython REPL, go into the directory $HOME/.ipython/profile_default/startup. Create a file named load_config.py containing the following lines:
+
+<pre>
+from pyrna.db import *
+from pyrna.features import *
+from pyrna.computations import *
+from pyrna.parsers import *
+from pyrna.utils import *
+</pre>
+
+Start a new IPython session from the command-line and type directly, without any import:
+
+<pre>
+pdb = PDB()
+tertiary_structures = parse_pdb(pdb.get_entry('1EHZ'))
+for ts in tertiary_structures:
+  print ts.rna.sequence
+</pre>
+
 
 Installation of the embedded Web server (optional)
 ------------

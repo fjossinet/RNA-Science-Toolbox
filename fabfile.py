@@ -13,6 +13,37 @@ home = os.path.expanduser('~')
 def install(manager="conda"):
     update()
     python(manager)
+    docker()
+
+@task
+def python(manager="conda"):
+    """
+    Install all the Python packages
+    """
+    print(green("Installing Python packages..."))
+    if manager == "conda":
+        local('conda config --set always_yes TRUE')
+        local('conda install pandas')
+        local('conda install pymongo')
+        local('conda install pysam')
+        local('conda install ujson')
+        local('conda install tornado')
+        local('pip install docker') #conda not working
+    elif manager == "pip":
+        local('pip install pandas')
+        local('pip install pymongo')
+        local('pip install pysam')
+        local('pip install ujson')
+        local('pip install tornado')
+        local('pip install docker')
+    else:
+        print "You need to install the following Python packages:"
+        print ("pandas")
+        print ("pymongo")
+        print ("pysam")
+        print ("ujson")
+        print ("tornado")
+        print ("docker")
 
 @task
 def website():
@@ -33,6 +64,26 @@ def website():
     print(green("Installing the website..."))
     local('cd website ; bower --config.interactive=false install')
 
+@task
+def docker():
+    """
+    Install the Docker images
+    """
+    local('docker pull fjossinet/assemble2')
+    local('docker pull fjossinet/rnaseq')
+
+@task
+def jupyter(manager="conda"):
+    """
+    Install Jupyter
+    """
+    if manager == "conda":
+        local("conda install jupyter")
+    elif manager == "pip":
+        local("pip install jupyter")
+    else:
+        print "You need to install Jupyter(http://jupyter.org)"
+
 def update():
     """
     Update the operating system
@@ -45,32 +96,6 @@ def update():
     #    print(green("Using MacOSX"))
     #    with warn_only():
     #        local('brew update')
-
-def python(manager="conda"):
-    """
-    Install all the Python packages
-    """
-    print(green("Installing Python packages..."))
-    if manager == "conda":
-        local('conda config --set always_yes TRUE')
-        local('conda install pandas')
-        local('conda install pymongo')
-        local('conda install pysam')
-        local('conda install ujson')
-        local('conda install tornado')
-    elif manager == "pip":
-        local('pip install pandas')
-        local('pip install pymongo')
-        local('pip install pysam')
-        local('pip install ujson')
-        local('pip install tornado')
-    else:
-        print "You need to install the following Python packages:"
-        print ("pandas")
-        print ("pymongo")
-        print ("pysam")
-        print ("ujson")
-        print ("tornado")
 
 def bcheck(installation_directory = "%s/algorithms"%home):
     """

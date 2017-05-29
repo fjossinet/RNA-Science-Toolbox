@@ -6,6 +6,7 @@ from features import RNA, SecondaryStructure, TertiaryStructure
 from parsers import base_pairs_to_secondary_structure, parse_bn, to_fasta, to_pdb
 from distutils.spawn import find_executable
 from pyrna.utils import check_docker_image
+import docker
 
 def get_api_key(rest_server):
     response = urllib.urlopen("http://%s/api/get_key"%rest_server)
@@ -13,12 +14,15 @@ def get_api_key(rest_server):
     return api_key
 
 class Tool:
-    def __init__(self, cache_dir = '/tmp', rest_server = None, api_key = None):
+    def __init__(self, cache_dir = '/tmp', rest_server = None, api_key = None, use_docker = True):
         self.cache_dir = cache_dir
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
         self.rest_server = rest_server
         self.api_key = api_key
+        self.use_docker = use_docker
+        if self.use_docker:
+            self.docker_client = docker.from_env()
 
     def find_executable(self, executable):
         if not find_executable(executable):
@@ -210,8 +214,8 @@ class Blast(Tool):
         """
         Tool.__init__(self, cache_dir = cache_dir, rest_server = rest_server, api_key = api_key)
         if not self.rest_server:
-            self.find_executable("formatdb")
-            self.find_executable("blastall")
+            self.find_executable("makeblastdb")
+            self.find_executable("legacy_blast.pl")
         self.target_molecules = target_molecules
 
     def format_db(self, is_nucleotide=True):
@@ -225,7 +229,7 @@ class Blast(Tool):
         with open("%s/input.fasta"%self.cache_dir, 'w+b') as fasta_file:
             fasta_file.write(parsers.to_fasta(self.target_molecules))
 
-        commands.getoutput("cd %s ; formatdb -i %s -p %s -o"%(self.cache_dir, fasta_file.name, "F" if is_nucleotide else "T"))
+        commands.getoutput("cd %s ; makeblastdb -in %s -dbtype %s"%(self.cache_dir, fasta_file.name, "nucl" if is_nucleotide else "prot"))
         self.formatted_db = fasta_file.name
 
     def parse_output(self, output):
@@ -367,7 +371,7 @@ class Blast(Tool):
         with open("%s/query.fasta"%tmp_dir, 'w+b') as query_file:
             query_file.write(query_molecule.to_fasta())
 
-        return self.parse_output(commands.getoutput("cd %s ; blastall -p blastn -d %s -i %s"%(self.cache_dir, self.formatted_db, query_file.name)))
+        return self.parse_output(commands.getoutput("cd %s ; blastn -db %s -query %s"%(self.cache_dir, self.formatted_db, query_file.name)))
 
     def rpsblast(self):
         pass
@@ -2030,18 +2034,24 @@ class Samtools(Tool):
     """
     Application Controller for Samtools.
     """
-    def __init__(self, sam_file, cache_dir="/tmp", rest_server = None, api_key = None):
-        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server)
-        self.sam_file = "/data/%s"%os.path.basename(sam_file)
+    def __init__(self, sam_file, cache_dir="/tmp", rest_server = None, api_key = None, use_docker = True):
+        Tool.__init__(self, cache_dir = cache_dir, api_key = api_key, rest_server = rest_server, use_docker = use_docker)
+        if use_docker:
+            self.sam_file = "/data/%s"%os.path.basename(sam_file)
+        else:
+            self.sam_file = sam_file
         self.sam_dir = os.path.dirname(os.path.realpath(sam_file))
-        if not self.rest_server:
+        if not self.rest_server and use_docker:
             check_docker_image('fjossinet/rnaseq')
 
     def run(self, user_defined_options = []):
         """
         Generic function to run samtools
         """
-        return commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bash -c 'samtools %s'"%(self.sam_dir, " ".join(user_defined_options)))
+        if not self.use_docker:
+            return commands.getoutput("samtools %s"%(" ".join(user_defined_options)))
+        else:
+            return commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bash -c 'samtools %s'"%(self.sam_dir, " ".join(user_defined_options)))
 
     def sort_and_index(self):
         """
@@ -2516,10 +2526,8 @@ class Tophat2(Bowtie2):
         elif not os.path.exists(bowtie2_index+".1.bt2"):
             bowtie2_index = Bowtie2(cache_dir = self.cache_dir, index_path = bowtie2_index).build_index(target_molecules)
 
-        fastq_file = os.path.basename(fastq_file)
-
         print "Reads alignment..."
-        commands.getoutput("docker run -v %s:/data fjossinet/rnaseq tophat2 %s %s -o /data/ /data/%s /data/%s"%(self.cache_dir, ' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", bowtie2_index, fastq_file))
+        self.docker_client.containers.run("fjossinet/rnaseq", "tophat2 %s %s -o /data/ /data/%s /data/%s"%(' '.join(user_defined_options), "--no-convert-bam" if no_convert_bam else "", bowtie2_index, fastq_file), volumes={self.cache_dir: {'bind': '/data', 'mode': 'rw'}})
 
         result_file = None
         if no_convert_bam:
@@ -2542,4 +2550,4 @@ class Tophat2(Bowtie2):
         junc_file = os.path.basename(junc_file)
         lines = open(self.cache_dir+"/junctions.bed").readlines()
         open(self.cache_dir+"/junctions_without_header.bed", 'w').writelines(lines[1:]) #the first line seems to crash the process....
-        commands.getoutput("docker run -v %s:/data fjossinet/rnaseq bash -c 'bed_to_juncs < %s > %s'"%(self.cache_dir, "junctions_without_header.bed", junc_file))
+        self.docker_client.containers.run("fjossinet/rnaseq", "bash -c 'bed_to_juncs < %s > %s'"%("junctions_without_header.bed", junc_file), volumes={self.cache_dir: {'bind': '/data', 'mode': 'rw'}})

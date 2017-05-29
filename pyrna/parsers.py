@@ -108,7 +108,7 @@ def base_pairs_to_secondary_structure(rna, base_pairs):
     helix_start = -1
     helix_end = -1
     helix_length = -1
-    base_pairs = base_pairs.sort_index(by='pos1') #the base pairs are sorted according to the first position
+    base_pairs = base_pairs.sort_values(by='pos1') #the base pairs are sorted according to the first position
     base_pairs = base_pairs.as_matrix()
     helix_count = 1
 
@@ -1093,7 +1093,7 @@ def parse_fasta(fasta_data, type='RNA'):
 
     Returns:
     ------
-    a list of RNA or DNA objects (according to the value of the parameter type) (see pyrna.features)
+    a list of RNA, DNA or Protein objects (according to the value of the parameter type) (see pyrna.features)
     """
     molecules = []
     pieces = []
@@ -1105,6 +1105,10 @@ def parse_fasta(fasta_data, type='RNA'):
                     m = RNA(sequence = ''.join(pieces), name = molecule_name.strip())
                 elif type == 'DNA':
                     m = DNA(sequence = ''.join(pieces), name = molecule_name.strip())
+                elif type == 'Protein':
+                    m = Protein(sequence = ''.join(pieces), name = molecule_name.strip())
+                    if ''.join(pieces) != m.sequence:
+                        sys.exit()
                 if m != None:
                     molecules.append(m)
             molecule_name = line[1:]
@@ -1117,6 +1121,8 @@ def parse_fasta(fasta_data, type='RNA'):
             m = RNA(sequence = ''.join(pieces), name = molecule_name.strip())
         elif type == 'DNA':
             m = DNA(sequence = ''.join(pieces), name = molecule_name.strip())
+        elif type == 'Protein':
+            m = Protein(sequence = ''.join(pieces), name = molecule_name.strip())
         if m != None:
             molecules.append(m)
     return molecules
@@ -1173,26 +1179,17 @@ def parse_bn(bn):
     """
 
     i = 0
-    lastSquarredPairedPos = []
-    lastRoundedPairedPos = []
-    lastCurlyPairedPos = []
-
+    lastPairedPos = []
+    lastPairedSymbol = []
     basePairs = []
 
-    for pos in list(bn):
+    for s in list(bn):
         i+=1
-        if pos == '(':
-            lastRoundedPairedPos.append(i)
-        elif pos == '{':
-            lastCurlyPairedPos.append(i)
-        elif pos == '[':
-            lastSquarredPairedPos.append(i)
-        elif pos == ')':
-            basePairs.append(['c', '(', pos, lastRoundedPairedPos.pop(), i])
-        elif pos == '}':
-            basePairs.append(['c', '{', pos, lastCurlyPairedPos.pop(), i])
-        elif pos == ']':
-            basePairs.append(['c', '[', pos, lastSquarredPairedPos.pop(), i])
+        if s in ['(','{','[']:
+            lastPairedPos.append(i)
+            lastPairedSymbol.append(s)
+        elif s in [')','}',']']:
+            basePairs.append(['c', lastPairedSymbol.pop(), s, lastPairedPos.pop(), i])
 
     if len(basePairs):
         return DataFrame(basePairs, columns=['orientation', 'edge1', 'edge2', 'pos1', 'pos2'])

@@ -1,2 +1,3 @@
 *.pyc
 website/bower_components/*
+notebooks/.ipynb_checkpoints/*

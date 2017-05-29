@@ -442,7 +442,7 @@ class Rfam:
     - version: the version of Rfam to be used. If data are downloaded from the website, this parameter is not used and only the CURRENT version will be used.
     """
     def __init__(self, use_website = False, cache_dir = None, version = 'CURRENT'):
-        self.base_url = "http://rfam.sanger.ac.uk/"
+        self.base_url = "http://rfam.xfam.org/"
         self.use_website = use_website
         if not cache_dir:
             self.cache_dir = "/tmp/RFAM_%s"%utils.generate_random_name(7)
