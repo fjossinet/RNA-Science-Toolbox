@@ -1,10 +1,10 @@
-#!/bin/bash
+  #!/bin/bash
 
 DOWNLOAD_DIR=$1
 
 VERSION=$2
 
-LINK="ftp://ftp.sanger.ac.uk/pub/databases/Rfam/$VERSION/database_files/"
+LINK="ftp://ftp.ebi.ac.uk/pub/databases/Rfam/$VERSION/database_files/"
 
 cd $DOWNLOAD_DIR
 wget -qO rfam.txt.gz $LINK/rfam.txt.gz
