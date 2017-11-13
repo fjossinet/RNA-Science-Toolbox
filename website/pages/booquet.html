@@ -1,0 +1,647 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>RNA Science Toolbox</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="{{ static_url('bower_components/bootstrap/dist/css/bootstrap.min.css')}}" rel="stylesheet">
+
+    <!-- MetisMenu CSS -->
+    <link href="{{ static_url('bower_components/metisMenu/dist/metisMenu.min.css')}}" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="{{ static_url('css/dashboard.css')}}" rel="stylesheet">
+
+    <!-- Morris Charts CSS -->
+    <link href="{{ static_url('bower_components/morrisjs/morris.css')}}" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="{{ static_url('bower_components/font-awesome/css/font-awesome.min.css')}}" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <div id="wrapper">
+
+        <!-- Navigation -->
+        <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">RNA Science Toolbox</a>
+            </div>
+            <!-- /.navbar-header -->
+
+            <div class="navbar-default sidebar" role="navigation">
+                <div class="sidebar-nav navbar-collapse">
+                    <ul class="nav" id="side-menu">
+                        <li>
+                            <a href="/server"><i class="fa fa-dashboard fa-fw"></i> Server status</a>
+                        </li>
+                        <li>
+                            <a href="/account"><i class="fa fa-user fa-fw"></i> Your account</a>
+                        </li>
+                        <li>
+                            <a href="/pyrna"><i class="fa fa-book fa-fw"></i> PyRNA documentation</a>
+                        </li>
+                        <li>
+                            <a href="/webservices"><i class="fa fa-book fa-fw"></i> Web Services documentation</a>
+                        </li>
+                        <li>
+                            <a href="/rnapedia"><i class="fa fa-university fa-fw"></i> RNApedia</a>
+                        </li>
+                        <li>
+                            <a href="https://twitter.com/RnaSciToolbox" target="_blank"><i class="fa fa-twitter fa-fw"></i> Follow us</a>
+                        </li>
+                    </ul>
+                </div>
+                <!-- /.sidebar-collapse -->
+            </div>
+            <!-- /.navbar-static-side -->
+        </nav>
+
+        <div id="page-wrapper">
+            <img src="{{ static_url('images/booquet_logo.png')}}" width="200px"/>
+            <header>
+                <p>Booquet (pronounce "bouquet") is a ....</p>
+            </header>
+            <div class="row">
+              <div class="col-md-4">
+                <label>Choice 1:</label> visualize an RFAM family...
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-4">
+                <select id="rfam-families" class="form-control" placeholder=".col-md-4"></select>
+              </div>
+              <div class="col-md-4" >
+                <span id="rfam-spinner-box">
+                </span>
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px;">
+              <div class="col-md-8">
+                <label>Choice 2:</label> visualize your own alignment (you need a clustalw format supplemented with a bracket notation, <a href="/tools/booquet/sample" target="_blank">download sample</a>)
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-4">
+                <input id="alignment_upload" type="file" class="form-control" placeholder=".col-md-4"/>
+              </div>
+            </div>
+
+            <div id="booquet">
+              <svg width=1100px height=500px>
+              </svg>
+            </div>
+            <!-- /.row -->
+        </div>
+        <!-- /#page-wrapper -->
+
+    </div>
+
+    <!-- jQuery -->
+    <script src="{{ static_url('bower_components/jquery/dist/jquery.min.js')}}"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="{{ static_url('bower_components/bootstrap/dist/js/bootstrap.min.js')}}"></script>
+
+    <!-- Metis Menu Plugin JavaScript -->
+    <script src="{{ static_url('bower_components/metisMenu/dist/metisMenu.min.js')}}"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="{{ static_url('js/dashboard.js')}}"></script>
+
+    <!-- D3 -->
+    <script src="{{ static_url('js/d3/d3.v3.min.js')}}"></script>
+    <script src="{{ static_url('js/d3/d3.layout.min.js')}}"></script>
+
+    <script type="text/javascript">
+      var
+          secondary_structure = undefined,
+          consensus_secondary_structure = undefined,
+          junction_diameter = undefined,
+          aligned_sequences = undefined,
+          orthologs = undefined,
+          bn = undefined,
+          helices2Colors = {};
+
+      var stroke_width = 1;
+
+      function load_booquet(booquet) {
+        console.log(booquet)
+          d3.select("#booquet").select("svg").remove();
+          var svg = d3.select("#booquet").append("svg");
+          var all_x =[],
+              all_y = [],
+              quantitative_values = [],
+              single_strands_not_in_junctions = [],
+              categoricalColors = d3.scale.category20().range();
+
+          for (var i = 0 ; i < booquet.single_strands.length ; i++) {
+              var single_strand = booquet.single_strands[i]
+              if ('coords' in single_strand) {
+                  single_strands_not_in_junctions.push(single_strand)
+              }
+          }
+
+          for (var i = 0 ; i < single_strands_not_in_junctions.length ; i++) {
+              var single_strand = single_strands_not_in_junctions[i]
+              if ('quantitative_value' in single_strand) {
+                  quantitative_values.push(single_strand['quantitative_value'])
+              }
+              all_x.push(single_strand['coords'][0][0])
+              all_y.push(single_strand['coords'][0][1])
+              all_x.push(single_strand['coords'][1][0])
+              all_y.push(single_strand['coords'][1][1])
+          }
+
+          for (var i = 0 ; i < booquet.helices.length ; i++) {
+              var helix = booquet.helices[i]
+              if ('quantitative_value' in helix) {
+                  quantitative_values.push(helix['quantitative_value'])
+              }
+              all_x.push(helix['coords'][0][0])
+              all_y.push(helix['coords'][0][1])
+              all_x.push(helix['coords'][1][0])
+              all_y.push(helix['coords'][1][1])
+              helices2Colors[helix['name']] = categoricalColors[i <= 19 ? i : i-20*parseInt(i/20)]
+          }
+
+          for (var i = 0 ; i < booquet.junctions.length ; i++) {
+              var junction = booquet.junctions[i]
+              if ('quantitative_value' in junction) {
+                  quantitative_values.push(junction['quantitative_value'])
+              }
+              all_x.push(junction['coords'][0][0])
+              all_y.push(junction['coords'][0][1])
+          }
+
+          var min_x = d3.min(all_x)
+          var min_y = d3.min(all_y)
+
+          for (var i = 0 ; i < single_strands_not_in_junctions.length ; i++) {
+              var single_strand = single_strands_not_in_junctions[i]
+              single_strand['coords'] = [
+              [single_strand['coords'][0][0]-min_x+junction_diameter, single_strand['coords'][0][1]-min_y+junction_diameter],
+              [single_strand['coords'][1][0]-min_x+junction_diameter, single_strand['coords'][1][1]-min_y+junction_diameter]
+              ]
+          }
+          for (var i = 0 ; i < booquet.helices.length ; i++) {
+              var helix = booquet.helices[i]
+              helix['coords'] = [
+                  [helix['coords'][0][0]-min_x+junction_diameter, helix['coords'][0][1]-min_y+junction_diameter],
+                  [helix['coords'][1][0]-min_x+junction_diameter, helix['coords'][1][1]-min_y+junction_diameter]
+                  ]
+          }
+
+          for (var i = 0 ; i < booquet.junctions.length ; i++) {
+              var junction = booquet.junctions[i]
+              junction['coords'] = [
+                          [junction['coords'][0][0]-min_x+junction_diameter, junction['coords'][0][1]-min_y+junction_diameter]]
+          }
+
+          for (var i = 0 ; i < booquet.diagonals.length ; i++) {
+              var diagonal = booquet.diagonals[i]
+              diagonal['coords'] = [
+                          [diagonal['coords'][0][0]-min_x+junction_diameter, diagonal['coords'][0][1]-min_y+junction_diameter],
+                          [diagonal['coords'][1][0]-min_x+junction_diameter, diagonal['coords'][1][1]-min_y+junction_diameter]
+                          ]
+          }
+
+          all_x = all_x.map(function(x) {return x-min_x+junction_diameter;});
+          all_y = all_y.map(function(y) {return y-min_y+junction_diameter;});
+
+          var shiftX = 100;
+          var shiftY =  0;
+          var legendHeight = 200;
+          var format = d3.format(".2s");
+
+          var colorStart = "#377eb8",
+              colorEnd = "#e41a1c";
+
+          var sdColors = d3.scale.linear().domain([d3.min(quantitative_values), d3.max(quantitative_values)]).range([colorStart, colorEnd]);
+
+          var quantitative_values_scale = d3.scale.linear().domain([d3.min(quantitative_values),d3.max(quantitative_values)]).range([1, legendHeight]);
+
+          svg.attr("width", d3.max(all_x)+junction_diameter+shiftX+10);
+
+          if (d3.max(all_y)+junction_diameter > legendHeight + 50)
+              svg.attr("height", d3.max(all_y)+junction_diameter+10);
+          else {
+              svg.attr("height", legendHeight + 50+10);
+              shiftY = legendHeight + 50 - d3.max(all_y)
+          }
+
+          if (quantitative_values.length > 0) {
+              var gradient = svg.append("svg:defs")
+                      .append("svg:linearGradient")
+                      .attr("id", "gradient")
+                      .attr("x1", "50%")
+                      .attr("y1", "0%")
+                      .attr("x2", "50%")
+                      .attr("y2", "100%")
+                      .attr("spreadMethod", "pad");
+
+              gradient.append("svg:stop")
+                  .attr("offset", "0%")
+                  .attr("stop-color", colorStart)
+                  .attr("stop-opacity", 1);
+
+              gradient.append("svg:stop")
+                  .attr("offset", "100%")
+                  .attr("stop-color", colorEnd)
+                  .attr("stop-opacity", 1);
+
+              svg.append("svg:rect")
+                  .attr("x", 20)
+                  .attr("y", 20)
+                  .attr("width", 20)
+                  .attr("height", legendHeight)
+                  .style("fill", "url(#gradient)");
+
+              svg.append('text')
+                  .attr("x", -20)
+                  .attr("y", 10)
+                  .attr("dy", ".2em")
+                  .style("text-anchor", "end")
+                  .attr("transform", function(d) {
+                      return "rotate(-90)"
+                  })
+                  .text("Standard deviation (nts)");
+
+              svg.append('text')
+                  .attr("x", 30)
+                  .attr("y", 10)
+                  .attr("dy", ".2em")
+                  .attr("text-anchor", "middle")
+                  .text(format(d3.min(quantitative_values)));
+
+              svg.append('text')
+                  .attr("x", 30)
+                  .attr("y", 230)
+                  .attr("dy", ".2em")
+                  .attr("text-anchor", "middle")
+                  .text(format(d3.max(quantitative_values)));
+          }
+
+          svg.selectAll(".diagonal").data(booquet.diagonals).enter().append("line")
+                                                          .attr("class", "diagonal")
+                                                          .style("stroke", function(diagonal) {
+                                                              if ('quantitative_value' in diagonal)
+                                                                  return sdColors(diagonal['quantitative_value'])
+                                                              else
+                                                                  return colorStart;
+                                                          })
+                                                          .style("stroke-width", stroke_width)
+                                                          .style("stroke-linecap", "round")
+                                                          .attr("x1", function(diagonal) {return diagonal['coords'][0][0]+shiftX;})
+                                                          .attr("y1", function(diagonal) {return diagonal['coords'][0][1]+shiftY;})
+                                                          .attr("x2", function(diagonal) {return diagonal['coords'][1][0]+shiftX;})
+                                                          .attr("y2", function(diagonal) {return diagonal['coords'][1][1]+shiftY;})
+
+          svg.selectAll(".junction-in").data(booquet.junctions).enter().append("circle")
+                                                              .attr("class", "junction-in")
+                                                              .style("fill", function(junction) {
+                                                                  if ('quantitative_value' in junction)
+                                                                      return sdColors(junction['quantitative_value'])
+                                                                  else
+                                                                      return colorStart;
+                                                              })
+                                                              .style("stroke", function(junction) {
+                                                                  if ('quantitative_value' in junction)
+                                                                      return sdColors(junction['quantitative_value'])
+                                                                  else
+                                                                      return colorStart;
+                                                              })
+                                                              .style("stroke-width", stroke_width)
+                                                              .style("fill-opacity", 1.0)
+                                                              .attr("cx", function(junction) { return junction['coords'][0][0]+shiftX;})
+                                                              .attr("cy", function(junction) { return junction['coords'][0][1]+shiftY;})
+                                                              .attr("r", junction_diameter/2)
+                                                              .style("cursor", "pointer")
+                                                              .on('click', function(junction) {
+                                                                  highlight(junction['location']);
+                                                              })
+                                                              .on('mouseover', function(junction) {
+                                                                  if ('quantitative_value' in junction) {
+                                                                      svg.append("text")
+                                                                          .attr("class", "tip")
+                                                                          .attr('font-family', 'FontAwesome')
+                                                                          .attr("x", 40)
+                                                                          .attr("y", 20+quantitative_values_scale(junction['quantitative_value']))
+                                                                          .attr("dy", ".2em")
+                                                                          .attr("text-anchor", "start")
+                                                                          .text("\uf0d9");
+
+                                                                      svg.append("text")
+                                                                          .attr("class", "tip")
+                                                                          .attr("x", 50)
+                                                                          .attr("y", 20+quantitative_values_scale(junction['quantitative_value']))
+                                                                          .attr("dy", ".2em")
+                                                                          .attr("text-anchor", "start")
+                                                                          .text(format(junction['quantitative_value']));
+                                                                  }
+                                                              })
+                                                              .on('mouseout',
+                                                                  function(junction) {
+                                                                      d3.selectAll(".tip").remove()
+                                                                  });
+
+          svg.selectAll(".junction-out").data(booquet.junctions).enter().append("circle")
+                                                              .attr("class", "junction-out")
+                                                              .style("fill", "none")
+                                                              .style("stroke", function(junction) {
+                                                                  if ('quantitative_value' in junction)
+                                                                      return sdColors(junction['quantitative_value'])
+                                                                  else
+                                                                      return colorStart;
+                                                              })
+                                                              .style("stroke-width", stroke_width)
+                                                              .attr("cx", function(junction) { return junction['coords'][0][0]+shiftX;})
+                                                              .attr("cy", function(junction) { return junction['coords'][0][1]+shiftY;})
+                                                              .attr("r", (1.5*junction_diameter)/2);
+
+
+          svg.selectAll(".helix").data(booquet.helices).enter().append("line")
+                                                          .attr("class", "helix")
+                                                          .style("stroke", function(helix) {
+                                                              return colorStart;
+                                                          })
+                                                          .style("stroke-width", stroke_width)
+                                                          .attr("x1", function(helix) {return helix['coords'][0][0]+shiftX;})
+                                                          .attr("y1", function(helix) {return helix['coords'][0][1]+shiftY;})
+                                                          .attr("x2", function(helix) {return helix['coords'][1][0]+shiftX;})
+                                                          .attr("y2", function(helix) {return helix['coords'][1][1]+shiftY;})
+
+
+          /*svg.selectAll(".helix-label-horizontal-line").data(booquet.helices).enter().append("line")
+                                                                                .attr("class", "helix-label-horizontal-line")
+                                                                                .style("stroke", function(helix) {
+                                                                                    return "#377eb8";
+                                                                                })
+                                                                                .style("stroke-width", stroke_width)
+                                                                                .attr("x1", function(helix) {return helix['coords'][0][0]+shiftX;})
+                                                                                .attr("y1", function(helix) {return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})
+                                                                                .attr("x2", function(helix) {return helix['coords'][0][0]+shiftX+5;})
+                                                                                .attr("y2", function(helix) {return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})*/
+
+          svg.selectAll(".helix-label-circle").data(booquet.helices).enter().append("ellipse")
+                                                                                .attr("class", "helix-label-circle")
+                                                                                .style("stroke", function(helix) {
+                                                                                    if ('quantitative_value' in helix)
+                                                                                        return sdColors(helix['quantitative_value'])
+                                                                                    else {
+                                                                                        return colorStart;
+                                                                                    }
+                                                                                })
+                                                                                .style("fill", function(helix) {
+                                                                                    if ('quantitative_value' in helix)
+                                                                                        return sdColors(helix['quantitative_value'])
+                                                                                    else {
+                                                                                        return colorStart;
+                                                                                    }
+                                                                                })
+                                                                                .style("stroke-width", stroke_width)
+                                                                                .style("fill-opacity", 1.0)
+                                                                                .style("cursor", "pointer")
+                                                                                .attr("cx", function(helix) { return helix['coords'][0][0]+shiftX+6+stroke_width;})
+                                                                                .attr("cy", function(helix) { return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})
+                                                                                .attr("rx", 6)
+                                                                                .attr("ry", 4)
+                                                                                .on('mouseover', function(junction) {
+                                                                                  if ('quantitative_value' in helix) {
+                                                                                      svg.append("text")
+                                                                                          .attr("class", "tip")
+                                                                                          .attr('font-family', 'FontAwesome')
+                                                                                          .attr("x", 40)
+                                                                                          .attr("y", 20+quantitative_values_scale(helix['quantitative_value']))
+                                                                                          .attr("dy", ".2em")
+                                                                                          .attr("text-anchor", "start")
+                                                                                          .text("\uf0d9");
+
+                                                                                      svg.append("text")
+                                                                                          .attr("class", "tip")
+                                                                                          .attr("x", 50)
+                                                                                          .attr("y", 20+quantitative_values_scale(helix['quantitative_value']))
+                                                                                          .attr("dy", ".2em")
+                                                                                          .attr("text-anchor", "start")
+                                                                                          .text(format(helix['quantitative_value']));
+                                                                                  }
+                                                                              })
+                                                                              .on('mouseout',
+                                                                                  function(helix) {
+                                                                                    d3.selectAll(".tip").remove()
+                                                                              })
+                                                                              .on('click',
+                                                                                function(helix) {
+                                                                                    highlight(helix['location']);
+                                                                              });
+
+         /*svg.selectAll(".helix-label-horizontal-line2").data(booquet.helices).enter().append("line")
+                                                                                .attr("class", "helix-label-horizontal-line2")
+                                                                                .style("stroke", function(helix) {
+                                                                                    return colorStart;
+                                                                                })
+                                                                                .style("stroke-width", stroke_width)
+                                                                                .attr("x1", function(helix) {return helix['coords'][0][0]+shiftX;})
+                                                                                .attr("y1", function(helix) {return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})
+                                                                                .attr("x2", function(helix) {return helix['coords'][0][0]+shiftX-5;})
+                                                                                .attr("y2", function(helix) {return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})*/
+
+          /*svg.selectAll(".helix-label-circle2").data(booquet.helices).enter().append("ellipse")
+                                                                                .attr("class", "helix-label-circle2")
+                                                                                .style("stroke", function(helix) {
+                                                                                    return helices2Colors[helix['name']];
+                                                                                })
+                                                                                .style("fill", function(helix) {
+                                                                                    return helices2Colors[helix['name']];
+                                                                                })
+                                                                                .style("stroke-width", stroke_width)
+                                                                                .style("fill-opacity", 1.0)
+                                                                                .style("cursor", "pointer")
+                                                                                .attr("cx", function(helix) { return helix['coords'][0][0]+shiftX-6-stroke_width;})
+                                                                                .attr("cy", function(helix) { return (helix['coords'][0][1]+shiftY + helix['coords'][1][1]+shiftY)/2;})
+                                                                                .attr("rx", 6)
+                                                                                .attr("ry", 4)
+                                                                                .on('mouseover', function(junction) {
+                                                                                  if ('quantitative_value' in helix) {
+                                                                                      svg.append("text")
+                                                                                          .attr("class", "tip")
+                                                                                          .attr('font-family', 'FontAwesome')
+                                                                                          .attr("x", 40)
+                                                                                          .attr("y", 20+quantitative_values_scale(helix['quantitative_value']))
+                                                                                          .attr("dy", ".2em")
+                                                                                          .attr("text-anchor", "start")
+                                                                                          .text("\uf0d9");
+
+                                                                                      svg.append("text")
+                                                                                          .attr("class", "tip")
+                                                                                          .attr("x", 50)
+                                                                                          .attr("y", 20+quantitative_values_scale(helix['quantitative_value']))
+                                                                                          .attr("dy", ".2em")
+                                                                                          .attr("text-anchor", "start")
+                                                                                          .text(format(helix['quantitative_value']));
+                                                                                  }
+                                                                              })
+                                                                              .on('mouseout',
+                                                                                function(helix) {
+                                                                                    d3.selectAll(".tip").remove()
+                                                                              })
+                                                                              .on('click',
+                                                                                function(helix) {
+                                                                                    highlight(helix['location']);
+                                                                              });*/
+
+
+          svg.selectAll(".single-strand").data(single_strands_not_in_junctions).enter().append("line")
+                                                                                          .attr("class", "single-strand")
+                                                                                          .style("stroke", function(single_strand) {
+                                                                                              if ('quantitative_value' in single_strand)
+                                                                                                  return sdColors(single_strand['quantitative_value'])
+                                                                                              else
+                                                                                                  return colorStart;
+                                                                                          })
+                                                                                          .style("stroke-width", stroke_width)
+                                                                                          .attr("x1", function(single_strand) {return single_strand['coords'][0][0]+shiftX;})
+                                                                                          .attr("y1", function(single_strand) {return single_strand['coords'][0][1]+shiftY;})
+                                                                                          .attr("x2", function(single_strand) {return single_strand['coords'][1][0]+shiftX;})
+                                                                                          .attr("y2", function(single_strand) {return single_strand['coords'][1][1]+shiftY;})
+
+          svg.selectAll(".directly-linked-helix").data(booquet['directly-linked-helices']).enter().append("line")
+                                                          .attr("class", "directly-linked-helix")
+                                                          .style("stroke-linecap", "round")
+                                                          .style("stroke", "grey")
+                                                          .style("stroke-width", stroke_width)
+                                                          .attr("x1", function(helix) {return helix['coords'][0][0]+shiftX;})
+                                                          .attr("y1", function(helix) {return helix['coords'][0][1]+shiftY;})
+                                                          .attr("x2", function(helix) {return helix['coords'][1][0]+shiftX;})
+                                                          .attr("y2", function(helix) {return helix['coords'][1][1]+shiftY;})
+      }
+
+      function wrap(text) {
+        text.each(function() {
+          var text = d3.select(this),
+              words = text.text().split(/[\/]/).reverse(),
+              word,
+              line = [],
+              lineNumber = 0,
+              lineHeight = 1.1, // ems
+              y = text.attr("y"),
+              dy = parseFloat(text.attr("dy")),
+              tspan = text.text(null).append("tspan").attr("x", text.attr("x")).attr("y", y).attr("dy", dy + "em");
+          while (word = words.pop()) {
+              word = word.replace(/_/g, " ");
+              subwords = word.split(' ');
+              if (subwords.length > 2) {
+                  word1 = subwords.slice(0,2).join(' ')
+                  line.push(word1);
+                  tspan.text(line.join(" "));
+                  line.pop();
+                  tspan.text(line.join(" "));
+                  line = [word1];
+                  tspan = text.append("tspan").attr("x", text.attr("x")).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word1);
+
+                  word2 = subwords.slice(2).join(' ')
+                  line.push(word2);
+                  tspan.text(line.join(" "));
+                  line.pop();
+                  tspan.text(line.join(" "));
+                  line = [word2];
+                  tspan = text.append("tspan").attr("x", text.attr("x")).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word2);
+              }
+              else {
+                  line.push(word);
+                  tspan.text(line.join(" "));
+                  line.pop();
+                  tspan.text(line.join(" "));
+                  line = [word];
+                  tspan = text.append("tspan").attr("x", text.attr("x")).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+              }
+          }
+        });
+      }
+
+      if ("WebSocket" in window) {
+        console.log("WebSocket is supported by your Browser!");
+        var ws = new WebSocket("ws://{{hostname}}:8080/websocket");
+
+        var waitForSocketConnection = function (socket, callback){
+            setTimeout(
+                function(){
+                    if (socket.readyState === 1) {
+                        if(callback !== undefined){
+                            callback();
+                        }
+                        return;
+                    } else {
+                        waitForSocketConnection(socket,callback);
+                    }
+                }, 5);
+        };
+
+        ws.onopen = function() {
+            console.log("Connection is opened...");
+
+            ws.send(JSON.stringify({
+                'header': 'init booquet',
+                'rfam_id': 'RF01577'
+            }));
+
+        };
+
+        ws.onclose = function() {
+            console.log("Connection is closed...");
+        };
+
+        ws.onmessage = function (evt) {
+            var received_msg = JSON.parse(evt.data);
+            if (received_msg['header'] == 'init booquet') {
+              booquet_json = received_msg['booquet_json'];
+              junction_diameter = received_msg['junction_diameter'];
+              aligned_sequences = received_msg['aligned_sequences'];
+              orthologs = received_msg['orthologs'];
+              bn = received_msg['bn'];
+
+              //we construct the booquet
+              load_booquet(booquet_json);
+
+            }
+        };
+
+        $(function() {
+
+            document.querySelector('#alignment_upload').addEventListener('change', function() {
+
+              var reader = new FileReader();
+
+              reader.addEventListener('load', function() {
+                var alignment = reader.result;
+                ws.send(JSON.stringify({
+                    'header': 'init booquet',
+                    'alignment': alignment
+                }));
+              }, false);
+
+              reader.readAsText(this.files[0]);
+
+          }, false);
+
+        });
+
+      } else {
+        console.log("WebSocket NOT supported by your Browser!");
+      }
+
+    </script>
+
+    </body>
+</html>

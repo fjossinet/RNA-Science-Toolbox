@@ -53,6 +53,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                 except Exception, e:
                     print e
                     print "No annotation for %s"%pdb_id
+                    save(db, None, ts, pdb_id, limit)
     else:
         pdb = PDB()
         rna3dHub = RNA3DHub()
@@ -73,6 +74,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
                 except Exception, e:
                     print e
                     print "No annotation for %s"%cluster[0]
+                    save(db, None, ts, cluster[0], limit)
 
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
     if db['junctions'].count() >= limit:

@@ -3,9 +3,10 @@
 import ujson, sys, datetime, os, random, string, json
 
 from pyrna.features import RNA
+from pyrna.db import Rfam
 from pyrna.computations import Rnafold, Contrafold, Rnaplot, Rnaview, Mlocarna, Rnasubopt, RnaAlifold
 from pyrna import parsers
-from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw
+from pyrna.parsers import parse_vienna, parse_fasta, base_pairs_to_secondary_structure, parse_pdb, to_clustalw, consensus2d_to_booquet
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from subprocess import Popen
@@ -52,6 +53,10 @@ class Index(tornado.web.RequestHandler):
 class ServerActivity(tornado.web.RequestHandler):
     def get(self):
         self.render('server.html', hostname = hostname)
+
+class Booquet(tornado.web.RequestHandler):
+    def get(self):
+        self.render('booquet.html', hostname = hostname)
 
 class PyrnaDoc(tornado.web.RequestHandler):
     def get(self):
@@ -728,6 +733,17 @@ class WebSocket(tornado.websocket.WebSocketHandler):
                 'data': data
                 }
             self.write_message(answer, binary = False)
+        elif message['header'] == 'init booquet':
+            junction_diameter = 20
+            rfam = Rfam(use_website = True)
+            aligned_rnas, species, consensus2D = rfam.get_entry(rfam_id = message['rfam_id'], nse_labels = 0)
+            print consensus2D
+            structural_alignment = to_clustalw(consensus2D, aligned_rnas)
+            booquet_json = consensus2d_to_booquet(structural_alignment, junction_diameter = junction_diameter)
+            answer = {'header': 'init booquet'}
+            answer['booquet_json'] = booquet_json
+            answer['junction_diameter'] = junction_diameter
+            self.write_message(answer, binary = False)
 
     def on_close(self):
         if self in websockets:
@@ -744,6 +760,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r'/', Index),
             (r'/server', ServerActivity),
+            (r'/booquet', Booquet),
             (r'/pyrna', PyrnaDoc),
             (r'/rnapedia', Rnapedia),
             (r'/account', UserAccount),

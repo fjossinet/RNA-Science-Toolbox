@@ -124,7 +124,7 @@ for ts in tertiary_structures:
 </pre>
 
 
-Web Services Deployment (optional, under heavy development)
+Web Services deployment (optional, under heavy development)
 ------------
 
 The RNA Science Toolbox allows you to deploy some PyRNA functionalities as Web Services.

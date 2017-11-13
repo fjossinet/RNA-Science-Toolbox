@@ -190,6 +190,172 @@ def base_pairs_to_secondary_structure(rna, base_pairs):
 
     return ss
 
+def consensus2d_to_booquet(structural_alignment, junction_diameter = 20):
+    """
+    Parameters:
+    ---------
+    - structural_alignment: the structural alignment as a ClustalW String
+
+    Returns:
+    ------
+    a json object describing a booquet
+    """
+    import numpy as np
+    ss_object = None
+    ss_json = {}
+    base_pairs_dataframe = None
+    aligned_rnas = None
+
+    print structural_alignment
+
+    aligned_rnas, base_pairs_dataframe = parse_clustalw(structural_alignment)
+    print aligned_rnas, base_pairs_dataframe
+    ss_object = base_pairs_to_secondary_structure(aligned_rnas[0], base_pairs_dataframe)
+
+    if ss_object:
+        ss_object.find_junctions()
+
+        for helix in ss_object.helices:
+            print helix['location']
+            sizes = []
+            descriptions = []
+            for aligned_rna in aligned_rnas:
+                strand1 = aligned_rna.sequence[helix['location'][0][0]-1:helix['location'][0][-1]].replace('-','')
+                sizes.append(len(strand1))
+                strand2 = aligned_rna.sequence[helix['location'][-1][0]-1:helix['location'][-1][-1]].replace('-','')
+                sizes.append(len(strand2))
+                descriptions.append([aligned_rna.name, strand1, strand2])
+            if len(sizes) > 2:
+                helix['quantitative_value'] = np.std(sizes)
+            helix['descriptions'] = descriptions
+
+        for single_strand in ss_object.single_strands:
+            sizes = []
+            descriptions = []
+            for aligned_rna in aligned_rnas:
+                strand = aligned_rna.sequence[single_strand['location'][0]-1:single_strand['location'][-1]].replace('-','')
+                sizes.append(len(strand))
+                descriptions.append([aligned_rna.name, strand])
+            if len(sizes) > 1:
+                single_strand['quantitative_value'] = np.std(sizes)
+            single_strand['descriptions'] = descriptions
+
+        for junction in ss_object.junctions:
+            junction['location'].sort() #we need to be sure that the locations are sorted (so the display will be from the 5' to the 3' ends)
+            sizes = []
+            descriptions = []
+            for aligned_rna in aligned_rnas:
+                size = 0
+                strands = []
+                for single_strand in junction['location']:
+                    strand = aligned_rna.sequence[single_strand[0]:single_strand[-1]-1].replace('-','')
+                    size += len(strand)
+                    strands.append(strand)
+                sizes.append(size)
+                strands.insert(0, aligned_rna.name)
+                descriptions.append(strands)
+            if len(sizes) > 1:
+                junction['quantitative_value'] = np.std(sizes)
+            junction['descriptions'] = descriptions
+
+        junction_diameter = 20
+        ss_object.compute_plot(step = 40, residue_occupancy = 10, junction_diameter = junction_diameter)
+
+        #the secondary structures are dumped as JSON string
+
+        #the fungal ss
+
+        helices_descr = []
+        for helix in ss_object.helices:
+            descr = {
+                'name': helix['name'],
+                'location': helix['location'],
+                'coords': helix['coords'],
+                'descriptions': helix['descriptions']
+            }
+            if helix.has_key('quantitative_value'):
+                descr['quantitative_value'] = helix['quantitative_value']
+            helices_descr.append(descr)
+
+        ss_json['helices'] = helices_descr
+
+        single_strands_descr = []
+        for single_strand in ss_object.single_strands:
+            descr =  {
+                    'name': single_strand['name'],
+                    'location': single_strand['location'],
+                    'descriptions': single_strand['descriptions']
+                }
+
+            if single_strand.has_key('coords'):
+                descr['coords'] = single_strand['coords']
+            if single_strand.has_key('quantitative_value'):
+                descr['quantitative_value'] = single_strand['quantitative_value']
+
+            single_strands_descr.append(descr)
+
+        ss_json['single_strands'] = single_strands_descr
+
+        junctions_descr = []
+        for junction in ss_object.junctions:
+            descr = {
+                'location': junction['location'],
+                'coords': junction['coords'],
+                'descriptions': junction['descriptions']
+            }
+
+            if junction.has_key('quantitative_value'):
+                descr['quantitative_value'] = junction['quantitative_value']
+
+            junctions_descr.append(descr)
+
+        ss_json['junctions'] = junctions_descr
+
+        from pyrna.utils import get_points
+        diagonals_descr = []
+        for junction in ss_object.junctions:
+            if len(junction['location']) >= 3:
+                junction_location = sorted(junction['location'])
+                for i in range(len(junction_location)-1):
+                    for h in ss_object.helices: #next helices in junction
+                        if h['location'][0][0] == junction_location[i][-1]:
+                            if h['coords'][0][1] != junction['coords'][0][1]: #to avoid to redraw a vertical line
+                                new_points = get_points(h['coords'][0][0], h['coords'][0][1], junction['coords'][0][0], junction['coords'][0][1], distance = (junction_diameter+10)/2)
+                                if len(new_points) == 2:
+                                    diagonal = {}
+                                    if h.has_key('quantitative_value'):
+                                        diagonal['quantitative_value'] = h['quantitative_value']
+                                    diagonal['coords'] = [
+                                            [h['coords'][0][0], h['coords'][0][1]],
+                                            [new_points[1][0], new_points[1][1]]
+                                            ]
+                                    diagonal['descriptions'] = h['descriptions']
+                                    diagonals_descr.append(diagonal)
+        ss_json['diagonals'] = diagonals_descr
+
+        directly_linked_helices_descr = []
+        previous_helix = ss_object.helices[0]
+        currentPos = previous_helix['location'][-1][-1]
+        while currentPos <= len(ss_object.rna):
+            currentPos +=1
+            for helix in ss_object.helices:
+                if currentPos == helix['location'][0][0]:
+                    if previous_helix['location'][-1][-1] +1 == helix['location'][0][0]:
+                        helix = {
+                            'coords': [
+                                [previous_helix['coords'][0][0], previous_helix['coords'][0][1]],
+                                [helix['coords'][0][0], helix['coords'][0][1]]
+                            ]
+                        }
+                        directly_linked_helices_descr.append(helix)
+                    currentPos = helix['location'][-1][-1]
+                    previous_helix = helix
+                    break
+
+        ss_json['directly-linked-helices'] = directly_linked_helices_descr
+
+        return ss_json
+
 def to_pdb(tertiary_structure, location = None, export_numbering_system = False):
     """
     Convert a TertiaryStructure object into PDB data
@@ -1243,7 +1409,7 @@ def parse_stockholm(stockholm_data):
     a tuple containing:
     - a list of gapped or ungapped RNA objects
     - a dict of organism names (keys)  and accession numbers/start-end (values)
-    -a pandas Dataframe listing the paired positions of consensus secondary structure)
+    - a pandas Dataframe listing the paired positions of the consensus secondary structure)
     """
     alignedSequences = {}
     organisms={}
@@ -1273,7 +1439,6 @@ def parse_stockholm(stockholm_data):
         if not key.split('/') == 2:
             rna.organism = key
         rnas.append(rna)
-
     return (rnas, organisms, parse_bn(aligned2D))
 
 def parse_pdb(pdb_data):
