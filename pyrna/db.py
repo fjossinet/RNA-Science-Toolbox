@@ -548,19 +548,20 @@ class Rfam:
         familiesDetails = []
 
         if not os.path.exists(self.cache_dir+'/rfam.txt'):
+            print self.version
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
 
-        with open(self.cache_dir+'/rfam.txt') as h:
+        with open(self.cache_dir+'/family.txt') as h:
             for line in h:
                 rfam_family = {}
                 familiesDetails.append(rfam_family)
                 tokens = line.split('\t')
-                rfam_family['id'] = tokens[3]
-                rfam_family['accession'] = tokens[2]
+                rfam_family['id'] = tokens[1]
+                rfam_family['accession'] = tokens[0]
                 rfam_family['family'] = re.sub(';',',', re.sub(';$','',tokens[18])).strip()
-                rfam_family['description'] = tokens[4]
-                rfam_family['seed'] = tokens[16]
-                rfam_family['full'] = tokens[17]
+                rfam_family['description'] = tokens[9]
+                rfam_family['seed'] = tokens[14]
+                rfam_family['full'] = tokens[15]
         return DataFrame(familiesDetails)
 
     def get_families_with_structures(self):

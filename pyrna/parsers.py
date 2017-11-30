@@ -673,7 +673,7 @@ def parse_genbank(genbank_data):
 
     Returns:
     ------
-    a DNA object (see pyrna.features) and a pandas Dataframe listing the genomic features. The columns are:
+    an array of tuples (DNA object (see pyrna.features), pandas Dataframe listing the genomic features). In the pandas Dataframe columns are:
     - type
     - genomicStrand ('+' or '-')
     - genomicPositions
@@ -681,6 +681,8 @@ def parse_genbank(genbank_data):
     - a column for each qualifier attached to the feature (/qualifier=)
     """
 
+    dnas = []
+    
     pieces_of_seq=[]
     start_of_sequence = False
     accession = None
@@ -700,7 +702,37 @@ def parse_genbank(genbank_data):
         raise Exception("Uncomplete file")
     for line in lines:
         tokens = re.split('\s+', line)
-        if line.startswith('ACCESSION'):
+        if line.startswith('//'):
+            dna = DNA( name = accession, sequence=''.join(pieces_of_seq))
+            dna.lineage = lineage.strip()
+            if organism:
+                dna.organism = organism
+            
+            for feature in features:
+                if feature.has_key('ncRNA_class'):
+                    if feature['genomicStrand'] == '+':
+                        feature['sequence'] = dna.sequence[feature['genomicPositions'][0]-1:feature['genomicPositions'][-1]]
+                    else:
+                        feature['sequence'] = DNA(name = dna.name, sequence = dna.sequence[feature['genomicPositions'][0]-1:feature['genomicPositions'][-1]]).get_complement()[::-1]
+            
+            dnas.append((dna,DataFrame(features)))
+            
+            #fresh restart if several sequences stored in the file
+            pieces_of_seq=[]
+            start_of_sequence = False
+            accession = None
+            feature_type = None
+            qualifer_type = None
+            qualifier_content = None
+            qualifiers = []
+            genomic_strand = '+'
+            genomic_positions = None
+            features = []
+            organism = None
+            inOrganism = False
+            lineage = ""
+            location = None
+        elif line.startswith('ACCESSION'):
             accession = re.split('\s+', line)[1]
         elif line.strip().startswith('ORGANISM'):
             organism = line.strip().split('ORGANISM')[1].strip()
@@ -892,21 +924,7 @@ def parse_genbank(genbank_data):
         elif inOrganism:
             lineage += " "+line.strip()
 
-    dna = DNA( name = accession, sequence=''.join(pieces_of_seq))
-
-    dna.lineage = lineage.strip()
-
-    if organism:
-        dna.organism = organism
-
-    for feature in features:
-        if feature.has_key('ncRNA_class'):
-            if feature['genomicStrand'] == '+':
-                feature['sequence'] = dna.sequence[feature['genomicPositions'][0]-1:feature['genomicPositions'][-1]]
-            else:
-                feature['sequence'] = DNA(name = dna.name, sequence = dna.sequence[feature['genomicPositions'][0]-1:feature['genomicPositions'][-1]]).get_complement()[::-1]
-
-    return dna, DataFrame(features)
+    return dnas
 
 def parse_embl(embl_data):
     """
