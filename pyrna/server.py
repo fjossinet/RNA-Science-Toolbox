@@ -803,7 +803,7 @@ if __name__ == '__main__':
 
     if "--help" in sys.argv:
         print "Usage: ./server.py [-h x] [-p x] [-mh x] [-mp x]  "
-        print '- m: the web server hostname (default: localhost)\n'
+        print '- h: the web server hostname (default: localhost)\n'
         print '- p: the web server port (default: 8080)\n'
         print '- mh: the mongodb host (default: localhost)\n'
         print '- mp: the mongodb port (default: 27017)\n'

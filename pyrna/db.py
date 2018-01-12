@@ -547,8 +547,7 @@ class Rfam:
         """
         familiesDetails = []
 
-        if not os.path.exists(self.cache_dir+'/rfam.txt'):
-            print self.version
+        if not os.path.exists(self.cache_dir+'/family.txt'):
             subprocess.call([os.path.dirname(os.path.realpath(__file__))+"/../scripts/shell/getRfam_families.sh "+self.cache_dir+" "+self.version], shell=True)
 
         with open(self.cache_dir+'/family.txt') as h:

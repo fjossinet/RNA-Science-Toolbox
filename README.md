@@ -1,11 +1,10 @@
-RNA Science Toolbox
-===================
+# RNA Science Toolbox
 
 The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science. PyRNA allows you to:
 
 * parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
-    * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
-    * "PyRNA objects" (as defined in the module pyrna.features).
+  * [Pandas Series and DataFrames](http://pandas.pydata.org/pandas-docs/stable/dsintro.html)
+  * "PyRNA objects" (as defined in the module pyrna.features).
 * compute RNA data from RNA algorithms (see below for details) and convert them into Pandas data structures and PyRNA objects,
 * recover RNA data from public databases ([PDB](http://www.rcsb.org/pdb/home/home.do), [RFAM](http://rfam.sanger.ac.uk),...) and convert them into Pandas data structures and PyRNA objects,
 * deploy some functionalities as REST Web services.
@@ -14,8 +13,7 @@ This project is related to the [DockeRNA project](https://github.com/fjossinet/D
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
-Basic installation
-------------
+## Basic installation
 
 To use the RNA Science Toolbox, you will need to go through several steps. But don't be afraid, each step is really easy to follow. We do suppose that you are using either MacOSX or Linux.
 
@@ -35,7 +33,7 @@ To install the RNA algorithms, you need first to get the tool Docker Community E
 
 ### Python dependencies
 
-Once done, download the RNA Science Toolbox and go into its directory. To install its Python dependencies, you can  use either the package manager conda (from the [Anaconda distribution](https://www.continuum.io/why-anaconda)) or pip. To use conda, type:
+Once done, download the RNA Science Toolbox and go into its directory. To install its Python dependencies, you can use either the package manager conda (from the [Anaconda distribution](https://www.continuum.io/why-anaconda)) or pip. To use conda, type:
 
     fab python
 
@@ -47,8 +45,8 @@ To use pip, type:
 
 Each Docker image available contains several algorithms:
 
- * [fjossinet/assemble2](https://hub.docker.com/r/fjossinet/assemble2/): provides [RNAVIEW](http://ndbserver.rutgers.edu/ndbmodule/services/download/rnaview.html), [Vienna RNA package](https://www.tbi.univie.ac.at/RNA/), [foldalign](http://rth.dk/resources/foldalign/), [LocARNA](http://rna.informatik.uni-freiburg.de/LocARNA/)
- * [fjossinet/rnaseq](https://hub.docker.com/r/fjossinet/rnaseq/): provides [SAMtools](http://samtools.sourceforge.net), [Tophat2](https://ccb.jhu.edu/software/tophat/), [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
+* [fjossinet/assemble2](https://hub.docker.com/r/fjossinet/assemble2/): provides [RNAVIEW](http://ndbserver.rutgers.edu/ndbmodule/services/download/rnaview.html), [Vienna RNA package](https://www.tbi.univie.ac.at/RNA/), [foldalign](http://rth.dk/resources/foldalign/), [LocARNA](http://rna.informatik.uni-freiburg.de/LocARNA/)
+* [fjossinet/rnaseq](https://hub.docker.com/r/fjossinet/rnaseq/): provides [SAMtools](http://samtools.sourceforge.net), [Tophat2](https://ccb.jhu.edu/software/tophat/), [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml)
 
 To install these images, you just have to type:
 
@@ -62,7 +60,7 @@ In the configuration file of your shell (.bashrc, .zshrc,...), add the following
 
     export TOOLBOX=THE_PATH_TO_YOUR_RNA_SCIENCE_TOOLBOX
     export PYTHONPATH=$PYTHONPATH:$TOOLBOX
-    export PATH=$PATH:$TOOLBOX/pyrna:$TOOLBOX/files/scripts/python:$PATH
+    export PATH=$PATH:$TOOLBOX/pyrna:$TOOLBOX/scripts/python:$PATH
 
 Restart your shell and type:
 
@@ -84,8 +82,7 @@ edge1 edge2 orientation  pos1  pos2
 [...]
 </pre>
 
-Jupyter notebooks (optional)
-------------
+## Jupyter notebooks (optional)
 
 The RNA Science Toolbox provides several interactive notebooks with code samples. To use them efficiently, you need [Jupyter](http://jupyter.org) installed on your computer. To do so, type:
 
@@ -101,8 +98,7 @@ Then go in the directory notebooks and type:
 
 Click on a notebook and enjoy!!
 
-IPython configuration (optional)
--------------
+## IPython configuration (optional)
 
 To automatically import the PyRNA API from the IPython REPL, go into the directory $HOME/.ipython/profile_default/startup. Create a file named load_config.py containing the following lines:
 
@@ -123,9 +119,7 @@ for ts in tertiary_structures:
   print ts.rna.sequence
 </pre>
 
-
-Web Services deployment (optional, under heavy development)
-------------
+## Web Services deployment (optional, under heavy development)
 
 The RNA Science Toolbox allows you to deploy some PyRNA functionalities as Web Services.
 
