@@ -14,6 +14,7 @@ def install(manager="conda"):
     update()
     python(manager)
     docker()
+    mongodb()
 
 @task
 def python(manager="conda"):
@@ -63,6 +64,16 @@ def website():
 
     print(green("Installing the website..."))
     local('cd website ; bower --config.interactive=false install')
+
+@task
+def mongodb():
+    """
+    Install MongoDB
+    """
+    print(green("Installing MongoDB..."))
+
+    if sys.platform != 'darwin': #if not OSX
+        local("sudo apt install mongodb-server")
 
 @task
 def docker():

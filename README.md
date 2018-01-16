@@ -82,6 +82,22 @@ edge1 edge2 orientation  pos1  pos2
 [...]
 </pre>
 
+## RNA 3D fragments
+
+If you're interested in 3D modeling with the tool Assemble2, you will need to import, annotate and store RNA 3D fragments derived from PDB structures.
+
+To do so, you will need first to install [MongoDB](https://www.mongodb.com/fr) on your computer. If you're using Ubuntu, just type:
+
+    sudo apt install mongodb-server
+
+With OSX, you can use [homebrew](https://brew.sh/index_fr.html) and then type:
+
+    brew update ; brew install mongodb ; brew services start mongodb
+
+Once MongoDB installed, you need to feed the database with a script provided with the RNA Science Toolbox:
+
+    import_3Ds.py -annotate
+
 ## Jupyter notebooks (optional)
 
 The RNA Science Toolbox provides several interactive notebooks with code samples. To use them efficiently, you need [Jupyter](http://jupyter.org) installed on your computer. To do so, type:
