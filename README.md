@@ -17,6 +17,8 @@ You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to g
 
 To use the RNA Science Toolbox, you will need to go through several steps. But don't be afraid, each step is really easy to follow. We do suppose that you are using either MacOSX or Linux.
 
+We will provide soon a script allowing to fully configure an Ubuntu [openstack](https://www.openstack.org) image with the RNA Science toolbox.
+
 ## Prerequisites
 
 ### Python environment
