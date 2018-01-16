@@ -26,6 +26,7 @@ websockets = []
 external_tools_2_websockets = {}
 mongodb = None
 hostname = 'localhost'
+webserver_port = 8080
 logs_db = None
 webserver_db = None
 enabled_algorithms = ['rnafold', 'rnaplot', 'contrafold', 'rnaview']
@@ -48,27 +49,27 @@ class Index(tornado.web.RequestHandler):
         if not os.path.exists(static_dir):
             self.write("RNA WebServices running...")
         else:
-            self.render('index.html', hostname = hostname)
+            self.render('index.html', hostname = hostname, hostport=webserver_port)
 
 class ServerActivity(tornado.web.RequestHandler):
     def get(self):
-        self.render('server.html', hostname = hostname)
+        self.render('server.html', hostname = hostname, hostport=webserver_port)
 
 class Booquet(tornado.web.RequestHandler):
     def get(self):
-        self.render('booquet.html', hostname = hostname)
+        self.render('booquet.html', hostname = hostname, hostport=webserver_port)
 
 class PyrnaDoc(tornado.web.RequestHandler):
     def get(self):
-        self.render('pyrna.html', hostname = hostname)
+        self.render('pyrna.html', hostname = hostname, hostport=webserver_port)
 
 class WebservicesDoc(tornado.web.RequestHandler):
     def get(self):
-        self.render('webservices.html', hostname = hostname)
+        self.render('webservices.html', hostname = hostname, hostport=webserver_port)
 
 class Rnapedia(tornado.web.RequestHandler):
     def get(self):
-        self.render('rnapedia.html', hostname = hostname)
+        self.render('rnapedia.html', hostname = hostname, hostport=webserver_port)
 
 class UserAccount(tornado.web.RequestHandler):
     def get(self):
@@ -797,7 +798,6 @@ if __name__ == '__main__':
         print 'It seems that you did not install the website dependencies.'
         print 'To do so, from the RNA Science Toolbox directory, type: fab website'
         sys.exit()
-    webserver_port = 8080
     mongodb_host = "localhost"
     mongodb_port = 27017
 
@@ -817,7 +817,6 @@ if __name__ == '__main__':
         mongodb_host = sys.argv[sys.argv.index("-mh")+1]
     if "-mp" in sys.argv:
         mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
-
     try :
         mongodb = MongoClient(mongodb_host, mongodb_port)
         logs_db = mongodb['logs']
