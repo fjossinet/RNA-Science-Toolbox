@@ -14,7 +14,6 @@ def install(manager="conda"):
     update()
     python(manager)
     docker()
-    mongodb()
 
 @task
 def python(manager="conda"):

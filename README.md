@@ -13,9 +13,11 @@ This project is related to the [DockeRNA project](https://github.com/fjossinet/D
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
-## Basic installation
+# Basic installation
 
 To use the RNA Science Toolbox, you will need to go through several steps. But don't be afraid, each step is really easy to follow. We do suppose that you are using either MacOSX or Linux.
+
+## Prerequisites
 
 ### Python environment
 
@@ -31,7 +33,9 @@ You also need the tool [Fabric](http://www.fabfile.org). If you're using the [An
 
 To install the RNA algorithms, you need first to get the tool Docker Community Edition. You will find all the details [here](https://docs.docker.com/engine/installation/).
 
-### Python dependencies
+## RNA Science Toolbox dependencies
+
+### Python libraries
 
 Once done, download the RNA Science Toolbox and go into its directory. To install its Python dependencies, you can use either the package manager conda (from the [Anaconda distribution](https://www.continuum.io/why-anaconda)) or pip. To use conda, type:
 
@@ -54,7 +58,7 @@ To install these images, you just have to type:
 
 If you need more details about these images, check their Web page.
 
-### Configure your PATH
+### How to configure your environment?
 
 In the configuration file of your shell (.bashrc, .zshrc,...), add the following lines:
 
@@ -82,7 +86,9 @@ edge1 edge2 orientation  pos1  pos2
 [...]
 </pre>
 
-## RNA 3D fragments
+# Advanced installation
+
+## Option #1: RNA 3D modeling
 
 If you're interested in 3D modeling with the tool Assemble2, you will need to import, annotate and store RNA 3D fragments derived from PDB structures.
 
@@ -98,7 +104,7 @@ Once MongoDB installed, you need to feed the database with a script provided wit
 
     import_3Ds.py -annotate
 
-## Jupyter notebooks (optional)
+## Option #2: Jupyter notebooks
 
 The RNA Science Toolbox provides several interactive notebooks with code samples. To use them efficiently, you need [Jupyter](http://jupyter.org) installed on your computer. To do so, type:
 
@@ -114,7 +120,7 @@ Then go in the directory notebooks and type:
 
 Click on a notebook and enjoy!!
 
-## IPython configuration (optional)
+## Option #3: IPython configuration
 
 To automatically import the PyRNA API from the IPython REPL, go into the directory $HOME/.ipython/profile_default/startup. Create a file named load_config.py containing the following lines:
 
@@ -135,9 +141,9 @@ for ts in tertiary_structures:
   print ts.rna.sequence
 </pre>
 
-## Web Services deployment (optional, under heavy development)
+## Option #4: deploy Web Services
 
-The RNA Science Toolbox allows you to deploy some PyRNA functionalities as Web Services.
+The RNA Science Toolbox allows you to give access to some of its functionalities as Web Services. These services are made available through a Web server.
 
 ### Node.js
 
@@ -151,8 +157,16 @@ From the directory of the RNA Science Toolbox, type:
 
 ### Launch the Web server
 
+You have to use the script server.py located in the pyrna folder.
+
 Just type:
 
     server.py
 
 Open your browser at [http://localhost:8080](http://localhost:8080)
+
+You can use a custom hostname and/or port by typing:
+
+    server.py -h your_hostname_OR_IP_adress -p your_port
+
+Open your browser at http://your_hostname_OR_IP_adress:your_port
