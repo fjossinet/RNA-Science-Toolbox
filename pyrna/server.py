@@ -198,8 +198,8 @@ class APIKey(tornado.web.RequestHandler):
 class ServerUsage(tornado.web.RequestHandler):
     def get(self):
         time_range = {
-                    "$gt": now - datetime.timedelta(minutes = 1),
-                    "$lte": now
+                    "$gt": datetime.datetime.now() - datetime.timedelta(minutes = 1),
+                    "$lte": datetime.datetime.now()
                     }
         usage = logs_db['webservices'].find({
                     "date": time_range
