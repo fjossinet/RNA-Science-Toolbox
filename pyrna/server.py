@@ -197,7 +197,8 @@ class APIKey(tornado.web.RequestHandler):
 #webservide to get CPU usage on Linux
 class CpuUsage(tornado.web.RequestHandler):
     def get(self):
-        usage = commands.getoutput("grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'")
+        #average %CPU for the top 5 processes
+        usage = commands.getoutput("top -bn 1 | grep \"^[0-9]\" | head -n 5 | awk '{ { sum += $9; n++ } END { if (n > 0) print sum / n; }}")
         self.write(usage)    
 
 #webservice to run RNAfold
