@@ -807,7 +807,7 @@ class Application(tornado.web.Application):
             (r'/api/computations/rnaview', RnaviewTool),
             (r'/api/compute/2d', Compute2d),
             (r'/api/compute/2dplot', Compute2dplot),
-            (r'/api/computations/cpu_usage', CpuUsage),
+            (r'/api/computations/usage', ServerUsage),
             (r'/api/pdb', PDB),
             (r'/api/rna3dhub', RNA3DHub)
         ]
