@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import ujson, sys, datetime, os, random, string, json
+import ujson, sys, datetime, os, random, string, json, commands
 
 from pyrna.features import RNA
 from pyrna.db import Rfam
@@ -193,6 +193,12 @@ class APIKey(tornado.web.RequestHandler):
                 'key': secret_key
                 })
         self.write(secret_key)
+
+#webservide to get CPU usage on Linux
+class CpuUsage(tornado.web.RequestHandler):
+    def get(self):
+        usage = commands.getoutput('grep \'cpu \' /proc/stat | awk \'{usage=($2+$4)*100/($2+$4+$5)} END {print usage "%"}'')
+        self.write(usage)    
 
 #webservice to run RNAfold
 class RNAfoldTool(tornado.web.RequestHandler):
@@ -780,6 +786,7 @@ class Application(tornado.web.Application):
             (r'/api/computations/rnaview', RnaviewTool),
             (r'/api/compute/2d', Compute2d),
             (r'/api/compute/2dplot', Compute2dplot),
+            (r'/api/computations/cpu_usage', CpuUsage),
             (r'/api/pdb', PDB),
             (r'/api/rna3dhub', RNA3DHub)
         ]
