@@ -194,11 +194,15 @@ class APIKey(tornado.web.RequestHandler):
                 })
         self.write(secret_key)
 
-#webservice to get usage of the server (number of running requests)
+#webservice to get usage of the server (number of jobs during the last minute)
 class ServerUsage(tornado.web.RequestHandler):
     def get(self):
+        time_range = {
+                    "$gt": now - datetime.timedelta(minutes = 1),
+                    "$lte": now
+                    }
         usage = logs_db['webservices'].find({
-                    "status": 'running'
+                    "date": time_range
                 }).count()
         self.write(str(usage))   
 
