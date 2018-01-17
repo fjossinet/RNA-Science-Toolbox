@@ -200,7 +200,7 @@ class ServerUsage(tornado.web.RequestHandler):
         usage = logs_db['webservices'].find({
                     "status": 'running'
                 }).count()
-        self.write(usage)    
+        self.write(""+usage)    
 
 #webservice to run RNAfold
 class RNAfoldTool(tornado.web.RequestHandler):
