@@ -194,8 +194,8 @@ class APIKey(tornado.web.RequestHandler):
                 })
         self.write(secret_key)
 
-#webservice to get usage of the server (number of jobs during the last minute)
-class ServerUsage(tornado.web.RequestHandler):
+#webservice to get server load (number of jobs during the last minute)
+class ServerLoad(tornado.web.RequestHandler):
     def get(self):
         time_range = {
                     "$gt": datetime.datetime.now() - datetime.timedelta(minutes = 1),
@@ -713,55 +713,36 @@ class WebSocket(tornado.websocket.WebSocketHandler):
                 'header': '2d plot',
                 'data': ss_json
             })
-        elif message['header'] == 'webservices usage':
+        elif message['header'] == 'server load':
             db = mongodb['logs']
             now = datetime.datetime.now()
             data = []
-            for i in xrange(1, 24):
-                counts = {'y': "-%ih"%
+            for i in xrange(1, 61):
+                counts = {'y': "-%im"%
                 i}
                 time_range = {
-                    "$gt": now - datetime.timedelta(hours = i),
-                    "$lte": now - datetime.timedelta(hours = i-1)
+                    "$gt": now - datetime.timedelta(minutes = i),
+                    "$lte": now - datetime.timedelta(minutes = i-1)
                     }
-                counts['RNAfold'] = db['webservices'].find({
+
+                counts['running'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnafold'
+                    "status": 'running'
                 }).count()
 
-                counts['RNAsubopt'] = db['webservices'].find({
+                counts['error'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnasubopt'
+                    "status": 'error'
                 }).count()
 
-                counts['RNAalifold'] = db['webservices'].find({
+                counts['done'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnaalifold'
-                }).count()
-
-                counts['Contrafold'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'contrafold'
-                }).count()
-
-                counts['RNAplot'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'rnaplot'
-                }).count()
-
-                counts['Mlocarna'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'mlocarna'
-                }).count()
-
-                counts['RNAVIEW'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'rnaview'
+                    "status": 'done'
                 }).count()
 
                 data.append(counts)
             answer = {
-                'header': 'webservices usage',
+                'header': 'server load',
                 'data': data
                 }
             self.write_message(answer, binary = False)
@@ -811,7 +792,7 @@ class Application(tornado.web.Application):
             (r'/api/computations/rnaview', RnaviewTool),
             (r'/api/compute/2d', Compute2d),
             (r'/api/compute/2dplot', Compute2dplot),
-            (r'/api/computations/usage', ServerUsage),
+            (r'/api/computations/usage', ServerLoad),
             (r'/api/pdb', PDB),
             (r'/api/rna3dhub', RNA3DHub)
         ]
