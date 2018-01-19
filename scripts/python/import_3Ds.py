@@ -65,7 +65,7 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
             if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%pdb_id}):
                 continue
             print "Recover %s"%pdb_id #we use the first pdb_id in the list of ids making a cluster
-            for ts in parsers.parse_pdb(pdb.get_entry(cluster[0])):
+            for ts in parsers.parse_pdb(pdb.get_entry(pdb_id)):
                 try:
                     ss = None
                     if annotate:
