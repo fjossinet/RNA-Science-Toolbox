@@ -1,5 +1,21 @@
 # RNA Science Toolbox
 
+[Basic installation](#basic-installation)
+&nbsp;&nbsp;&nbsp;&nbsp;[Prerequisites](#prerequisites)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Python environment](#python-environment)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Fabric](#fabric)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Docker](#docker)
+&nbsp;&nbsp;&nbsp;&nbsp;[RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Python libraries](#python-libraries)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[RNA algorithms](#rna-algorithms)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Environment Configuration](#environment-configuration)
+[Quickstart](#quickstart)
+&nbsp;&nbsp;&nbsp;&nbsp;[Ipython](#ipython)
+&nbsp;&nbsp;&nbsp;&nbsp;[Jupyter Notebooks](#jupyter-notebooks)
+[Advanced installation](#advanced-installation)
+&nbsp;&nbsp;&nbsp;&nbsp;[RNA 3D modeling](#rna-3d-modeling)
+&nbsp;&nbsp;&nbsp;&nbsp;[Web Services](#web-services)
+
 The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science on Linux (mainly Ubuntu) and MacOSX. PyRNA allows you to:
 
 * parse RNA data from "classical" file formats (PDB, CT, FASTA, VIENNA,...) and convert them into easy-to-use and easy-to-analyse data structures:
@@ -10,6 +26,8 @@ The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science on Linux
 * deploy some functionalities as REST Web services.
 
 This project is related to the [DockeRNA project](https://github.com/fjossinet/DockeRNA) which provides Docker images containing the RNA algorithms you may need.
+
+The RNA Science Toolbox provides also a bunch of [Jupyter](http://jupyter.org) notebooks [to demo the basic features](#quickstart).
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
@@ -93,7 +111,7 @@ To install these images, **copy/paste in a terminal**:
 
     fab docker
 
-### How to configure your environment?
+## Environment Configuration
 
 In the configuration file of your shell (.bashrc, .zshrc,...), add the following lines:
 
@@ -131,30 +149,9 @@ edge1 edge2 orientation  pos1  pos2
 [...]
 </pre>
 
-# Advanced installation
+# Quickstart
 
-## Option #1: RNA 3D modeling
-
-If you're interested in 3D modeling with the tool [Assemble2](http://www.bioinformatics.org/assemble/index.html), you will need to import, annotate and store RNA 3D fragments derived from PDB structures.
-
-To do so, you will need first to install [MongoDB](https://www.mongodb.com/fr) on your computer.
-
-If you're using Linux Ubuntu, **copy/paste in a terminal**:
-
-    fab mongodb
-
-With OSX, you can use [homebrew](https://brew.sh/index_fr.html) and **copy/paste in a terminal**:
-
-    brew update ; brew install mongodb ; brew services start mongodb
-
-Once MongoDB installed, you need to feed the database with RNA 3D fragments. To do so **copy/paste in a terminal**:
-
-    import_3Ds.py -annotate
-    import_3Ds.py -annotate -rna3dhub
-
-Be patient, each import takes a while. I recommend you to do these imports in a [screen](https://www.gnu.org/software/screen/manual/screen.html) session.
-
-## Option #2: IPython configuration
+## Ipython
 
 To automatically import the PyRNA API from the IPython REPL, go into the directory $HOME/.ipython/profile_default/startup. Create a file named load_config.py containing the following lines:
 
@@ -175,7 +172,42 @@ for ts in tertiary_structures:
   print ts.rna.sequence
 </pre>
 
-## Option #3: deploy Web Services
+##Jupyter Notebooks
+
+The RNA Science Toolbox provides also a bunch of notebooks to demo the basic features. **Copy/paste in a terminal**:
+
+    fab jupyter
+
+Then, from the notebooks folder of the RNA Science Toolbox, type in a terminal:
+
+    jupyter notebook
+
+This will open a Web browser listing all the notebooks available.
+
+#Advanced installation
+
+## RNA 3D modeling
+
+If you're interested in 3D modeling with the tool [Assemble2](http://www.bioinformatics.org/assemble/index.html), you will need to import, annotate and store RNA 3D fragments derived from PDB structures.
+
+To do so, you will need first to install [MongoDB](https://www.mongodb.com/fr) on your computer.
+
+If you're using Linux Ubuntu, **copy/paste in a terminal**:
+
+    fab mongodb
+
+With OSX, you can use [homebrew](https://brew.sh/index_fr.html) and **copy/paste in a terminal**:
+
+    brew update ; brew install mongodb ; brew services start mongodb
+
+Once MongoDB installed, you need to feed the database with RNA 3D fragments. To do so **copy/paste in a terminal**:
+
+    import_3Ds.py -annotate
+    import_3Ds.py -annotate -rna3dhub
+
+Be patient, each import takes a while. I recommend you to do these imports in a [screen](https://www.gnu.org/software/screen/manual/screen.html) session.
+
+## Web Services
 
 The RNA Science Toolbox allows you to give access to some of its functionalities as Web Services. These services are made available through a Web server.
 
