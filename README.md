@@ -184,7 +184,7 @@ Then, from the notebooks folder of the RNA Science Toolbox, type in a terminal:
 
 This will open a Web browser listing all the notebooks available.
 
-#Advanced installation
+# Advanced installation
 
 ## RNA 3D modeling
 
