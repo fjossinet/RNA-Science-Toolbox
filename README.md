@@ -2,7 +2,7 @@
 
 * [Basic installation](#basic-installation)
   * [Prerequisites](#prerequisites)
-  * [Python environment](#python-environment)
+    * [Python environment](#python-environment)
     * [Fabric](#fabric)
     * [Docker](#docker)
   * [RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
