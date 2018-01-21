@@ -1,22 +1,20 @@
 # RNA Science Toolbox
 
-[Basic installation](#basic-installation)
-
-&nbsp;&nbsp;&nbsp;&nbsp;[Prerequisites](#prerequisites)
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Python environment](#python-environment)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Fabric](#fabric)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Docker](#docker)
-&nbsp;&nbsp;&nbsp;&nbsp;[RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Python libraries](#python-libraries)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[RNA algorithms](#rna-algorithms)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Environment Configuration](#environment-configuration)
-[Quickstart](#quickstart)
-&nbsp;&nbsp;&nbsp;&nbsp;[Ipython](#ipython)
-&nbsp;&nbsp;&nbsp;&nbsp;[Jupyter Notebooks](#jupyter-notebooks)
-[Advanced installation](#advanced-installation)
-&nbsp;&nbsp;&nbsp;&nbsp;[RNA 3D modeling](#rna-3d-modeling)
-&nbsp;&nbsp;&nbsp;&nbsp;[Web Services](#web-services)
+* [Basic installation](#basic-installation)
+  * [Prerequisites](#prerequisites)
+  * [Python environment](#python-environment)
+    * [Fabric](#fabric)
+    * [Docker](#docker)
+  * [RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
+    * [Python libraries](#python-libraries)
+    * [RNA algorithms](#rna-algorithms)
+    * [Environment Configuration](#environment-configuration)
+* [Quickstart](#quickstart)
+  * [Ipython](#ipython)
+  * [Jupyter Notebooks](#jupyter-notebooks)
+* [Advanced installation](#advanced-installation)
+  * [RNA 3D modeling](#rna-3d-modeling)
+  * [Web Services](#web-services)
 
 The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science on Linux (mainly Ubuntu) and MacOSX. PyRNA allows you to:
 
