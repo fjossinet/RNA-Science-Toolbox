@@ -172,7 +172,7 @@ for ts in tertiary_structures:
   print ts.rna.sequence
 </pre>
 
-##Jupyter Notebooks
+## Jupyter Notebooks
 
 The RNA Science Toolbox provides also a bunch of notebooks to demo the basic features. **Copy/paste in a terminal**:
 
