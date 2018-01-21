@@ -27,7 +27,12 @@ The RNA Science Toolbox provides a Python API (PyRNA) to do RNA science on Linux
 
 This project is related to the [DockeRNA project](https://github.com/fjossinet/DockeRNA) which provides Docker images containing the RNA algorithms you may need.
 
-The RNA Science Toolbox provides also a bunch of [Jupyter](http://jupyter.org) notebooks [to demo the basic features](#quickstart).
+The RNA Science Toolbox provides also a bunch of [Jupyter](http://jupyter.org) notebooks [to demo the basic features](#quickstart). You can have a look at them by following these links:
+
+* [Create and manipulate molecules](https://nbviewer.jupyter.org/github/fjossinet/RNA-Science-Toolbox/blob/master/notebooks/Create%20and%20manipulate%20molecules.ipynb)
+* [Create and manipulate alignments](https://nbviewer.jupyter.org/github/fjossinet/RNA-Science-Toolbox/blob/master/notebooks/Create%20and%20manipulate%20alignments.ipynb)
+* [Create and manipulate secondary structures](https://nbviewer.jupyter.org/github/fjossinet/RNA-Science-Toolbox/blob/master/notebooks/Create%20and%20manipulate%20secondary%20structures.ipynb)
+* [Create and manipulate tertiary structures](https://nbviewer.jupyter.org/github/fjossinet/RNA-Science-Toolbox/blob/master/notebooks/Create%20and%20manipulate%20tertiary%20structures.ipynb)
 
 You can [follow this project on twitter](https://twitter.com/RnaSciToolbox) to get updates as they happen.
 
