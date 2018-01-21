@@ -1,7 +1,9 @@
 # RNA Science Toolbox
 
 [Basic installation](#basic-installation)
+
 &nbsp;&nbsp;&nbsp;&nbsp;[Prerequisites](#prerequisites)
+
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Python environment](#python-environment)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Fabric](#fabric)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Docker](#docker)
