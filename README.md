@@ -8,7 +8,7 @@
   * [RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
     * [Python libraries](#python-libraries)
     * [RNA algorithms](#rna-algorithms)
-    * [Environment Configuration](#environment-configuration)
+  * [Environment Configuration](#environment-configuration)
 * [Quickstart](#quickstart)
   * [Ipython](#ipython)
   * [Jupyter Notebooks](#jupyter-notebooks)
