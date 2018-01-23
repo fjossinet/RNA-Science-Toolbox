@@ -233,10 +233,10 @@ class RNAfoldTool(tornado.web.RequestHandler):
                 sequence = self.get_argument('sequence', default = None)
                 constraints = self.get_argument('constraints', default = None)
                 bp_probabilities = self.get_argument('bp_probabilities', default = "False") == "True"
-                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                 self.write(rnafold.fold(RNA(name=name, sequence=sequence), bp_probabilities = bp_probabilities, constraints = constraints, raw_output = True))
             else:
-                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error'}})
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
                 self.send_error(status_code=401)
 
 #webservice to run RNAplot
@@ -258,11 +258,11 @@ class RNAplotTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'rnaplot' in enabled_algorithms:
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
             rnas, secondary_structures = parse_vienna(secondary_structure)
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True))
 
 #webservice to run Contrafold
@@ -286,10 +286,10 @@ class ContrafoldTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'contrafold' in enabled_algorithms:
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True))
 
 #webservice to run RNAVIEW
@@ -312,10 +312,10 @@ class RnaviewTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'rnaview' in enabled_algorithms:
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Rnaview().annotate(pdb_content = tertiary_structure, canonical_only = canonical_only, raw_output = True))
 
 ##########################################################
@@ -415,18 +415,18 @@ class Compute2d(tornado.web.RequestHandler):
                     _result['tertiaryInteractions'] = tertiary_interactions_descr
                     result.append(_result)
                 if tool == 'rnafold' or tool == 'contrafold':
-                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(json_encode(result[0]))
                 else:
-                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(json_encode(result))
             elif len(rnas) >= 2: #structural alignment
                 if tool == 'mlocarna':
                     aligned_molecules, consensus2D = Mlocarna().align(rnas)
-                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(to_clustalw(consensus2D, aligned_molecules))
         elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
-            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(RnaAlifold().align(data))
         elif tool == 'rnaview': #3D annotation
             from pyrna.db import PDB
@@ -552,7 +552,7 @@ class Compute2d(tornado.web.RequestHandler):
 
 
                     result.append({"2D": _2D_descr, "3D": _3D_descr})
-                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                 self.write(json_encode(result))
 
 class Compute2dplot(tornado.web.RequestHandler):
@@ -580,7 +580,7 @@ class Compute2dplot(tornado.web.RequestHandler):
         coords = []
         for (index, row) in plot.iterrows():
             coords.append([row['x'], row['y']])
-        logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done'}})
+        logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
         self.write(json_encode(coords))
 
 class PDB (tornado.web.RequestHandler):
