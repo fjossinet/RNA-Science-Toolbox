@@ -65,6 +65,16 @@ def website():
     local('cd website ; bower --config.interactive=false install')
 
 @task
+def mongodb():
+    """
+    Install MongoDB
+    """
+    print(green("Installing MongoDB..."))
+
+    if sys.platform != 'darwin': #if not OSX
+        local("sudo apt install mongodb-server")
+
+@task
 def docker():
     """
     Install the Docker images

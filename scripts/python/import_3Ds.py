@@ -61,20 +61,21 @@ def import_3Ds(db_host = 'localhost', db_port = 27017, rna3dhub = False, canonic
         print "%i 3Ds to process"%len(clusters)
 
         for cluster in clusters['pdb-ids']:
-            if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%cluster[0]}):
+            pdb_id = cluster[0].split('|')[0]
+            if db['tertiaryStructures'].find_one({'source':"db:pdb:%s"%pdb_id}):
                 continue
-            print "Recover %s"%cluster[0] #we use the first pdb_id in the list of ids making a cluster
-            for ts in parsers.parse_pdb(pdb.get_entry(cluster[0])):
+            print "Recover %s"%pdb_id #we use the first pdb_id in the list of ids making a cluster
+            for ts in parsers.parse_pdb(pdb.get_entry(pdb_id)):
                 try:
                     ss = None
                     if annotate:
                         ss, ts = rnaview.annotate(ts, canonical_only = canonical_only)
-                    save(db, ss, ts, cluster[0], limit)
+                    save(db, ss, ts, pdb_id, limit)
 
                 except Exception, e:
                     print e
-                    print "No annotation for %s"%cluster[0]
-                    save(db, None, ts, cluster[0], limit)
+                    print "No annotation for %s"%pdb_id
+                    save(db, None, ts, pdb_id, limit)
 
 def save(db, secondary_structure, tertiary_structure, pdbId, limit):
     if db['junctions'].count() >= limit:

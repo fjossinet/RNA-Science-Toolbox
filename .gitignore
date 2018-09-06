@@ -1,3 +1,5 @@
 *.pyc
+*DS_Store
 website/bower_components/*
 notebooks/.ipynb_checkpoints/*
+pyrna/.DS_Store

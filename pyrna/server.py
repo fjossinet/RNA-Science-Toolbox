@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import ujson, sys, datetime, os, random, string, json
+import ujson, sys, datetime, os, random, string, json, commands
 
 from pyrna.features import RNA
 from pyrna.db import Rfam
@@ -26,6 +26,7 @@ websockets = []
 external_tools_2_websockets = {}
 mongodb = None
 hostname = 'localhost'
+webserver_port = 8080
 logs_db = None
 webserver_db = None
 enabled_algorithms = ['rnafold', 'rnaplot', 'contrafold', 'rnaview']
@@ -48,27 +49,27 @@ class Index(tornado.web.RequestHandler):
         if not os.path.exists(static_dir):
             self.write("RNA WebServices running...")
         else:
-            self.render('index.html', hostname = hostname)
+            self.render('index.html', hostname = hostname, hostport=webserver_port)
 
 class ServerActivity(tornado.web.RequestHandler):
     def get(self):
-        self.render('server.html', hostname = hostname)
+        self.render('server.html', hostname = hostname, hostport=webserver_port)
 
 class Booquet(tornado.web.RequestHandler):
     def get(self):
-        self.render('booquet.html', hostname = hostname)
+        self.render('booquet.html', hostname = hostname, hostport=webserver_port)
 
 class PyrnaDoc(tornado.web.RequestHandler):
     def get(self):
-        self.render('pyrna.html', hostname = hostname)
+        self.render('pyrna.html', hostname = hostname, hostport=webserver_port)
 
 class WebservicesDoc(tornado.web.RequestHandler):
     def get(self):
-        self.render('webservices.html', hostname = hostname)
+        self.render('webservices.html', hostname = hostname, hostport=webserver_port)
 
 class Rnapedia(tornado.web.RequestHandler):
     def get(self):
-        self.render('rnapedia.html', hostname = hostname)
+        self.render('rnapedia.html', hostname = hostname, hostport=webserver_port)
 
 class UserAccount(tornado.web.RequestHandler):
     def get(self):
@@ -193,6 +194,18 @@ class APIKey(tornado.web.RequestHandler):
                 })
         self.write(secret_key)
 
+#webservice to get server load (number of jobs during the last minute)
+class ServerLoad(tornado.web.RequestHandler):
+    def get(self):
+        time_range = {
+                    "$gt": datetime.datetime.now() - datetime.timedelta(minutes = 1),
+                    "$lte": datetime.datetime.now()
+                    }
+        usage = logs_db['webservices'].find({
+                    "date": time_range
+                }).count()
+        self.write(str(usage))   
+
 #webservice to run RNAfold
 class RNAfoldTool(tornado.web.RequestHandler):
     def post(self):
@@ -202,7 +215,8 @@ class RNAfoldTool(tornado.web.RequestHandler):
             'tool': 'rnafold',
             'ip': self.request.remote_ip,
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -219,8 +233,10 @@ class RNAfoldTool(tornado.web.RequestHandler):
                 sequence = self.get_argument('sequence', default = None)
                 constraints = self.get_argument('constraints', default = None)
                 bp_probabilities = self.get_argument('bp_probabilities', default = "False") == "True"
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                 self.write(rnafold.fold(RNA(name=name, sequence=sequence), bp_probabilities = bp_probabilities, constraints = constraints, raw_output = True))
             else:
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
                 self.send_error(status_code=401)
 
 #webservice to run RNAplot
@@ -232,7 +248,8 @@ class RNAplotTool(tornado.web.RequestHandler):
             'tool': 'rnaplot',
             'ip': self.request.remote_ip,
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -241,9 +258,11 @@ class RNAplotTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'rnaplot' in enabled_algorithms:
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
             rnas, secondary_structures = parse_vienna(secondary_structure)
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Rnaplot().plot(secondary_structures[0], rnas[0], raw_output = True))
 
 #webservice to run Contrafold
@@ -255,7 +274,8 @@ class ContrafoldTool(tornado.web.RequestHandler):
             'tool': 'contrafold',
             'ip': self.request.remote_ip,
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -266,8 +286,10 @@ class ContrafoldTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'contrafold' in enabled_algorithms:
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Contrafold().fold(RNA(name=name, sequence=sequence), raw_output = True))
 
 #webservice to run RNAVIEW
@@ -279,7 +301,8 @@ class RnaviewTool(tornado.web.RequestHandler):
             'tool': 'rnaview',
             'ip': self.request.remote_ip,
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -289,8 +312,10 @@ class RnaviewTool(tornado.web.RequestHandler):
         api_key = self.get_argument('api_key', default = None)
 
         if not is_registered_user(api_key) or not 'rnaview' in enabled_algorithms:
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'error', 'date':datetime.datetime.now()}})
             self.send_error(status_code=401)
         else:
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(Rnaview().annotate(pdb_content = tertiary_structure, canonical_only = canonical_only, raw_output = True))
 
 ##########################################################
@@ -315,7 +340,8 @@ class Compute2d(tornado.web.RequestHandler):
             'tool': tool,
             'ip': self.request.remote_ip,
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -389,14 +415,18 @@ class Compute2d(tornado.web.RequestHandler):
                     _result['tertiaryInteractions'] = tertiary_interactions_descr
                     result.append(_result)
                 if tool == 'rnafold' or tool == 'contrafold':
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(json_encode(result[0]))
                 else:
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(json_encode(result))
             elif len(rnas) >= 2: #structural alignment
                 if tool == 'mlocarna':
                     aligned_molecules, consensus2D = Mlocarna().align(rnas)
+                    logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                     self.write(to_clustalw(consensus2D, aligned_molecules))
         elif tool == 'rnalifold' and data and data.startswith('CLUSTAL'): #computation of consensus structure from sequence alignment
+            logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
             self.write(RnaAlifold().align(data))
         elif tool == 'rnaview': #3D annotation
             from pyrna.db import PDB
@@ -522,7 +552,7 @@ class Compute2d(tornado.web.RequestHandler):
 
 
                     result.append({"2D": _2D_descr, "3D": _3D_descr})
-
+                logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
                 self.write(json_encode(result))
 
 class Compute2dplot(tornado.web.RequestHandler):
@@ -538,7 +568,8 @@ class Compute2dplot(tornado.web.RequestHandler):
             'ip': self.request.remote_ip,
             'tool': 'rnaplot',
             'method': self.request.method,
-            'date': datetime.datetime.now()
+            'date': datetime.datetime.now(),
+            'status': 'running'
         }
 
         logs_db['webservices'].insert(log)
@@ -549,6 +580,7 @@ class Compute2dplot(tornado.web.RequestHandler):
         coords = []
         for (index, row) in plot.iterrows():
             coords.append([row['x'], row['y']])
+        logs_db['webservices'].update({ '_id': log['_id'] }, {'$set': { 'status' : 'done', 'date':datetime.datetime.now()}})
         self.write(json_encode(coords))
 
 class PDB (tornado.web.RequestHandler):
@@ -681,55 +713,36 @@ class WebSocket(tornado.websocket.WebSocketHandler):
                 'header': '2d plot',
                 'data': ss_json
             })
-        elif message['header'] == 'webservices usage':
+        elif message['header'] == 'server load':
             db = mongodb['logs']
             now = datetime.datetime.now()
             data = []
-            for i in xrange(1, 24):
-                counts = {'y': "-%ih"%
+            for i in xrange(1, 61):
+                counts = {'y': "-%im"%
                 i}
                 time_range = {
-                    "$gt": now - datetime.timedelta(hours = i),
-                    "$lte": now - datetime.timedelta(hours = i-1)
+                    "$gt": now - datetime.timedelta(minutes = i),
+                    "$lte": now - datetime.timedelta(minutes = i-1)
                     }
-                counts['RNAfold'] = db['webservices'].find({
+
+                counts['running'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnafold'
+                    "status": 'running'
                 }).count()
 
-                counts['RNAsubopt'] = db['webservices'].find({
+                counts['error'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnasubopt'
+                    "status": 'error'
                 }).count()
 
-                counts['RNAalifold'] = db['webservices'].find({
+                counts['done'] = db['webservices'].find({
                     "date": time_range,
-                    "tool": 'rnaalifold'
-                }).count()
-
-                counts['Contrafold'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'contrafold'
-                }).count()
-
-                counts['RNAplot'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'rnaplot'
-                }).count()
-
-                counts['Mlocarna'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'mlocarna'
-                }).count()
-
-                counts['RNAVIEW'] = db['webservices'].find({
-                    "date": time_range,
-                    "tool": 'rnaview'
+                    "status": 'done'
                 }).count()
 
                 data.append(counts)
             answer = {
-                'header': 'webservices usage',
+                'header': 'server load',
                 'data': data
                 }
             self.write_message(answer, binary = False)
@@ -779,6 +792,7 @@ class Application(tornado.web.Application):
             (r'/api/computations/rnaview', RnaviewTool),
             (r'/api/compute/2d', Compute2d),
             (r'/api/compute/2dplot', Compute2dplot),
+            (r'/api/computations/usage', ServerLoad),
             (r'/api/pdb', PDB),
             (r'/api/rna3dhub', RNA3DHub)
         ]
@@ -797,13 +811,12 @@ if __name__ == '__main__':
         print 'It seems that you did not install the website dependencies.'
         print 'To do so, from the RNA Science Toolbox directory, type: fab website'
         sys.exit()
-    webserver_port = 8080
     mongodb_host = "localhost"
     mongodb_port = 27017
 
     if "--help" in sys.argv:
         print "Usage: ./server.py [-h x] [-p x] [-mh x] [-mp x]  "
-        print '- m: the web server hostname (default: localhost)\n'
+        print '- h: the web server hostname (default: localhost)\n'
         print '- p: the web server port (default: 8080)\n'
         print '- mh: the mongodb host (default: localhost)\n'
         print '- mp: the mongodb port (default: 27017)\n'
@@ -817,7 +830,6 @@ if __name__ == '__main__':
         mongodb_host = sys.argv[sys.argv.index("-mh")+1]
     if "-mp" in sys.argv:
         mongodb_port = int(sys.argv[sys.argv.index("-mp")+1])
-
     try :
         mongodb = MongoClient(mongodb_host, mongodb_port)
         logs_db = mongodb['logs']
