@@ -3,7 +3,7 @@
 * [Basic installation](#basic-installation)
   * [Prerequisites](#prerequisites)
     * [Python environment](#python-environment)
-    * [Fabric](#fabric)
+    * [Fabric3](#fabric3)
     * [Docker](#docker)
   * [RNA Science Toolbox dependencies](#rna-science-toolbox-dependencies)
     * [Python libraries](#python-libraries)
@@ -57,13 +57,13 @@ If you're using Linux Ubuntu, **copy/paste in a terminal**:
     ./Anaconda2-5.0.1-Linux-x86_64.sh
     bash
 
-### Fabric
+### Fabric3
 
-You also need the tool [Fabric](http://www.fabfile.org).
+You also need the tool [Fabric3](https://pypi.org/project/Fabric3/).
 
 If you're using the [Anaconda distribution](https://www.continuum.io/why-anaconda) on Linux Ubuntu/MacOSX, **copy/paste in a terminal**:
 
-    conda install fabric
+    conda install fabric3
 
 ### Docker
 
@@ -134,7 +134,7 @@ If you're using bash on Linux Ubuntu/MacOSX, **copy/paste in a terminal**:
 
     bash
 
-Restart your shell and type:
+Restart your shell and type (don't forget to start Docker before):
 
     pyrna_tests.py
 
